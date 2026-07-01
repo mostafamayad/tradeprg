@@ -20,6 +20,8 @@ const path = require('path');
 const { syncTime } = require('./utils/time');
 
 const app = express();
+// Trust proxy for correct IP detection behind reverse proxies (IIS, Nginx, etc.)
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 process.on('unhandledRejection', (reason, promise) => {
@@ -110,6 +112,41 @@ app.get('/health', (req, res) => { res.json(getHealth()); });
 
 // ─── Serve Static Frontend ───────────────────────────────────
 app.use(express.static(path.join(__dirname, '../frontend')));
+
+// ─── Rate Limiting ────────────────────────────────────────────
+const rateLimit = require('express-rate-limit');
+
+// Login endpoint: 5 requests/minute/IP (most restrictive)
+const loginLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 5,
+    message: { success: false, message: 'Too many requests', retryAfter: 60 },
+    standardHeaders: false,
+    legacyHeaders: false,
+    handler: (req, res, next, opts) => {
+        const retryAfter = Math.ceil(opts.windowMs / 1000);
+        res.set('Retry-After', String(retryAfter));
+        res.status(429).json({ success: false, message: 'Too many requests', retryAfter });
+    }
+});
+
+// General API: 300 requests/minute/IP (applied to all /api routes)
+const apiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 300,
+    message: { success: false, message: 'Too many requests', retryAfter: 60 },
+    standardHeaders: false,
+    legacyHeaders: false,
+    handler: (req, res, next, opts) => {
+        const retryAfter = Math.ceil(opts.windowMs / 1000);
+        res.set('Retry-After', String(retryAfter));
+        res.status(429).json({ success: false, message: 'Too many requests', retryAfter });
+    }
+});
+
+// Apply login limiter before general API limiter (more specific takes precedence)
+app.use('/api/auth/login', loginLimiter);
+app.use('/api', apiLimiter);
 
 // ─── API Routes ──────────────────────────────────────────────
 const authenticate = require('./middleware/auth');

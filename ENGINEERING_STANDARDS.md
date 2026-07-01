@@ -1,6 +1,6 @@
 # TradePro ERP — Engineering Standards
 
-> **Version:** 1.2.0
+> **Version:** 1.3.0
 > **Last Updated:** 2026-07-01
 > **Status:** Living Standard — every architectural change increments the version.
 >
@@ -297,6 +297,51 @@ A public `GET /health` endpoint returns:
 - Multiple concurrent reconnect attempts.
 - Creating more than one pool.
 - Every request trying to re‑establish the pool.
+
+### 2.9 Rate Limiting
+
+Tiered rate limiting is implemented via `express-rate-limit` (v8) in `server.js`.
+
+| Tier | Routes | Limit | Scope |
+|------|--------|-------|-------|
+| **Login** | `/api/auth/login` | 5 requests/minute/IP | Most restrictive — brute‑force protection |
+| **General API** | All `/api/*` routes | 300 requests/minute/IP | Protects backend resources |
+| **Unlimited** | `/health`, static assets | No limit | Must never be throttled |
+
+**Custom 429 response:**
+
+```json
+{
+  "success": false,
+  "message": "Too many requests",
+  "retryAfter": 60
+}
+```
+
+- HTTP status `429 Too Many Requests`.
+- `Retry-After: 60` header is set.
+- The default library message MUST NOT be used — always override `handler` and `message`.
+- Rate‑limited requests are NOT written to `audit_log`. An internal counter and console warning are sufficient.
+
+**Proxy awareness:**
+
+```javascript
+app.set('trust proxy', 1); // set before all middleware
+```
+
+This ensures `req.ip` reflects the client IP behind IIS, Nginx, or any reverse proxy.
+
+**Middleware order:**
+
+1. `app.set('trust proxy', 1)`
+2. General middleware (helmet, cors, morgan, json)
+3. Health endpoint + static files (unlimited)
+4. **Login limiter** at `/api/auth/login` (5/min, registered before general API limiter)
+5. **General API limiter** at `/api` (300/min)
+6. `authenticate` + `autoLogger` + `licenseEnforcer`
+7. Module routes
+
+The login limiter takes precedence over the general API limiter because it is registered first with a more specific path.
 
 ---
 
