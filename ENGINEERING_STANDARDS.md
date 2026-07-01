@@ -1,6 +1,6 @@
 # TradePro ERP — Engineering Standards
 
-> **Version:** 1.3.0
+> **Version:** 1.4.0
 > **Last Updated:** 2026-07-01
 > **Status:** Living Standard — every architectural change increments the version.
 >
@@ -304,7 +304,7 @@ Tiered rate limiting is implemented via `express-rate-limit` (v8) in `server.js`
 
 | Tier | Routes | Limit | Scope |
 |------|--------|-------|-------|
-| **Login** | `/api/auth/login` | 5 requests/minute/IP | Most restrictive — brute‑force protection |
+| **Login** | `/api/auth/login` | 5 failed attempts/minute/IP | `skipSuccessfulRequests: true` — only failed logins count |
 | **General API** | All `/api/*` routes | 300 requests/minute/IP | Protects backend resources |
 | **Unlimited** | `/health`, static assets | No limit | Must never be throttled |
 
@@ -774,26 +774,61 @@ END
 - Transactional seed data (test records, demo data) MUST NOT appear in migrations.
 - Production seed scripts live in a separate `scripts/seed.js` or equivalent.
 
-### 7.7 Schema Versioning
+### 7.7 Versioned File-Naming Convention (Implementation)
 
-- Maintain a `schema_version` table:
+The `migrationRunner.js` reads `.sql` files sorted alphabetically by filename.
+Each file is named with a numeric prefix for ordering:
 
-```sql
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[schema_version]') AND type in (N'U'))
-BEGIN
-    CREATE TABLE [dbo].[schema_version] (
-        [id]          [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
-        [migration_id] [nvarchar](50) NOT NULL,
-        [description] [nvarchar](500) NULL,
-        [applied_by]  [nvarchar](200) NULL,
-        [applied_at]  [datetime] DEFAULT (getdate())
-    );
-END
+```
+NNN_description.sql
 ```
 
-- Every migration inserts its ID into `schema_version` as the final step.
-- The application checks `schema_version` on startup and refuses to run if unapplied
-  migrations exist (opt-in, not enforced for MVP).
+Examples:
+
+```
+001_customers_schema.sql
+002_customer_tables.sql
+003_sales_returns_index.sql
+```
+
+- Numbers are zero-padded to 3+ digits (e.g., `001`, `002`, ..., `999`).
+- The description is lowercase, underscore-separated.
+- Files live under `backend/migrations/`.
+
+### 7.8 schema_versions Table
+
+Maintained automatically by the migration runner:
+
+```sql
+CREATE TABLE [dbo].[schema_versions] (
+    [version]     [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    [name]        [nvarchar](255) NOT NULL,
+    [applied_at]  [datetime2] NOT NULL DEFAULT (SYSDATETIME()),
+    [duration_ms] [int] NOT NULL DEFAULT (0),
+    [checksum]    [nvarchar](64) NOT NULL
+);
+```
+
+- `version` — auto‑incrementing PK.
+- `name` — migration filename (e.g., `001_customers_schema.sql`).
+- `applied_at` — timestamp when the migration completed.
+- `duration_ms` — execution time in milliseconds.
+- `checksum` — SHA256 hex digest of the SQL file content (64 characters).
+
+### 7.9 Migration Runner Behavior
+
+- On application startup, `migrationRunner.js` is invoked after the database pool is
+  established but before the HTTP server listens.
+- It lists `migrations/*.sql`, compares filenames against `schema_versions.name`,
+  and runs any not yet recorded.
+- Each migration is executed **inside a database transaction**. If the SQL file
+  contains `GO` batch separators, it is treated as non‑transactional and executed
+  without a wrapping transaction.
+- After successful execution, the `schema_versions` row is inserted.
+- If a migration fails, the transaction is rolled back and no record is written.
+- The runner is **idempotent**: consecutive runs with no new files produce zero migrations.
+- A SHA256 checksum is computed for each file and stored; a checksum mismatch on
+  a previously applied migration logs a warning but does not block execution.
 
 ---
 

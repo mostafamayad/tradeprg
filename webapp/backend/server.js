@@ -116,13 +116,14 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 // ─── Rate Limiting ────────────────────────────────────────────
 const rateLimit = require('express-rate-limit');
 
-// Login endpoint: 5 requests/minute/IP (most restrictive)
+// Login endpoint: 5 failed attempts/minute/IP (successful logins don't count)
 const loginLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 5,
     message: { success: false, message: 'Too many requests', retryAfter: 60 },
     standardHeaders: false,
     legacyHeaders: false,
+    skipSuccessfulRequests: true,
     handler: (req, res, next, opts) => {
         const retryAfter = Math.ceil(opts.windowMs / 1000);
         res.set('Retry-After', String(retryAfter));
@@ -242,7 +243,13 @@ app.listen(PORT, '0.0.0.0', async () => {
         const { getPool } = require('./database/mssql_db');
         const pool = await getPool();
 
-        // ── Column migrations (idempotent) ──
+        // ── Versioned Migration Runner (Phase 7.4) ──
+        const dbModule = require('./database/mssql_db');
+        const MigrationRunner = require('./services/migrationRunner');
+        const mr = new MigrationRunner(pool, dbModule.sql);
+        await mr.run();
+
+        // ── Column migrations (idempotent, legacy — runs alongside versioned system) ──
         // journal_entries: source tracking
         await pool.request().query(`
             IF COL_LENGTH('journal_entries', 'source_module') IS NULL
