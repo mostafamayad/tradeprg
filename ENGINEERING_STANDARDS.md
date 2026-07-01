@@ -1,6 +1,6 @@
 # TradePro ERP — Engineering Standards
 
-> **Version:** 1.1.0
+> **Version:** 1.2.0
 > **Last Updated:** 2026-07-01
 > **Status:** Living Standard — every architectural change increments the version.
 >
@@ -244,6 +244,59 @@ const orderDir = req.query.order === 'DESC' ? 'DESC' : 'ASC';
 - Only whitelisted column names are allowed; invalid values silently fall back to the default.
 - `order` accepts only `ASC` or `DESC`; any other value defaults to `ASC`.
 - This prevents SQL injection through sort parameters.
+
+### 2.8 Database Connection Resilience
+
+All database operations MUST go through the resilient connection layer in `database/mssql_db.js`.
+
+**Startup retry policy (exponential backoff):**
+
+| Attempt | Delay | Cumulative |
+|---------|-------|------------|
+| 1 (immediate) | 0s | 0s |
+| 2 | 1s | 1s |
+| 3 | 2s | 3s |
+| 4 | 4s | 7s |
+| 5 | 8s | 15s |
+| 6 | 16s | 31s |
+
+If all 6 attempts fail:
+- The server enters **DEGRADED mode**.
+- A background reconnect loop runs every **30 seconds**.
+- `getPool()` throws a meaningful error; route handlers return `500` instead of crashing.
+- The server continues serving non‑DB routes (e.g. static files, health check).
+
+**Health endpoint:**
+
+A public `GET /health` endpoint returns:
+
+```json
+{
+  "status": "UP | DEGRADED",
+  "database": "UP | DOWN",
+  "degraded": false,
+  "retryCount": 0,
+  "lastError": null,
+  "uptime": 1234,
+  "version": "1.0.0",
+  "timestamp": "2026-07-01T12:00:00.000Z"
+}
+```
+
+- `GET /health` requires NO authentication and NO database access.
+- It MUST be registered before the `authenticate` middleware.
+- The response is derived from a shared in‑memory health state, never from a DB query.
+
+**Reconnect loop:**
+- Single instance (no race conditions).
+- Creates a new pool; on success, replaces the global pool reference and clears the timer.
+- Uses `timer.unref()` so it doesn't prevent graceful process shutdown.
+
+**What is NOT allowed:**
+- Calling `process.exit(1)` on DB connection failure.
+- Multiple concurrent reconnect attempts.
+- Creating more than one pool.
+- Every request trying to re‑establish the pool.
 
 ---
 

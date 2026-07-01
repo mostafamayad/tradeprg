@@ -104,6 +104,10 @@ app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// ─── Health Check (public, no auth) ─────────────────────────
+const { getHealth } = require('./database/mssql_db');
+app.get('/health', (req, res) => { res.json(getHealth()); });
+
 // ─── Serve Static Frontend ───────────────────────────────────
 app.use(express.static(path.join(__dirname, '../frontend')));
 
