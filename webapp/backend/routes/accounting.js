@@ -993,6 +993,71 @@ router.get('/balance-sheet', asyncHandler(async (req, res) => {
             sections.push({ type: cfg.type, name: cfg.name, groups: secGroups, totals: secTotal });
         }
 
+        // 4) Compute total accumulated net income from revenue/expense accounts as of `to` date
+        //    Balance sheet must include ALL net income that hasn't been closed to retained earnings
+        var netIncome = 0;
+        try {
+            var niRequest = pool.request();
+            var niWhere = ' WHERE 1=1';
+            if (to) { niWhere += ' AND j.entry_date <= @niTo'; niRequest.input('niTo', sql.NVarChar, to); }
+            var niSQL = '\
+                SELECT \
+                    SUM(CASE WHEN a.account_type = \'revenue\' THEN ISNULL(l.credit, 0) - ISNULL(l.debit, 0) ELSE 0 END) AS revenue_net,\
+                    SUM(CASE WHEN a.account_type = \'expense\' THEN ISNULL(l.debit, 0) - ISNULL(l.credit, 0) ELSE 0 END) AS expense_net\
+                FROM journal_entry_lines l\
+                JOIN journal_entries j ON l.entry_id = j.id\
+                JOIN chart_of_accounts a ON l.account_id = a.id\
+                ' + niWhere;
+            var niRes = await niRequest.query(niSQL);
+            var revNet = Math.round(Number(niRes.recordset[0].revenue_net || 0) * 100) / 100;
+            var expNet = Math.round(Number(niRes.recordset[0].expense_net || 0) * 100) / 100;
+            netIncome = Math.round((revNet - expNet) * 100) / 100;
+        } catch (e) {
+            console.error('Net income computation error:', e);
+            netIncome = 0;
+        }
+
+        // 5) Inject net income into equity section
+        if (netIncome !== 0) {
+            for (var si2 = 0; si2 < sections.length; si2++) {
+                if (sections[si2].type === 'equity') {
+                    var foundNiGroup = false;
+                    for (var gni = 0; gni < sections[si2].groups.length; gni++) {
+                        if (sections[si2].groups[gni].name === 'صافي الدخل للفترة') {
+                            sections[si2].groups[gni].accounts[0].closing = netIncome;
+                            sections[si2].groups[gni].totals.closing = netIncome;
+                            foundNiGroup = true;
+                            break;
+                        }
+                    }
+                    if (!foundNiGroup) {
+                        sections[si2].groups.push({
+                            name: 'صافي الدخل للفترة',
+                            accounts: [{ account_id: null, account_code: '', account_name: 'صافي الدخل للفترة', opening: 0, closing: netIncome }],
+                            totals: { opening: 0, closing: netIncome }
+                        });
+                    }
+                    // Recompute equity section total
+                    var eqOpen = 0, eqClose = 0;
+                    for (var egi = 0; egi < sections[si2].groups.length; egi++) {
+                        eqOpen = Math.round((eqOpen + sections[si2].groups[egi].totals.opening) * 100) / 100;
+                        eqClose = Math.round((eqClose + sections[si2].groups[egi].totals.closing) * 100) / 100;
+                    }
+                    sections[si2].totals.opening = eqOpen;
+                    sections[si2].totals.closing = eqClose;
+                    break;
+                }
+            }
+            // Recompute total Liabilities + Equity
+            totalLiabEq = { opening: 0, closing: 0 };
+            for (var ri = 0; ri < sections.length; ri++) {
+                if (sections[ri].type !== 'asset') {
+                    totalLiabEq.opening = Math.round((totalLiabEq.opening + sections[ri].totals.opening) * 100) / 100;
+                    totalLiabEq.closing = Math.round((totalLiabEq.closing + sections[ri].totals.closing) * 100) / 100;
+                }
+            }
+        }
+
         var balanced = Math.abs(totalAssets.closing - totalLiabEq.closing) < 0.01;
 
         res.json({
