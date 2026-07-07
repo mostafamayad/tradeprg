@@ -3,6 +3,93 @@ const { getPool, sql } = require('../database/mssql_db');
 const { postJournalEntryAsync, reverseJournalEntryAsync } = require('../services/accountingEngine');
 const asyncHandler = require('../utils/asyncHandler');
 const accountRepo = require('../repositories/accountRepository');
+const fiscalRepo = require('../repositories/fiscalPeriodRepository');
+// ── Fiscal Periods ──────────────────────────────────────────
+
+// GET all fiscal periods
+router.get('/fiscal-periods', asyncHandler(async (req, res) => {
+    const periods = await fiscalRepo.getAll();
+    res.json({ success: true, data: periods });
+}));
+
+// GET active fiscal period
+router.get('/fiscal-periods/active', asyncHandler(async (req, res) => {
+    const period = await fiscalRepo.getActive();
+    res.json({ success: true, data: period || null });
+}));
+
+// GET single fiscal period
+router.get('/fiscal-periods/:id', asyncHandler(async (req, res) => {
+    const period = await fiscalRepo.getById(parseInt(req.params.id));
+    if (!period) {
+        return res.status(404).json({ success: false, message: 'الفترة المالية غير موجودة' });
+    }
+    res.json({ success: true, data: period });
+}));
+
+// POST create fiscal period
+router.post('/fiscal-periods', asyncHandler(async (req, res) => {
+    const { name, start_date, end_date } = req.body;
+    if (!name || !start_date || !end_date) {
+        return res.status(400).json({ success: false, message: 'جميع الحقول مطلوبة: الاسم، تاريخ البداية، تاريخ النهاية' });
+    }
+    if (new Date(end_date) < new Date(start_date)) {
+        return res.status(400).json({ success: false, message: 'تاريخ النهاية يجب أن يكون بعد تاريخ البداية' });
+    }
+    const period = await fiscalRepo.create({ name, startDate: start_date, endDate: end_date, userId: req.user ? req.user.id : null });
+    res.status(201).json({ success: true, message: 'تم إنشاء الفترة المالية بنجاح', data: period });
+}));
+
+// POST close fiscal period
+router.post('/fiscal-periods/:id/close', asyncHandler(async (req, res) => {
+    const id = parseInt(req.params.id);
+    const period = await fiscalRepo.getById(id);
+    if (!period) {
+        return res.status(404).json({ success: false, message: 'الفترة المالية غير موجودة' });
+    }
+    if (period.status === 'closed') {
+        return res.status(400).json({ success: false, message: 'الفترة المالية مغلقة بالفعل' });
+    }
+    const closed = await fiscalRepo.close(id, req.user ? req.user.id : null);
+    if (!closed) {
+        return res.status(400).json({ success: false, message: 'تعذر إغلاق الفترة المالية' });
+    }
+    res.json({ success: true, message: 'تم إغلاق الفترة المالية بنجاح', data: closed });
+}));
+
+// POST reopen fiscal period (requires permission)
+router.post('/fiscal-periods/:id/reopen', asyncHandler(async (req, res) => {
+    const id = parseInt(req.params.id);
+    const period = await fiscalRepo.getById(id);
+    if (!period) {
+        return res.status(404).json({ success: false, message: 'الفترة المالية غير موجودة' });
+    }
+    if (period.status === 'open') {
+        return res.status(400).json({ success: false, message: 'الفترة المالية مفتوحة بالفعل' });
+    }
+    const opened = await fiscalRepo.open(id, req.user ? req.user.id : null);
+    if (!opened) {
+        return res.status(400).json({ success: false, message: 'تعذر إعادة فتح الفترة المالية' });
+    }
+    res.json({ success: true, message: 'تم إعادة فتح الفترة المالية بنجاح', data: opened });
+}));
+
+// PUT update fiscal period (name/notes only)
+router.put('/fiscal-periods/:id', asyncHandler(async (req, res) => {
+    const id = parseInt(req.params.id);
+    const period = await fiscalRepo.getById(id);
+    if (!period) {
+        return res.status(404).json({ success: false, message: 'الفترة المالية غير موجودة' });
+    }
+    const { notes } = req.body;
+    const pool = await getPool();
+    const r = await pool.request()
+        .input('id', sql.Int, id)
+        .input('notes', sql.NVarChar(sql.MAX), notes || null)
+        .query(`UPDATE fiscal_periods SET notes = @notes OUTPUT INSERTED.* WHERE id = @id`);
+    res.json({ success: true, message: 'تم تحديث الفترة المالية بنجاح', data: r.recordset[0] });
+}));
+
 // ── Chart of Accounts (COA) ─────────────────────────────────
 
 // Seed Default COA
@@ -252,6 +339,11 @@ router.post('/journals', asyncHandler(async (req, res) => {
         return res.status(400).json({ success: false, message: 'بيانات القيد غير مكتملة' });
     }
 
+    // Check fiscal period is not closed
+    if (await fiscalRepo.isDateInClosedPeriod(date)) {
+        return res.status(403).json({ success: false, message: 'لا يمكن ترحيل القيود في فترة مالية مغلقة' });
+    }
+
     let transaction;
     try {
         const pool = await getPool();
@@ -380,8 +472,8 @@ router.post('/journals/:id/reverse', asyncHandler(async (req, res) => {
         const request = pool.request();
         request.input('jid', sql.Int, journalId);
 
-        // 1) Verify journal exists
-        const jRes = await request.query('SELECT id, entry_no, is_reversed FROM journal_entries WHERE id = @jid');
+        // 1) Verify journal exists and get its date
+        const jRes = await request.query('SELECT id, entry_no, entry_date, is_reversed FROM journal_entries WHERE id = @jid');
         if (!jRes.recordset[0]) {
             return res.status(404).json({ success: false, message: 'القيد غير موجود' });
         }
@@ -392,8 +484,13 @@ router.post('/journals/:id/reverse', asyncHandler(async (req, res) => {
             return res.status(400).json({ success: false, message: 'هذا القيد تم عكسه مسبقاً' });
         }
 
-        // 3) Fiscal period check (placeholder for Phase E — no closed periods table yet)
-        // TODO: When fiscal_periods table exists, verify the journal's period is not closed
+        // 3) Fiscal period check — block reversal in closed period
+        if (journal.entry_date) {
+            const dateStr = typeof journal.entry_date === 'string' ? journal.entry_date.split('T')[0] : new Date(journal.entry_date).toISOString().split('T')[0];
+            if (await fiscalRepo.isDateInClosedPeriod(dateStr)) {
+                return res.status(403).json({ success: false, message: 'لا يمكن عكس قيد في فترة مالية مغلقة' });
+            }
+        }
 
         // 4) Execute reversal in a transaction
         const transaction = pool.transaction();

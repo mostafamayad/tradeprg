@@ -473,6 +473,7 @@
             <a href="#" class="popup-item" data-target="ledger-statement"><i class="fa-solid fa-receipt"></i> كشف حساب أستاذ</a>
             <a href="#" class="popup-item" data-target="balance-sheet"><i class="fa-solid fa-balance-scale"></i> الميزانية العمومية</a>
             <a href="#" class="popup-item" data-target="income-statement"><i class="fa-solid fa-chart-line"></i> قائمة الدخل</a>
+            <a href="#" class="popup-item" data-target="fiscal-periods"><i class="fa-solid fa-calendar"></i> الفترات المالية</a>
             <a href="#" class="popup-item" data-target="fixed-assets"><i class="fa-solid fa-building"></i> الأصول الثابتة</a>
         </div>
 
@@ -2065,6 +2066,16 @@
                             </table>
                         </div>
                     </div>
+                </div>
+
+                <!-- ======================================================== -->
+                <!--  VIEW: FISCAL PERIODS                                     -->
+                <!-- ======================================================== -->
+                <div class="view" id="view-fiscal-periods">
+                    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
+                        <div><h1 class="page-title">الفترات المالية</h1><p class="page-subtitle">إدارة فتح وإغلاق الفترات المحاسبية</p></div>
+                    </div>
+                    <div id="fiscal-periods-root"></div>
                 </div>
 
                 <!-- ======================================================== -->
@@ -3747,6 +3758,7 @@
     <script src="js/views/viewLedger.js"></script>
     <script src="js/views/viewBalanceSheet.js"></script>
     <script src="js/views/viewIncomeStatement.js"></script>
+    <script src="js/views/viewFiscalPeriods.js"></script>
     <script>
         if (window.location.protocol === 'file:') {
             alert('âڑ ï¸ڈ افتح البرنامج من المتصفح عبر:\nhttp://localhost:3000\n\nوليس بفتح ملف index.html مباشرة');
