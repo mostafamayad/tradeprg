@@ -423,7 +423,8 @@ router.get('/journals/browser', asyncHandler(async (req, res) => {
                     WHERE l.entry_id IN (${entryIds.join(',')})
                 `);
                 result.recordset.forEach(entry => {
-                    entry.lines = linesRes.recordset.filter(l => l.entry_id === entry.id);
+                    const eid = Number(entry.id);
+                    entry.lines = linesRes.recordset.filter(l => Number(l.entry_id) === eid);
                 });
             }
 
@@ -447,7 +448,8 @@ router.get('/journals/browser', asyncHandler(async (req, res) => {
                 WHERE l.entry_id IN (${entryIds.join(',')})
             `);
             result.recordset.forEach(entry => {
-                entry.lines = linesRes.recordset.filter(l => l.entry_id === entry.id);
+                const eid = Number(entry.id);
+                entry.lines = linesRes.recordset.filter(l => Number(l.entry_id) === eid);
             });
         }
 
