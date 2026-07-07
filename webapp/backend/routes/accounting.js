@@ -2,6 +2,7 @@ const router = require('express').Router();
 const { getPool, sql } = require('../database/mssql_db');
 const { postJournalEntryAsync } = require('../services/accountingEngine');
 const asyncHandler = require('../utils/asyncHandler');
+const coaRepo = require('../repositories/chartOfAccountsRepository');
 // ── Chart of Accounts (COA) ─────────────────────────────────
 
 // Seed Default COA
@@ -113,6 +114,17 @@ router.get('/accounts', asyncHandler(async (req, res) => {
         err.status = 500;
         err.message = 'خطأ في قاعدة البيانات';
         throw err;
+    }
+}));
+
+// GET Accounts Tree (Hierarchical)
+router.get('/accounts/tree', asyncHandler(async (req, res) => {
+    try {
+        const tree = await coaRepo.getTree();
+        res.json({ success: true, data: tree });
+    } catch (err) {
+        console.error('GET Accounts Tree Error:', err);
+        res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات' });
     }
 }));
 
