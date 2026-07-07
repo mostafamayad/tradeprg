@@ -2,7 +2,7 @@ const router = require('express').Router();
 const { getPool, sql } = require('../database/mssql_db');
 const { postJournalEntryAsync } = require('../services/accountingEngine');
 const asyncHandler = require('../utils/asyncHandler');
-const coaRepo = require('../repositories/chartOfAccountsRepository');
+const accountRepo = require('../repositories/accountRepository');
 // ── Chart of Accounts (COA) ─────────────────────────────────
 
 // Seed Default COA
@@ -120,11 +120,57 @@ router.get('/accounts', asyncHandler(async (req, res) => {
 // GET Accounts Tree (Hierarchical)
 router.get('/accounts/tree', asyncHandler(async (req, res) => {
     try {
-        const tree = await coaRepo.getTree();
+        const tree = await accountRepo.getTree();
         res.json({ success: true, data: tree });
     } catch (err) {
         console.error('GET Accounts Tree Error:', err);
         res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات' });
+    }
+}));
+
+// GET Account by ID
+router.get('/accounts/:id', asyncHandler(async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+        if (!id) return res.status(400).json({ success: false, message: 'معرف الحساب مطلوب' });
+        const account = await accountRepo.getById(id);
+        if (!account) return res.status(404).json({ success: false, message: 'الحساب غير موجود' });
+        res.json({ success: true, data: account });
+    } catch (err) {
+        console.error('GET Account By ID Error:', err);
+        res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات' });
+    }
+}));
+
+// POST Create Account
+router.post('/accounts', asyncHandler(async (req, res) => {
+    try {
+        const errors = await accountRepo.validateCreate(req.body);
+        if (errors.length > 0) {
+            return res.status(400).json({ success: false, message: errors.join(' | ') });
+        }
+        const id = await accountRepo.create(req.body);
+        res.json({ success: true, message: 'تم إنشاء الحساب بنجاح', id });
+    } catch (err) {
+        console.error('POST Create Account Error:', err);
+        res.status(500).json({ success: false, message: err.message || 'خطأ في الخادم' });
+    }
+}));
+
+// PUT Update Account
+router.put('/accounts/:id', asyncHandler(async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+        if (!id) return res.status(400).json({ success: false, message: 'معرف الحساب مطلوب' });
+        const errors = await accountRepo.validateUpdate(req.body, id);
+        if (errors.length > 0) {
+            return res.status(400).json({ success: false, message: errors.join(' | ') });
+        }
+        await accountRepo.update(id, req.body);
+        res.json({ success: true, message: 'تم تحديث الحساب بنجاح' });
+    } catch (err) {
+        console.error('PUT Update Account Error:', err);
+        res.status(500).json({ success: false, message: err.message || 'خطأ في الخادم' });
     }
 }));
 

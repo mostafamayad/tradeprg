@@ -144,6 +144,101 @@ class AccountRepository {
         return errors;
     }
 
+    async isDescendant(ancestorId, descendantId) {
+        let currentId = Number(descendantId);
+        const visited = new Set();
+        while (currentId) {
+            if (currentId === Number(ancestorId)) return true;
+            if (visited.has(currentId)) return true;
+            visited.add(currentId);
+            const acc = await this.getById(currentId);
+            if (!acc || !acc.parent_id) break;
+            currentId = acc.parent_id;
+        }
+        return false;
+    }
+
+    async validateUpdate(data, id) {
+        const errors = [];
+        const accountId = Number(id);
+
+        if (!data.account_code || !data.account_code.trim()) {
+            errors.push('account_code مطلوب');
+        }
+        if (!data.account_name || !data.account_name.trim()) {
+            errors.push('account_name مطلوب');
+        }
+        if (!VALID_TYPES.includes(data.account_type)) {
+            errors.push('account_type يجب أن يكون واحداً من: ' + VALID_TYPES.join(', '));
+        }
+
+        if (errors.length > 0) return errors;
+
+        const existing = await this.getById(accountId);
+        if (!existing) {
+            errors.push('الحساب غير موجود');
+            return errors;
+        }
+        if (existing.system_code) {
+            errors.push('لا يمكن تعديل حساب نظامي ("' + existing.account_name + '")');
+            return errors;
+        }
+
+        if (await this.accountCodeExists(data.account_code.trim(), accountId)) {
+            errors.push('account_code "' + data.account_code.trim() + '" موجود مسبقاً');
+        }
+
+        const parentId = data.parent_id ? Number(data.parent_id) : null;
+
+        if (parentId) {
+            if (parentId === accountId) {
+                errors.push('لا يمكن جعل الحساب أباً لنفسه');
+            } else if (!await this.exists(parentId)) {
+                errors.push('الحساب الأب (id=' + parentId + ') غير موجود');
+            } else {
+                const parent = await this.getById(parentId);
+                if (!parent.is_active) {
+                    errors.push('الحساب الأب "' + parent.account_name + '" غير نشط');
+                }
+                if (parent.system_code) {
+                    errors.push('لا يمكن جعل حساب نظامي ("' + parent.account_name + '") أباً');
+                }
+                if (await this.isDescendant(accountId, parentId)) {
+                    errors.push('لا يمكن جعل حساب تابع كأب (دائرة)');
+                }
+                const parentDepth = await this.getDepth(parentId);
+                if (parentDepth >= MAX_DEPTH - 1) {
+                    errors.push('تم تجاوز العمق الأقصى (' + MAX_DEPTH + ' مستويات)');
+                }
+                if (await this.accountNameExistsUnderParent(data.account_name.trim(), parentId, accountId)) {
+                    errors.push('يوجد حساب بنفس الاسم "' + data.account_name.trim() + '" تحت نفس الأب');
+                }
+            }
+        } else {
+            if (await this.accountNameExistsUnderParent(data.account_name.trim(), null, accountId)) {
+                errors.push('يوجد حساب بنفس الاسم "' + data.account_name.trim() + '" في الجذر');
+            }
+        }
+
+        return errors;
+    }
+
+    async update(id, data) {
+        const pool = await getPool();
+        const parentId = data.parent_id ? Number(data.parent_id) : null;
+        await pool.request()
+            .input('id', sql.Int, id)
+            .input('code', sql.NVarChar, data.account_code.trim())
+            .input('name', sql.NVarChar, data.account_name.trim())
+            .input('type', sql.NVarChar, data.account_type)
+            .input('parentId', sql.Int, parentId)
+            .query(`
+                UPDATE chart_of_accounts
+                SET account_code = @code, account_name = @name, account_type = @type, parent_id = @parentId
+                WHERE id = @id
+            `);
+    }
+
     async create(data) {
         const pool = await getPool();
         const parentId = data.parent_id ? Number(data.parent_id) : null;

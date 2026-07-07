@@ -107,6 +107,16 @@
                 : (bal >= 0 ? 'var(--danger-color, #dc2626)' : 'var(--success-color, #059669)');
             row.appendChild(balSpan);
 
+            var editBtn = document.createElement('span');
+            editBtn.className = 'coa-edit';
+            if (node.system_code) {
+                editBtn.innerHTML = '<i class="fa-solid fa-ban" style="color:var(--text-muted,#9ca3af)" title="حساب نظامي لا يمكن تعديله"></i>';
+            } else {
+                editBtn.innerHTML = '<i class="fa-solid fa-pen" style="color:var(--primary-color,#7c3aed);cursor:pointer" title="تعديل"></i>';
+                editBtn.onclick = (function (id) { return function (e) { e.stopPropagation(); showEditAccountModal(id); }; })(node.id);
+            }
+            row.appendChild(editBtn);
+
             nodeDiv.appendChild(row);
 
             if (hasChildren) {
@@ -144,6 +154,7 @@
             }
             .coa-name { flex: 1; font-weight: 500; }
             .coa-balance { font-family: 'Courier New', monospace; font-weight: 600; min-width: 120px; text-align: right; direction: ltr; }
+            .coa-edit { width: 24px; text-align: center; flex-shrink:0; }
             .depth-0 > .coa-node-row { font-weight: 700; border-bottom: 2px solid var(--border-color, #e5e7eb); padding: 14px 14px; }
             .depth-0 > .coa-node-row .coa-code { font-size: 1rem; }
             .depth-1 > .coa-node-row { padding-right: 30px; }
@@ -272,6 +283,127 @@
         }
 
         modalOverlay.classList.add('open');
+    }
+
+    function showEditAccountModal(accountId) {
+        var modal = document.getElementById('global-modal');
+        if (!modal) return;
+
+        var titleEl = document.getElementById('modal-title');
+        var bodyEl = document.getElementById('modal-body');
+        var saveBtn = document.getElementById('btn-modal-save');
+
+        apiFetch('/accounting/accounts/' + accountId, 'GET').then(function (account) {
+            if (!account.success || !account.data) {
+                alert(account.message || 'فشل تحميل بيانات الحساب');
+                return;
+            }
+
+            var acc = account.data;
+            titleEl.textContent = 'تعديل حساب: ' + acc.account_name;
+
+            var parentOptions = '<option value="">-- بدون أب (حساب رئيسي) --</option>';
+            if (cachedTreeData) {
+                var flat = flattenTree(cachedTreeData, 0).filter(function (a) { return a.id !== accountId && !a.system_code; });
+                for (var i = 0; i < flat.length; i++) {
+                    var indent = '\u00A0\u00A0'.repeat(flat[i]._depth);
+                    var selected = flat[i].id === Number(acc.parent_id) ? ' selected' : '';
+                    parentOptions += '<option value="' + flat[i].id + '"' + selected + '>' + indent + esc(flat[i].account_code) + ' - ' + esc(flat[i].account_name) + '</option>';
+                }
+            }
+
+            bodyEl.innerHTML = '\
+                <div class="form-grid-2">\
+                    <div class="form-group">\
+                        <label>كود الحساب <span style="color:var(--danger-color)">*</span></label>\
+                        <input type="text" id="f-acc-code" value="' + esc(acc.account_code) + '" maxlength="50">\
+                    </div>\
+                    <div class="form-group">\
+                        <label>نوع الحساب <span style="color:var(--danger-color)">*</span></label>\
+                        <select id="f-acc-type">\
+                            ' + ACCOUNT_TYPES.map(function (t) { return '<option value="' + t.value + '"' + (t.value === acc.account_type ? ' selected' : '') + '>' + t.label + '</option>'; }).join('') + '\
+                        </select>\
+                    </div>\
+                    <div class="form-group form-grid-full">\
+                        <label>اسم الحساب <span style="color:var(--danger-color)">*</span></label>\
+                        <input type="text" id="f-acc-name" value="' + esc(acc.account_name) + '" maxlength="255">\
+                    </div>\
+                    <div class="form-group form-grid-full">\
+                        <label>الحساب الأب</label>\
+                        <select id="f-acc-parent">' + parentOptions + '</select>\
+                    </div>\
+                </div>\
+                <div id="f-acc-error" style="color:var(--danger-color,#dc2626);margin-top:12px;display:none"></div>\
+            ';
+
+            var parentSelect = document.getElementById('f-acc-parent');
+            var typeSelect = document.getElementById('f-acc-type');
+
+            parentSelect.addEventListener('change', function () {
+                var val = this.value;
+                if (val && cachedTreeData) {
+                    var flat = flattenTree(cachedTreeData, 0);
+                    var parent = flat.find(function (a) { return a.id === Number(val); });
+                    if (parent && parent.account_type) {
+                        typeSelect.value = parent.account_type;
+                    }
+                }
+            });
+
+            function onSave() {
+                var code = document.getElementById('f-acc-code').value.trim();
+                var name = document.getElementById('f-acc-name').value.trim();
+                var type = document.getElementById('f-acc-type').value;
+                var parentId = document.getElementById('f-acc-parent').value;
+
+                if (!code || !name) {
+                    var errEl = document.getElementById('f-acc-error');
+                    errEl.textContent = 'كود الحساب واسم الحساب مطلوبان';
+                    errEl.style.display = 'block';
+                    return;
+                }
+
+                var errorEl = document.getElementById('f-acc-error');
+                errorEl.style.display = 'none';
+
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'جاري الحفظ...';
+
+                apiFetch('/accounting/accounts/' + accountId, 'PUT', {
+                    account_code: code,
+                    account_name: name,
+                    account_type: type,
+                    parent_id: parentId || null
+                }).then(function (res) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'حفظ البيانات';
+                    if (res.success) {
+                        modal.classList.remove('open');
+                        renderAgain();
+                    } else {
+                        errorEl.textContent = res.message || 'حدث خطأ أثناء الحفظ';
+                        errorEl.style.display = 'block';
+                    }
+                }).catch(function (err) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'حفظ البيانات';
+                    errorEl.textContent = err.message || 'خطأ في الاتصال';
+                    errorEl.style.display = 'block';
+                });
+            }
+
+            saveBtn.onclick = onSave;
+
+            var closeButtons = modal.querySelectorAll('.btn-close-modal');
+            for (var j = 0; j < closeButtons.length; j++) {
+                closeButtons[j].onclick = function () {
+                    saveBtn.onclick = null;
+                    modal.classList.remove('open');
+                };
+            }
+
+            modal.classList.add('open');
+        });
     }
 
     function renderAgain() {
