@@ -281,6 +281,93 @@ router.post('/journals', asyncHandler(async (req, res) => {
     }
 }));
 
+// Journal Browser with Pagination, Search, Filters
+router.get('/journals/browser', asyncHandler(async (req, res) => {
+    try {
+        const { page = 1, pageSize = 20, from, to, ref_type, ref_id, search, sortBy, sortDirection, account_id, created_by, minAmount, maxAmount } = req.query;
+        const pageNum = Math.max(1, parseInt(page));
+        const size = Math.min(100, Math.max(1, parseInt(pageSize) || 20));
+        const offset = (pageNum - 1) * size;
+
+        const pool = await getPool();
+        const request = pool.request();
+
+        const ALLOWED_SORT = { entry_no: 'j.entry_no', entry_date: 'j.entry_date', total_debit: 'j.total_debit', total_credit: 'j.total_credit', id: 'j.id', reference_type: 'j.reference_type', description: 'j.description' };
+        const sortCol = ALLOWED_SORT[sortBy] || 'j.id';
+        const sortDir = (sortDirection && sortDirection.toUpperCase() === 'ASC') ? 'ASC' : 'DESC';
+
+        let where = ' WHERE 1=1';
+        let whereLines = '';
+        if (from) { where += ' AND j.entry_date >= @from'; request.input('from', sql.NVarChar, from); }
+        if (to) { where += ' AND j.entry_date <= @to'; request.input('to', sql.NVarChar, to); }
+        if (ref_type) { where += ' AND j.reference_type = @refType'; request.input('refType', sql.NVarChar, ref_type); }
+        if (ref_id) { where += ' AND j.reference_id = @refId'; request.input('refId', sql.Int, parseInt(ref_id)); }
+        if (search) { where += ' AND (j.description LIKE @search OR j.entry_no LIKE @search)'; request.input('search', sql.NVarChar, '%' + search + '%'); }
+        if (created_by) { where += ' AND j.created_by = @createdBy'; request.input('createdBy', sql.Int, parseInt(created_by)); }
+        if (minAmount) { where += ' AND j.total_debit >= @minAmt'; request.input('minAmt', sql.Decimal(18,2), parseFloat(minAmount)); }
+        if (maxAmount) { where += ' AND j.total_debit <= @maxAmt'; request.input('maxAmt', sql.Decimal(18,2), parseFloat(maxAmount)); }
+        if (account_id) { whereLines = ' AND l.account_id = @accId'; request.input('accId', sql.Int, parseInt(account_id)); }
+
+        // When filtering by account_id, we need a subquery to find matching journal entries
+        let fromClause = 'FROM journal_entries j';
+        if (account_id) {
+            // Filter by entries that have a line with the specified account
+            fromClause = `FROM (SELECT DISTINCT j.* FROM journal_entries j JOIN journal_entry_lines l ON j.id = l.entry_id${whereLines}) j`;
+            // The WHERE clause is applied in the outer query
+            const countResult = await request.query(`SELECT COUNT(*) AS total ${fromClause}${where}`);
+            const total = countResult.recordset[0].total;
+            const totalPages = Math.ceil(total / size);
+
+            const result = await request.query(`
+                SELECT j.* ${fromClause}${where} ORDER BY ${sortCol} ${sortDir} OFFSET ${offset} ROWS FETCH NEXT ${size} ROWS ONLY
+            `);
+
+            if (result.recordset.length > 0) {
+                const entryIds = result.recordset.map(e => e.id);
+                const linesRes = await request.query(`
+                    SELECT l.*, a.account_name, a.account_code 
+                    FROM journal_entry_lines l
+                    JOIN chart_of_accounts a ON l.account_id = a.id
+                    WHERE l.entry_id IN (${entryIds.join(',')})
+                `);
+                result.recordset.forEach(entry => {
+                    entry.lines = linesRes.recordset.filter(l => l.entry_id === entry.id);
+                });
+            }
+
+            return res.json({ success: true, data: result.recordset, total, page: pageNum, pageSize: size, totalPages });
+        }
+
+        const countResult = await request.query(`SELECT COUNT(*) AS total ${fromClause}${where}`);
+        const total = countResult.recordset[0].total;
+        const totalPages = Math.ceil(total / size);
+
+        const result = await request.query(`
+            SELECT j.* ${fromClause}${where} ORDER BY ${sortCol} ${sortDir} OFFSET ${offset} ROWS FETCH NEXT ${size} ROWS ONLY
+        `);
+
+        if (result.recordset.length > 0) {
+            const entryIds = result.recordset.map(e => e.id);
+            const linesRes = await request.query(`
+                SELECT l.*, a.account_name, a.account_code 
+                FROM journal_entry_lines l
+                JOIN chart_of_accounts a ON l.account_id = a.id
+                WHERE l.entry_id IN (${entryIds.join(',')})
+            `);
+            result.recordset.forEach(entry => {
+                entry.lines = linesRes.recordset.filter(l => l.entry_id === entry.id);
+            });
+        }
+
+        res.json({ success: true, data: result.recordset, total, page: pageNum, pageSize: size, totalPages });
+    } catch (err) {
+        console.error('GET Journals Browser Error:', err);
+        err.status = 500;
+        err.message = 'خطأ في قاعدة البيانات';
+        throw err;
+    }
+}));
+
 // ── Ledger ──────────────────────────────────────────────────
 
 // General Ledger Statement (كشف حساب أستاذ)

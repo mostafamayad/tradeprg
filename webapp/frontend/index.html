@@ -1989,32 +1989,9 @@
                 <!-- ======================================================== -->
                 <div class="view" id="view-accounting">
                     <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
-                        <div><h1 class="page-title">قيود اليومية</h1><p class="page-subtitle">تسجيل الحرفات المالية اليومية (مدين - دائن)</p></div>
-                        <button class="btn btn-primary"><i class="fa-solid fa-plus"></i> قيد جديد</button>
+                        <div><h1 class="page-title">قيود اليومية</h1><p class="page-subtitle">تسجيل القيود المالية اليومية (مدين - دائن)</p></div>
                     </div>
-                    <div class="card">
-                        <div class="form-grid">
-                            <div class="form-group"><label>التاريخ</label><input type="date"></div>
-                            <div class="form-group"><label>رقم القيد</label><input type="text" value="J-10047" disabled class="disabled-input"></div>
-                            <div class="form-group"><label>الحساب المدين</label><select><option>المصروفات النثرية</option><option>البنف الأهلي</option><option>الخزينة الرئيسية</option></select></div>
-                            <div class="form-group"><label>الحساب الدائن</label><select><option>الخزينة الرئيسية</option><option>البنف الأهلي</option><option>حساب العملا،</option></select></div>
-                            <div class="form-group"><label>المبلغ</label><input type="number" value="0"></div>
-                            <div class="form-group"><label>البيان / الوصف</label><input type="text" placeholder="وصف القيد المحاسبي..."></div>
-                        </div>
-                        <div style="text-align:left;margin-top:10px"><button class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> حفظ القيد</button></div>
-                    </div>
-                    <div class="card" style="margin-top:15px">
-                        <h3 class="card-title">آخر القيود المسجلة</h3>
-                        <div class="table-responsive">
-                            <table class="data-table">
-                                <thead><tr><th>القيد</th><th>التاريخ</th><th>مدين</th><th>دائن</th><th>المبلغ</th><th>البيان</th></tr></thead>
-                                <tbody>
-                                    <tr><td>J-10046</td><td>2026-06-21</td><td>البنف الأهلي</td><td>العملا، (الأمل)</td><td>10,000 ج.م</td><td>تحويل بنفي</td></tr>
-                                    <tr><td>J-10045</td><td>2026-06-21</td><td>المصروفات النثرية</td><td>الخزينة الرئيسية</td><td>500 ج.م</td><td>بوفيه وضيافة</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    <div id="journals-root"></div>
                 </div>
 
                 <!-- ======================================================== -->
@@ -3721,6 +3698,7 @@
     <script src="js/services/reportPrintEngine.js"></script>
     <script src="js/views/views.js"></script>
     <script src="js/views/viewChartOfAccounts.js"></script>
+    <script src="js/views/viewJournalVoucher.js"></script>
     <script>
         if (window.location.protocol === 'file:') {
             alert('âڑ ï¸ڈ افتح البرنامج من المتصفح عبر:\nhttp://localhost:3000\n\nوليس بفتح ملف index.html مباشرة');
@@ -3817,7 +3795,8 @@
                 'inventory-transfers': 'initInventoryTransfers',
                 'inventory-damaged': 'initInventoryDamaged',
                 'activity-logs': 'loadActivityLogs',
-                'chart-of-accounts': 'loadChartOfAccounts'
+                'chart-of-accounts': 'loadChartOfAccounts',
+                'accounting': 'loadJournalVoucher'
             };
             var fnName = loaders[targetId];
             if (fnName && typeof window[fnName] === 'function') {
