@@ -1080,4 +1080,197 @@ router.get('/balance-sheet', asyncHandler(async (req, res) => {
     }
 }));
 
+// ── Income Statement ───────────────────────────────────────────
+
+// Income Statement (قائمة الدخل) — Revenue - Expenses = Net Income
+router.get('/income-statement', asyncHandler(async (req, res) => {
+    try {
+        const { from, to, includeZero } = req.query;
+        const pool = await getPool();
+        const request = pool.request();
+
+        let openingWhere = ' WHERE 1=0';
+        let periodWhere = ' WHERE 1=1';
+        if (from) {
+            openingWhere = ' WHERE j.entry_date < @from';
+            periodWhere += ' AND j.entry_date >= @from';
+            request.input('from', sql.NVarChar, from);
+        }
+        if (to) {
+            periodWhere += ' AND j.entry_date <= @to';
+            request.input('to', sql.NVarChar, to);
+        }
+
+        const showZero = includeZero === 'true' || includeZero === '1';
+        const zeroFilter = showZero ? '' : ' AND (ISNULL(p.period_debit, 0) + ISNULL(p.period_credit, 0) <> 0)';
+
+        const sqlQuery = `
+            WITH opening AS (
+                SELECT l.account_id,
+                       SUM(ISNULL(l.debit, 0)) AS opening_debit,
+                       SUM(ISNULL(l.credit, 0)) AS opening_credit
+                FROM journal_entry_lines l
+                JOIN journal_entries j ON l.entry_id = j.id
+                ${openingWhere}
+                GROUP BY l.account_id
+            ),
+            period AS (
+                SELECT l.account_id,
+                       SUM(ISNULL(l.debit, 0)) AS period_debit,
+                       SUM(ISNULL(l.credit, 0)) AS period_credit
+                FROM journal_entry_lines l
+                JOIN journal_entries j ON l.entry_id = j.id
+                ${periodWhere}
+                GROUP BY l.account_id
+            )
+            SELECT
+                a.id AS account_id,
+                a.account_code,
+                a.account_name,
+                a.account_type,
+                a.parent_id,
+                ISNULL(o.opening_debit, 0) AS opening_debit,
+                ISNULL(o.opening_credit, 0) AS opening_credit,
+                ISNULL(p.period_debit, 0) AS period_debit,
+                ISNULL(p.period_credit, 0) AS period_credit
+            FROM chart_of_accounts a
+            LEFT JOIN opening o ON a.id = o.account_id
+            LEFT JOIN period p ON a.id = p.account_id
+            WHERE a.account_type IN ('revenue', 'expense') ${zeroFilter}
+            ORDER BY a.account_type, a.account_code
+        `;
+
+        const result = await request.query(sqlQuery);
+        const rows = result.recordset.map(function (r) {
+            const opD = Math.round(Number(r.opening_debit || 0) * 100) / 100;
+            const opC = Math.round(Number(r.opening_credit || 0) * 100) / 100;
+            const perD = Math.round(Number(r.period_debit || 0) * 100) / 100;
+            const perC = Math.round(Number(r.period_credit || 0) * 100) / 100;
+            return {
+                account_id: r.account_id,
+                account_code: r.account_code,
+                account_name: r.account_name,
+                account_type: r.account_type,
+                parent_id: r.parent_id,
+                opening_debit: opD,
+                opening_credit: opC,
+                period_debit: perD,
+                period_credit: perC,
+                closing_debit: Math.round((opD + perD) * 100) / 100,
+                closing_credit: Math.round((opC + perC) * 100) / 100
+            };
+        });
+
+        // Group by type
+        const byType = {};
+        for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
+            if (!byType[r.account_type]) byType[r.account_type] = [];
+            byType[r.account_type].push(r);
+        }
+
+        // Config for revenue/expense subgroups
+        const revGroups = [
+            { match: function (c) { return c.indexOf('4.1') === 0 || c === '41' || (c.length > 2 && c.indexOf('41') === 0 && c !== '4'); }, name: 'إيرادات المبيعات' },
+            { match: function (c) { return c.indexOf('4.2') === 0 || c === '42' || (c.length > 2 && c.indexOf('42') === 0 && c !== '4'); }, name: 'إيرادات أخرى' },
+            { match: function (c) { return c.indexOf('43') === 0; }, name: 'مردودات المبيعات' },
+            { match: function (c) { return c.indexOf('44') === 0; }, name: 'مشتريات مرتجعة' }
+        ];
+        const expGroups = [
+            { match: function (c) { return c.indexOf('51') === 0; }, name: 'تكلفة البضاعة المباعة' },
+            { match: function (c) { return c.indexOf('52') === 0; }, name: 'المشتريات' },
+            { match: function (c) { return c.indexOf('53') === 0; }, name: 'مصروفات عمومية' },
+            { match: function (c) { return c.indexOf('54') === 0; }, name: 'نقص المخزون' },
+            { match: function (c) { return c.indexOf('55') === 0; }, name: 'مصروفات أخرى' },
+            { match: function (c) { return c.indexOf('56') === 0; }, name: 'مردودات المبيعات' }
+        ];
+
+        // Helper: compute net for an account given its type
+        function netVal(ac, field, isExpense) {
+            return Math.round((isExpense ? ac[field + '_debit'] - ac[field + '_credit'] : ac[field + '_credit'] - ac[field + '_debit']) * 100) / 100;
+        }
+
+        // Helper: build section groups for revenue or expense
+        function buildSection(accs, groups, isExpense) {
+            var secGroups = [];
+            var unassigned = [];
+            for (var ai = 0; ai < accs.length; ai++) {
+                var ac = accs[ai];
+                var assigned = false;
+                for (var gi = 0; gi < groups.length; gi++) {
+                    if (groups[gi].match(ac.account_code)) {
+                        if (!groups[gi]._items) groups[gi]._items = [];
+                        groups[gi]._items.push(ac);
+                        assigned = true;
+                        break;
+                    }
+                }
+                if (!assigned) unassigned.push(ac);
+            }
+            for (var gi = 0; gi < groups.length; gi++) {
+                var grp = groups[gi];
+                var items = grp._items || [];
+                if (items.length === 0) continue;
+                var gPer = 0, gCls = 0;
+                var gAccs = [];
+                for (var ii = 0; ii < items.length; ii++) {
+                    var it = items[ii];
+                    var pn = netVal(it, 'period', isExpense);
+                    var cn = netVal(it, 'closing', isExpense);
+                    gPer = Math.round((gPer + pn) * 100) / 100;
+                    gCls = Math.round((gCls + cn) * 100) / 100;
+                    gAccs.push({ account_id: it.account_id, account_code: it.account_code, account_name: it.account_name, period: pn, closing: cn });
+                }
+                secGroups.push({ name: grp.name, accounts: gAccs, totals: { period: gPer, closing: gCls } });
+            }
+            if (unassigned.length > 0) {
+                var uPer = 0, uCls = 0;
+                var uAccs = [];
+                for (var ui = 0; ui < unassigned.length; ui++) {
+                    var ua = unassigned[ui];
+                    var upn = netVal(ua, 'period', isExpense);
+                    var ucn = netVal(ua, 'closing', isExpense);
+                    uPer = Math.round((uPer + upn) * 100) / 100;
+                    uCls = Math.round((uCls + ucn) * 100) / 100;
+                    uAccs.push({ account_id: ua.account_id, account_code: ua.account_code, account_name: ua.account_name, period: upn, closing: ucn });
+                }
+                secGroups.push({ name: 'أخرى', accounts: uAccs, totals: { period: uPer, closing: uCls } });
+            }
+            var secPer = 0, secCls = 0;
+            for (var sgi = 0; sgi < secGroups.length; sgi++) {
+                secPer = Math.round((secPer + secGroups[sgi].totals.period) * 100) / 100;
+                secCls = Math.round((secCls + secGroups[sgi].totals.closing) * 100) / 100;
+            }
+            return { groups: secGroups, totals: { period: secPer, closing: secCls } };
+        }
+
+        var revData = buildSection(byType['revenue'] || [], revGroups, false);
+        var expData = buildSection(byType['expense'] || [], expGroups, true);
+
+        var totalRevenue = revData.totals.closing;
+        var totalExpenses = expData.totals.closing;
+        var netIncome = Math.round((totalRevenue - totalExpenses) * 100) / 100;
+
+        res.json({
+            success: true,
+            date: to || new Date().toISOString().split('T')[0],
+            from: from || null,
+            to: to || null,
+            revenue: { name: 'الإيرادات', groups: revData.groups, totals: revData.totals },
+            expenses: { name: 'المصروفات', groups: expData.groups, totals: expData.totals },
+            netIncome: netIncome,
+            totals: {
+                totalRevenue: totalRevenue,
+                totalExpenses: totalExpenses,
+                netIncome: netIncome
+            }
+        });
+    } catch (err) {
+        console.error('GET Income Statement Error:', err);
+        err.status = 500;
+        err.message = 'خطأ في قاعدة البيانات';
+        throw err;
+    }
+}));
+
 module.exports = router;
