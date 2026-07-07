@@ -414,4 +414,109 @@ router.get('/ledger/:accountId', asyncHandler(async (req, res) => {
     }
 }));
 
+// ── Trial Balance ───────────────────────────────────────────────
+
+// Trial Balance (ميزان المراجعة) based on journal_entry_lines
+router.get('/trial-balance', asyncHandler(async (req, res) => {
+    try {
+        const { from, to, accountType, includeZero } = req.query;
+        const pool = await getPool();
+        const request = pool.request();
+
+        let openingWhere = ' WHERE 1=0';  // No opening balance without a "from" cutoff
+        let periodWhere = ' WHERE 1=1';
+
+        if (from) {
+            openingWhere = ' WHERE j.entry_date < @from';
+            periodWhere += ' AND j.entry_date >= @from';
+            request.input('from', sql.NVarChar, from);
+        }
+        if (to) {
+            periodWhere += ' AND j.entry_date <= @to';
+            request.input('to', sql.NVarChar, to);
+        }
+
+        const accTypeFilter = accountType ? ' AND a.account_type = @accType' : '';
+        if (accountType) request.input('accType', sql.NVarChar, accountType);
+
+        const zeroFilter = includeZero === 'false' || includeZero === '0'
+            ? ' AND (ISNULL(o.opening_debit, 0) + ISNULL(o.opening_credit, 0) + ISNULL(p.period_debit, 0) + ISNULL(p.period_credit, 0) <> 0)'
+            : '';
+
+        const sqlQuery = `
+            WITH opening AS (
+                SELECT
+                    l.account_id,
+                    SUM(ISNULL(l.debit, 0)) AS opening_debit,
+                    SUM(ISNULL(l.credit, 0)) AS opening_credit
+                FROM journal_entry_lines l
+                JOIN journal_entries j ON l.entry_id = j.id
+                ${openingWhere}
+                GROUP BY l.account_id
+            ),
+            period AS (
+                SELECT
+                    l.account_id,
+                    SUM(ISNULL(l.debit, 0)) AS period_debit,
+                    SUM(ISNULL(l.credit, 0)) AS period_credit
+                FROM journal_entry_lines l
+                JOIN journal_entries j ON l.entry_id = j.id
+                ${periodWhere}
+                GROUP BY l.account_id
+            )
+            SELECT
+                a.id AS account_id,
+                a.account_code,
+                a.account_name,
+                a.account_type,
+                ISNULL(o.opening_debit, 0) AS opening_debit,
+                ISNULL(o.opening_credit, 0) AS opening_credit,
+                ISNULL(p.period_debit, 0) AS period_debit,
+                ISNULL(p.period_credit, 0) AS period_credit
+            FROM chart_of_accounts a
+            LEFT JOIN opening o ON a.id = o.account_id
+            LEFT JOIN period p ON a.id = p.account_id
+            WHERE 1=1 ${accTypeFilter} ${zeroFilter}
+            ORDER BY a.account_code
+        `;
+
+        const result = await request.query(sqlQuery);
+        const accounts = result.recordset.map(function (r) {
+            return {
+                account_id: r.account_id,
+                account_code: r.account_code,
+                account_name: r.account_name,
+                account_type: r.account_type,
+                opening_debit: Number(r.opening_debit || 0),
+                opening_credit: Number(r.opening_credit || 0),
+                period_debit: Number(r.period_debit || 0),
+                period_credit: Number(r.period_credit || 0),
+                closing_debit: Number(r.opening_debit || 0) + Number(r.period_debit || 0),
+                closing_credit: Number(r.opening_credit || 0) + Number(r.period_credit || 0)
+            };
+        });
+
+        var totalDebit = 0, totalCredit = 0;
+        for (var i = 0; i < accounts.length; i++) {
+            totalDebit = Math.round((totalDebit + accounts[i].closing_debit) * 100) / 100;
+            totalCredit = Math.round((totalCredit + accounts[i].closing_credit) * 100) / 100;
+        }
+
+        res.json({
+            success: true,
+            data: accounts,
+            summary: {
+                totalDebit: totalDebit,
+                totalCredit: totalCredit,
+                balanced: Math.abs(totalDebit - totalCredit) < 0.01
+            }
+        });
+    } catch (err) {
+        console.error('GET Trial Balance Error:', err);
+        err.status = 500;
+        err.message = 'خطأ في قاعدة البيانات';
+        throw err;
+    }
+}));
+
 module.exports = router;

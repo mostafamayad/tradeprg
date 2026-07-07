@@ -469,6 +469,8 @@
             <a href="#" class="popup-item" data-target="treasury"><i class="fa-solid fa-vault"></i> الخزينة</a>
             <a href="#" class="popup-item" data-target="accounting"><i class="fa-solid fa-book"></i> قيد اليومية</a>
             <a href="#" class="popup-item" data-target="chart-of-accounts"><i class="fa-solid fa-sitemap"></i> شجرة الحسابات</a>
+            <a href="#" class="popup-item" data-target="trial-balance"><i class="fa-solid fa-scale-balanced"></i> ميزان المراجعة</a>
+            <a href="#" class="popup-item" data-target="ledger-statement"><i class="fa-solid fa-receipt"></i> كشف حساب أستاذ</a>
             <a href="#" class="popup-item" data-target="fixed-assets"><i class="fa-solid fa-building"></i> الأصول الثابتة</a>
         </div>
 
@@ -1992,6 +1994,16 @@
                         <div><h1 class="page-title">قيود اليومية</h1><p class="page-subtitle">تسجيل القيود المالية اليومية (مدين - دائن)</p></div>
                     </div>
                     <div id="journals-root"></div>
+                </div>
+
+                <!-- ======================================================== -->
+                <!--  VIEW: TRIAL BALANCE                                     -->
+                <!-- ======================================================== -->
+                <div class="view" id="view-trial-balance">
+                    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
+                        <div><h1 class="page-title">ميزان المراجعة</h1><p class="page-subtitle">تقرير ميزان المراجعة لفترة زمنية (مدين - دائن)</p></div>
+                    </div>
+                    <div id="tb-root"></div>
                 </div>
 
                 <!-- ======================================================== -->
@@ -3699,6 +3711,7 @@
     <script src="js/views/views.js"></script>
     <script src="js/views/viewChartOfAccounts.js"></script>
     <script src="js/views/viewJournalVoucher.js"></script>
+    <script src="js/views/viewTrialBalance.js"></script>
     <script>
         if (window.location.protocol === 'file:') {
             alert('âڑ ï¸ڈ افتح البرنامج من المتصفح عبر:\nhttp://localhost:3000\n\nوليس بفتح ملف index.html مباشرة');
@@ -3796,7 +3809,8 @@
                 'inventory-damaged': 'initInventoryDamaged',
                 'activity-logs': 'loadActivityLogs',
                 'chart-of-accounts': 'loadChartOfAccounts',
-                'accounting': 'loadJournalVoucher'
+                'accounting': 'loadJournalVoucher',
+                'trial-balance': 'loadTrialBalance'
             };
             var fnName = loaders[targetId];
             if (fnName && typeof window[fnName] === 'function') {
