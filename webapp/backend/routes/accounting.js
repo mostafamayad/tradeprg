@@ -805,4 +805,214 @@ router.get('/general-ledger', asyncHandler(async (req, res) => {
     }
 }));
 
+// ── Balance Sheet ──────────────────────────────────────────────
+
+// Balance Sheet (الميزانية العمومية) — Assets = Liabilities + Equity
+router.get('/balance-sheet', asyncHandler(async (req, res) => {
+    try {
+        const { from, to, includeZero } = req.query;
+        const pool = await getPool();
+        const request = pool.request();
+
+        let openingWhere = ' WHERE 1=0';
+        let periodWhere = ' WHERE 1=1';
+        if (from) {
+            openingWhere = ' WHERE j.entry_date < @from';
+            periodWhere += ' AND j.entry_date >= @from';
+            request.input('from', sql.NVarChar, from);
+        }
+        if (to) {
+            periodWhere += ' AND j.entry_date <= @to';
+            request.input('to', sql.NVarChar, to);
+        }
+
+        // Balance Sheet: default exclude zero-balance accounts (pass includeZero=true to show all)
+        const showZero = includeZero === 'true' || includeZero === '1';
+        const zeroFilter = showZero ? '' : ' AND (ISNULL(o.opening_debit, 0) + ISNULL(o.opening_credit, 0) + ISNULL(p.period_debit, 0) + ISNULL(p.period_credit, 0) <> 0)';
+
+        const sqlQuery = `
+            WITH opening AS (
+                SELECT l.account_id,
+                       SUM(ISNULL(l.debit, 0)) AS opening_debit,
+                       SUM(ISNULL(l.credit, 0)) AS opening_credit
+                FROM journal_entry_lines l
+                JOIN journal_entries j ON l.entry_id = j.id
+                ${openingWhere}
+                GROUP BY l.account_id
+            ),
+            period AS (
+                SELECT l.account_id,
+                       SUM(ISNULL(l.debit, 0)) AS period_debit,
+                       SUM(ISNULL(l.credit, 0)) AS period_credit
+                FROM journal_entry_lines l
+                JOIN journal_entries j ON l.entry_id = j.id
+                ${periodWhere}
+                GROUP BY l.account_id
+            )
+            SELECT
+                a.id AS account_id,
+                a.account_code,
+                a.account_name,
+                a.account_type,
+                a.parent_id,
+                ISNULL(o.opening_debit, 0) AS opening_debit,
+                ISNULL(o.opening_credit, 0) AS opening_credit,
+                ISNULL(p.period_debit, 0) AS period_debit,
+                ISNULL(p.period_credit, 0) AS period_credit
+            FROM chart_of_accounts a
+            LEFT JOIN opening o ON a.id = o.account_id
+            LEFT JOIN period p ON a.id = p.account_id
+            WHERE a.account_type IN ('asset', 'liability', 'equity') ${zeroFilter}
+            ORDER BY a.account_code
+        `;
+
+        const result = await request.query(sqlQuery);
+        const rows = result.recordset.map(function (r) {
+            const opD = Math.round(Number(r.opening_debit || 0) * 100) / 100;
+            const opC = Math.round(Number(r.opening_credit || 0) * 100) / 100;
+            const perD = Math.round(Number(r.period_debit || 0) * 100) / 100;
+            const perC = Math.round(Number(r.period_credit || 0) * 100) / 100;
+            return {
+                account_id: r.account_id,
+                account_code: r.account_code,
+                account_name: r.account_name,
+                account_type: r.account_type,
+                parent_id: r.parent_id,
+                opening_debit: opD,
+                opening_credit: opC,
+                period_debit: perD,
+                period_credit: perC,
+                closing_debit: Math.round((opD + perD) * 100) / 100,
+                closing_credit: Math.round((opC + perC) * 100) / 100
+            };
+        });
+
+        // Group accounts by type
+        const grouped = {};
+        for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
+            if (!grouped[r.account_type]) grouped[r.account_type] = [];
+            grouped[r.account_type].push(r);
+        }
+
+        // Section/group configuration by code prefix
+        const config = [
+            {
+                type: 'asset', name: 'الأصول',
+                groups: [
+                    { match: function (c) { return c.indexOf('1.1') === 0 || c === '11' || (c.length > 2 && c.indexOf('11') === 0 && c !== '1'); }, name: 'الأصول المتداولة' },
+                    { match: function (c) { return c.indexOf('1.2') === 0 || c === '12' || (c.length > 2 && c.indexOf('12') === 0 && c !== '1'); }, name: 'الأصول الثابتة' },
+                    { match: function (c) { return c.indexOf('99') === 0; }, name: 'أصول أخرى' }
+                ]
+            },
+            {
+                type: 'liability', name: 'الخصوم',
+                groups: [
+                    { match: function (c) { return c.indexOf('2.1') === 0 || c === '21' || (c.length > 2 && c.indexOf('21') === 0 && c !== '2'); }, name: 'الخصوم المتداولة' },
+                    { match: function (c) { return c.indexOf('2.2') === 0 || c === '22' || (c.length > 2 && c.indexOf('22') === 0 && c !== '2'); }, name: 'الخصوم طويلة الأجل' }
+                ]
+            },
+            {
+                type: 'equity', name: 'حقوق الملكية',
+                groups: [
+                    { match: function (c) { return c.indexOf('3.1') === 0 || c === '31' || (c.length > 2 && c.indexOf('31') === 0 && c !== '3'); }, name: 'رأس المال' },
+                    { match: function (c) { return c.indexOf('3.2') === 0 || c === '32' || (c.length > 2 && c.indexOf('32') === 0 && c !== '3'); }, name: 'الأرباح المحتجزة' }
+                ]
+            }
+        ];
+
+        var sections = [];
+        var totalAssets = { opening: 0, closing: 0 };
+        var totalLiabEq = { opening: 0, closing: 0 };
+
+        for (var si = 0; si < config.length; si++) {
+            var cfg = config[si];
+            var accs = grouped[cfg.type] || [];
+
+            var secGroups = [];
+            var unassigned = [];
+
+            for (var ai = 0; ai < accs.length; ai++) {
+                var ac = accs[ai];
+                var assigned = false;
+                for (var gi = 0; gi < cfg.groups.length; gi++) {
+                    if (cfg.groups[gi].match(ac.account_code)) {
+                        if (!cfg.groups[gi]._items) cfg.groups[gi]._items = [];
+                        cfg.groups[gi]._items.push(ac);
+                        assigned = true;
+                        break;
+                    }
+                }
+                if (!assigned) unassigned.push(ac);
+            }
+
+            for (var gi = 0; gi < cfg.groups.length; gi++) {
+                var grp = cfg.groups[gi];
+                var items = grp._items || [];
+                if (items.length === 0) continue;
+                var gOpen = 0, gClose = 0;
+                var gAccs = [];
+                for (var ii = 0; ii < items.length; ii++) {
+                    var it = items[ii];
+                    var netOpen = Math.round((cfg.type === 'asset' ? it.opening_debit - it.opening_credit : it.opening_credit - it.opening_debit) * 100) / 100;
+                    var netClose = Math.round((cfg.type === 'asset' ? it.closing_debit - it.closing_credit : it.closing_credit - it.closing_debit) * 100) / 100;
+                    gOpen = Math.round((gOpen + netOpen) * 100) / 100;
+                    gClose = Math.round((gClose + netClose) * 100) / 100;
+                    gAccs.push({ account_id: it.account_id, account_code: it.account_code, account_name: it.account_name, opening: netOpen, closing: netClose });
+                }
+                secGroups.push({ name: grp.name, accounts: gAccs, totals: { opening: gOpen, closing: gClose } });
+            }
+
+            if (unassigned.length > 0) {
+                var uOpen = 0, uClose = 0;
+                var uAccs = [];
+                for (var ui = 0; ui < unassigned.length; ui++) {
+                    var ua = unassigned[ui];
+                    var uNetOpen = Math.round((cfg.type === 'asset' ? ua.opening_debit - ua.opening_credit : ua.opening_credit - ua.opening_debit) * 100) / 100;
+                    var uNetClose = Math.round((cfg.type === 'asset' ? ua.closing_debit - ua.closing_credit : ua.closing_credit - ua.closing_debit) * 100) / 100;
+                    uOpen = Math.round((uOpen + uNetOpen) * 100) / 100;
+                    uClose = Math.round((uClose + uNetClose) * 100) / 100;
+                    uAccs.push({ account_id: ua.account_id, account_code: ua.account_code, account_name: ua.account_name, opening: uNetOpen, closing: uNetClose });
+                }
+                secGroups.push({ name: 'أخرى', accounts: uAccs, totals: { opening: uOpen, closing: uClose } });
+            }
+
+            var secOpen = 0, secClose = 0;
+            for (var sgi = 0; sgi < secGroups.length; sgi++) {
+                secOpen = Math.round((secOpen + secGroups[sgi].totals.opening) * 100) / 100;
+                secClose = Math.round((secClose + secGroups[sgi].totals.closing) * 100) / 100;
+            }
+            var secTotal = { opening: secOpen, closing: secClose };
+            if (cfg.type === 'asset') {
+                totalAssets.opening = Math.round((totalAssets.opening + secOpen) * 100) / 100;
+                totalAssets.closing = Math.round((totalAssets.closing + secClose) * 100) / 100;
+            } else {
+                totalLiabEq.opening = Math.round((totalLiabEq.opening + secOpen) * 100) / 100;
+                totalLiabEq.closing = Math.round((totalLiabEq.closing + secClose) * 100) / 100;
+            }
+            sections.push({ type: cfg.type, name: cfg.name, groups: secGroups, totals: secTotal });
+        }
+
+        var balanced = Math.abs(totalAssets.closing - totalLiabEq.closing) < 0.01;
+
+        res.json({
+            success: true,
+            date: to || new Date().toISOString().split('T')[0],
+            from: from || null,
+            to: to || null,
+            sections: sections,
+            totals: {
+                totalAssets: totalAssets,
+                totalLiabilitiesAndEquity: totalLiabEq,
+                balanced: balanced
+            }
+        });
+    } catch (err) {
+        console.error('GET Balance Sheet Error:', err);
+        err.status = 500;
+        err.message = 'خطأ في قاعدة البيانات';
+        throw err;
+    }
+}));
+
 module.exports = router;
