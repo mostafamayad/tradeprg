@@ -519,4 +519,290 @@ router.get('/trial-balance', asyncHandler(async (req, res) => {
     }
 }));
 
+// ── General Ledger ─────────────────────────────────────────
+
+// General Ledger (الأستاذ العام / كشف حساب) — running balance via SQL window function
+router.get('/general-ledger', asyncHandler(async (req, res) => {
+    try {
+        const { accountId, from, to, page = 1, pageSize = 50, includeOpening } = req.query;
+        const pageNum = Math.max(1, parseInt(page));
+        const size = Math.min(200, Math.max(1, parseInt(pageSize) || 50));
+        const offset = (pageNum - 1) * size;
+        const showOpening = includeOpening === 'true' || includeOpening === '1' || includeOpening === '';
+
+        const pool = await getPool();
+        const request = pool.request();
+
+        const hasFrom = !!from;
+        const hasTo = !!to;
+        const hasAccount = !!accountId;
+
+        if (hasAccount) request.input('accId', sql.Int, parseInt(accountId));
+        if (hasFrom) request.input('from', sql.NVarChar, from);
+        if (hasTo) request.input('to', sql.NVarChar, to);
+
+        // 1) Opening balance before "from" date (only if from is provided)
+        let openingRows = [];
+        if (hasFrom) {
+            const openingSQL = `
+                SELECT
+                    l.account_id,
+                    SUM(ISNULL(l.debit, 0)) AS opening_debit,
+                    SUM(ISNULL(l.credit, 0)) AS opening_credit
+                FROM journal_entry_lines l
+                JOIN journal_entries j ON l.entry_id = j.id
+                WHERE j.entry_date < @from
+                    ${hasAccount ? 'AND l.account_id = @accId' : ''}
+                GROUP BY l.account_id
+            `;
+            const ores = await request.query(openingSQL);
+            openingRows = ores.recordset;
+        }
+
+        // 2) Period movements with running net via window function
+        //    We compute running_net across ALL matched rows per account (unbounded preceding)
+        //    then paginate the outer query
+        const movSQL = `
+        WITH period_raw AS (
+            SELECT
+                l.account_id,
+                a.account_code,
+                a.account_name,
+                a.account_type,
+                j.entry_date,
+                j.id AS journal_id,
+                j.reference_type,
+                j.entry_no AS ref_number,
+                COALESCE(l.description, j.description) AS line_description,
+                ISNULL(l.debit, 0) AS debit,
+                ISNULL(l.credit, 0) AS credit
+            FROM journal_entry_lines l
+            JOIN journal_entries j ON l.entry_id = j.id
+            JOIN chart_of_accounts a ON l.account_id = a.id
+            WHERE 1=1
+                ${hasFrom ? 'AND j.entry_date >= @from' : ''}
+                ${hasTo ? 'AND j.entry_date <= @to' : ''}
+                ${hasAccount ? 'AND l.account_id = @accId' : ''}
+        ),
+        with_running AS (
+            SELECT *,
+                SUM(debit - credit) OVER(
+                    PARTITION BY account_id
+                    ORDER BY entry_date, journal_id
+                    ROWS UNBOUNDED PRECEDING
+                ) AS running_net,
+                COUNT(*) OVER() AS total_count
+            FROM period_raw
+        )
+        SELECT *
+        FROM with_running
+        ORDER BY account_code, entry_date, journal_id
+        OFFSET ${offset} ROWS
+        FETCH NEXT ${size} ROWS ONLY
+        `;
+        const movRes = await request.query(movSQL);
+        const totalCount = movRes.recordset.length > 0 ? movRes.recordset[0].total_count : 0;
+        const totalPages = Math.ceil(totalCount / size);
+
+        // 3) Build opening map for quick lookup
+        const openingMap = {};
+        for (let i = 0; i < openingRows.length; i++) {
+            const o = openingRows[i];
+            openingMap[o.account_id] = {
+                debit: Number(o.opening_debit || 0),
+                credit: Number(o.opening_credit || 0)
+            };
+        }
+
+        // 4) Assemble rows (opening + movements) per account
+        const accountsMap = {};
+        const accountsOrder = [];
+
+        // Process movement rows, injecting opening balance
+        for (let i = 0; i < movRes.recordset.length; i++) {
+            const r = movRes.recordset[i];
+            const aid = r.account_id;
+
+            if (!accountsMap[aid]) {
+                const op = openingMap[aid] || { debit: 0, credit: 0 };
+                accountsMap[aid] = {
+                    account_id: aid,
+                    account_code: r.account_code,
+                    account_name: r.account_name,
+                    account_type: r.account_type,
+                    opening_debit: op.debit,
+                    opening_credit: op.credit,
+                    opening_net: op.debit - op.credit,
+                    lines: []
+                };
+                accountsOrder.push(aid);
+            }
+
+            const a = accountsMap[aid];
+            const periodNet = Number(r.running_net || 0);
+            const cumulativeNet = a.opening_net + periodNet;
+
+            a.lines.push({
+                entry_date: r.entry_date,
+                journal_id: r.journal_id,
+                reference_type: r.reference_type,
+                ref_number: r.ref_number,
+                description: r.line_description,
+                debit: Number(r.debit || 0),
+                credit: Number(r.credit || 0),
+                running_balance: Math.round(Math.abs(cumulativeNet) * 100) / 100,
+                running_balance_type: cumulativeNet >= 0 ? 'Dr' : 'Cr'
+            });
+        }
+
+        // Add opening row as first line for each account (if showOpening)
+        if (showOpening && hasFrom) {
+            for (let oi = 0; oi < accountsOrder.length; oi++) {
+                const a = accountsMap[accountsOrder[oi]];
+                if (a.opening_debit > 0 || a.opening_credit > 0) {
+                    a.lines.unshift({
+                        is_opening: true,
+                        entry_date: from,
+                        journal_id: null,
+                        reference_type: null,
+                        ref_number: null,
+                        description: 'رصيد أول المدة',
+                        debit: a.opening_debit,
+                        credit: a.opening_credit,
+                        running_balance: Math.round(Math.abs(a.opening_net) * 100) / 100,
+                        running_balance_type: a.opening_net >= 0 ? 'Dr' : 'Cr'
+                    });
+                }
+            }
+        }
+
+        // 5) Compute totals per account
+        for (let oi = 0; oi < accountsOrder.length; oi++) {
+            const a = accountsMap[accountsOrder[oi]];
+            let tDebit = 0, tCredit = 0;
+            for (let li = 0; li < a.lines.length; li++) {
+                tDebit = Math.round((tDebit + a.lines[li].debit) * 100) / 100;
+                tCredit = Math.round((tCredit + a.lines[li].credit) * 100) / 100;
+            }
+            a.totals = { debit: tDebit, credit: tCredit };
+
+            const lastLine = a.lines[a.lines.length - 1];
+            if (lastLine) {
+                a.closing_debit = lastLine.running_balance_type === 'Dr' ? lastLine.running_balance : 0;
+                a.closing_credit = lastLine.running_balance_type === 'Cr' ? lastLine.running_balance : 0;
+            } else {
+                a.closing_debit = a.opening_net >= 0 ? Math.abs(a.opening_net) : 0;
+                a.closing_credit = a.opening_net < 0 ? Math.abs(a.opening_net) : 0;
+            }
+        }
+
+        // 6) For single account: ensure account exists in chart_of_accounts
+        if (hasAccount) {
+            // If account wasn't found in movements/opening, fetch it directly
+            if (!accountsMap[accountId]) {
+                const accCheck = await pool.request()
+                    .input('id', sql.Int, parseInt(accountId))
+                    .query('SELECT id, account_code, account_name, account_type FROM chart_of_accounts WHERE id = @id');
+                if (!accCheck.recordset[0]) {
+                    return res.status(404).json({ success: false, message: 'الحساب غير موجود' });
+                }
+                const ac = accCheck.recordset[0];
+                const op = openingMap[accountId] || { debit: 0, credit: 0 };
+                accountsMap[accountId] = {
+                    account_id: ac.id,
+                    account_code: ac.account_code,
+                    account_name: ac.account_name,
+                    account_type: ac.account_type,
+                    opening_debit: op.debit,
+                    opening_credit: op.credit,
+                    opening_net: op.debit - op.credit,
+                    lines: []
+                };
+            }
+
+            const a = accountsMap[accountId];
+            // Inject opening row for single account (opening injection at step 5 only covers accountsOrder)
+            if (showOpening && hasFrom && a.lines.length === 0 && (a.opening_debit > 0 || a.opening_credit > 0)) {
+                a.lines.push({
+                    is_opening: true,
+                    entry_date: from,
+                    journal_id: null,
+                    reference_type: null,
+                    ref_number: null,
+                    description: 'رصيد أول المدة',
+                    debit: a.opening_debit,
+                    credit: a.opening_credit,
+                    running_balance: Math.round(Math.abs(a.opening_net) * 100) / 100,
+                    running_balance_type: a.opening_net >= 0 ? 'Dr' : 'Cr'
+                });
+            }
+            // Ensure totals
+            if (!a.totals || a.lines.length === 0) {
+                let tDebit = 0, tCredit = 0;
+                for (let li = 0; li < a.lines.length; li++) {
+                    tDebit = Math.round((tDebit + a.lines[li].debit) * 100) / 100;
+                    tCredit = Math.round((tCredit + a.lines[li].credit) * 100) / 100;
+                }
+                a.totals = { debit: tDebit, credit: tCredit };
+            }
+            if (!a.closing_debit && !a.closing_credit) {
+                const lastLine = a.lines[a.lines.length - 1];
+                if (lastLine) {
+                    a.closing_debit = lastLine.running_balance_type === 'Dr' ? lastLine.running_balance : 0;
+                    a.closing_credit = lastLine.running_balance_type === 'Cr' ? lastLine.running_balance : 0;
+                } else {
+                    a.closing_debit = a.opening_net >= 0 ? Math.abs(a.opening_net) : 0;
+                    a.closing_credit = a.opening_net < 0 ? Math.abs(a.opening_net) : 0;
+                }
+            }
+
+            return res.json({
+                success: true,
+                account: {
+                    id: a.account_id,
+                    code: a.account_code,
+                    name: a.account_name,
+                    type: a.account_type
+                },
+                openingBalance: { debit: a.opening_debit, credit: a.opening_credit },
+                data: a.lines,
+                totals: a.totals,
+                closingBalance: { debit: a.closing_debit, credit: a.closing_credit },
+                page: pageNum,
+                pageSize: size,
+                total: totalCount,
+                totalPages: totalPages
+            });
+        }
+
+        // All accounts: return grouped
+        const resultAccounts = [];
+        for (let oi = 0; oi < accountsOrder.length; oi++) {
+            const a = accountsMap[accountsOrder[oi]];
+            resultAccounts.push({
+                account: { id: a.account_id, code: a.account_code, name: a.account_name, type: a.account_type },
+                openingBalance: { debit: a.opening_debit, credit: a.opening_credit },
+                data: a.lines,
+                totals: a.totals,
+                closingBalance: { debit: a.closing_debit, credit: a.closing_credit }
+            });
+        }
+
+        res.json({
+            success: true,
+            accounts: resultAccounts,
+            page: pageNum,
+            pageSize: size,
+            total: totalCount,
+            totalPages: totalPages
+        });
+
+    } catch (err) {
+        console.error('GET General Ledger Error:', err);
+        err.status = 500;
+        err.message = 'خطأ في قاعدة البيانات';
+        throw err;
+    }
+}));
+
 module.exports = router;

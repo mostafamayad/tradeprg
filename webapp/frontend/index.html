@@ -2007,6 +2007,16 @@
                 </div>
 
                 <!-- ======================================================== -->
+                <!--  VIEW: LEDGER STATEMENT                                  -->
+                <!-- ======================================================== -->
+                <div class="view" id="view-ledger-statement">
+                    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
+                        <div><h1 class="page-title">كشف حساب أستاذ</h1><p class="page-subtitle">الأستاذ العام وكشف حساب لكل حساب</p></div>
+                    </div>
+                    <div id="ledger-root"></div>
+                </div>
+
+                <!-- ======================================================== -->
                 <!--  VIEW: TREASURY                                           -->
                 <!-- ======================================================== -->
                 <div class="view" id="view-treasury">
@@ -3712,6 +3722,7 @@
     <script src="js/views/viewChartOfAccounts.js"></script>
     <script src="js/views/viewJournalVoucher.js"></script>
     <script src="js/views/viewTrialBalance.js"></script>
+    <script src="js/views/viewLedger.js"></script>
     <script>
         if (window.location.protocol === 'file:') {
             alert('âڑ ï¸ڈ افتح البرنامج من المتصفح عبر:\nhttp://localhost:3000\n\nوليس بفتح ملف index.html مباشرة');
@@ -3810,7 +3821,8 @@
                 'activity-logs': 'loadActivityLogs',
                 'chart-of-accounts': 'loadChartOfAccounts',
                 'accounting': 'loadJournalVoucher',
-                'trial-balance': 'loadTrialBalance'
+                'trial-balance': 'loadTrialBalance',
+                'ledger-statement': 'loadLedger'
             };
             var fnName = loaders[targetId];
             if (fnName && typeof window[fnName] === 'function') {
