@@ -3,6 +3,16 @@
 
     var ExportService = {};
 
+    ExportService.exportReport = function (type, opts) {
+        if (type === 'csv') {
+            ExportService.csv(opts.filename || 'report.csv', opts.headers || [], opts.rows || []);
+        } else if (type === 'excel') {
+            console.warn('Excel export not yet implemented');
+        } else if (type === 'pdf') {
+            console.warn('PDF export not yet implemented');
+        }
+    };
+
     ExportService.csv = function (filename, headers, rows) {
         var csv = '\uFEFF';
         csv += headers.join(',') + '\r\n';

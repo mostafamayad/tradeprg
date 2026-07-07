@@ -17,10 +17,23 @@
             '<div class="form-group"><label>' + ReportUtils.esc(fromLabel) + '</label><input type="date" id="' + fromId + '" class="form-control" value="' + fromVal + '"></div>' +
             '<div class="form-group"><label>' + ReportUtils.esc(toLabel) + '</label><input type="date" id="' + toId + '" class="form-control" value="' + toVal + '"></div>';
 
-        if (config.extraFields) {
-            for (var i = 0; i < config.extraFields.length; i++) {
-                var f = config.extraFields[i];
-                html += '<div class="form-group"><label>' + ReportUtils.esc(f.label) + '</label>' + f.html + '</div>';
+        if (config.extraFilters) {
+            for (var i = 0; i < config.extraFilters.length; i++) {
+                var f = config.extraFilters[i];
+                var fhtml = f.html || '';
+                if (f.type === 'select') {
+                    var opts = '';
+                    for (var k = 0; k < (f.options || []).length; k++) {
+                        var o = f.options[k];
+                        opts += '<option value="' + ReportUtils.esc(o.value) + '"' + (o.selected ? ' selected' : '') + '>' + ReportUtils.esc(o.label) + '</option>';
+                    }
+                    fhtml = '<select id="' + (f.id || '') + '" class="form-control">' + opts + '</select>';
+                } else if (f.type === 'text') {
+                    fhtml = '<input type="text" id="' + (f.id || '') + '" class="form-control" placeholder="' + ReportUtils.esc(f.placeholder || '') + '" value="' + ReportUtils.esc(f.value || '') + '">';
+                } else if (f.type === 'checkbox') {
+                    fhtml = '<label style="display:flex;align-items:center;gap:6px;padding-top:6px"><input type="checkbox" id="' + (f.id || '') + '"' + (f.checked ? ' checked' : '') + '> ' + ReportUtils.esc(f.checkLabel || '') + '</label>';
+                }
+                html += '<div class="form-group">' + (f.label ? '<label>' + ReportUtils.esc(f.label) + '</label>' : '') + fhtml + '</div>';
             }
         }
 

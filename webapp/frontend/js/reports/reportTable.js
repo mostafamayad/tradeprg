@@ -3,21 +3,35 @@
 
     var ReportTable = {};
 
+    function cellStyle(c) {
+        var s = '';
+        if (c.width) s += 'width:' + c.width + ';';
+        if (c.align) s += 'text-align:' + c.align + ';';
+        return s ? ' style="' + s + '"' : '';
+    }
+
     function buildHead(columns) {
         var h = '<thead><tr>';
         for (var i = 0; i < columns.length; i++) {
             var c = columns[i];
-            h += '<th' + (c.width ? ' style="width:' + c.width + '"' : '') + (c.className ? ' class="' + c.className + '"' : '') + '>' + ReportUtils.esc(c.label) + '</th>';
+            h += '<th' + cellStyle(c) + (c.className ? ' class="' + c.className + '"' : '') + '>' + ReportUtils.esc(c.label) + '</th>';
         }
         h += '</tr></thead>';
         return h;
     }
 
-    function buildBody(columns, data) {
+    function buildBody(columns, data, onRowClick) {
         var h = '<tbody>';
         for (var i = 0; i < data.length; i++) {
             var row = data[i];
-            h += '<tr' + (row._className ? ' class="' + row._className + '"' : '') + (row._onclick ? ' onclick="' + row._onclick + '"' : '') + '>';
+            var trClass = row._className || '';
+            var trClick = '';
+            if (onRowClick) {
+                trClick = ' style="cursor:pointer" onclick="ReportTable._handleRowClick(' + i + ', this)"';
+            } else if (row._onclick) {
+                trClick = ' onclick="' + row._onclick + '"';
+            }
+            h += '<tr class="' + trClass + '"' + trClick + ' data-rpt-row="' + i + '">';
             for (var j = 0; j < columns.length; j++) {
                 var c = columns[j];
                 var val = row[c.key] !== undefined ? row[c.key] : '';
@@ -28,13 +42,22 @@
                 } else {
                     val = ReportUtils.esc(val);
                 }
-                h += '<td' + (c.colspan && row[c.colspan] ? ' colspan="' + row[c.colspan] + '"' : '') + (c.tdClass ? ' class="' + c.tdClass + '"' : '') + '>' + val + '</td>';
+                h += '<td' + cellStyle(c) + (c.colspan && row[c.colspan] ? ' colspan="' + row[c.colspan] + '"' : '') + (c.tdClass ? ' class="' + c.tdClass + '"' : '') + '>' + val + '</td>';
             }
             h += '</tr>';
         }
         h += '</tbody>';
         return h;
     }
+
+    ReportTable._rowData = null;
+    ReportTable._onRowClick = null;
+
+    ReportTable._handleRowClick = function (index, el) {
+        if (ReportTable._onRowClick && ReportTable._rowData && ReportTable._rowData[index]) {
+            ReportTable._onRowClick(ReportTable._rowData[index], index, el);
+        }
+    };
 
     ReportTable.render = function (container, columns, data, opts) {
         opts = opts || {};
@@ -65,9 +88,13 @@
             return;
         }
 
+        ReportTable._rowData = data;
+        ReportTable._onRowClick = opts.onRowClick || null;
+        ReportTable._columns = columns;
+
         var html = '<table class="' + tblClass + '" style="' + tblStyle + '">';
         html += buildHead(columns);
-        html += buildBody(columns, data);
+        html += buildBody(columns, data, opts.onRowClick);
         html += '</table>';
         container.innerHTML = html;
     };
