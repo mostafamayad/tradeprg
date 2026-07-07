@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const { getPool, sql } = require('../database/mssql_db');
-const { postJournalEntryAsync } = require('../services/accountingEngine');
+const { postJournalEntryAsync, reverseJournalEntryAsync } = require('../services/accountingEngine');
 const asyncHandler = require('../utils/asyncHandler');
 const accountRepo = require('../repositories/accountRepository');
 // ── Chart of Accounts (COA) ─────────────────────────────────
@@ -364,6 +364,72 @@ router.get('/journals/browser', asyncHandler(async (req, res) => {
         console.error('GET Journals Browser Error:', err);
         err.status = 500;
         err.message = 'خطأ في قاعدة البيانات';
+        throw err;
+    }
+}));
+
+// ── Reverse Journal ─────────────────────────────────────────────
+
+// POST /journals/:id/reverse — Reverse a journal entry (creates new entry, never deletes)
+router.post('/journals/:id/reverse', asyncHandler(async (req, res) => {
+    try {
+        const journalId = parseInt(req.params.id);
+        if (!journalId) return res.status(400).json({ success: false, message: 'رقم القيد غير صحيح' });
+
+        const pool = await getPool();
+        const request = pool.request();
+        request.input('jid', sql.Int, journalId);
+
+        // 1) Verify journal exists
+        const jRes = await request.query('SELECT id, entry_no, is_reversed FROM journal_entries WHERE id = @jid');
+        if (!jRes.recordset[0]) {
+            return res.status(404).json({ success: false, message: 'القيد غير موجود' });
+        }
+        const journal = jRes.recordset[0];
+
+        // 2) Check not already reversed
+        if (journal.is_reversed) {
+            return res.status(400).json({ success: false, message: 'هذا القيد تم عكسه مسبقاً' });
+        }
+
+        // 3) Fiscal period check (placeholder for Phase E — no closed periods table yet)
+        // TODO: When fiscal_periods table exists, verify the journal's period is not closed
+
+        // 4) Execute reversal in a transaction
+        const transaction = pool.transaction();
+        await transaction.begin();
+        try {
+            const txReq = transaction.request();
+            const desc = req.body.description || `قيد عكسي للقيد ${journal.entry_no}`;
+            const userId = req.user ? req.user.id : null;
+
+            const newEntryId = await reverseJournalEntryAsync(txReq, journalId, desc, userId);
+
+            // Also set reversal_of_id on the new entry for bidirectional linking
+            txReq.input('newId', sql.Int, newEntryId);
+            txReq.input('origId', sql.Int, journalId);
+            await txReq.query('UPDATE journal_entries SET reversal_of_id = @origId WHERE id = @newId');
+
+            await transaction.commit();
+
+            // Fetch the new entry number for response
+            const newEntryReq = pool.request();
+            newEntryReq.input('neId', sql.Int, newEntryId);
+            const neRes = await newEntryReq.query('SELECT id, entry_no, entry_date FROM journal_entries WHERE id = @neId');
+
+            res.json({
+                success: true,
+                message: `تم عكس القيد ${journal.entry_no} بنجاح`,
+                reversal: neRes.recordset[0]
+            });
+        } catch (txErr) {
+            await transaction.rollback();
+            throw txErr;
+        }
+    } catch (err) {
+        console.error('POST Reverse Journal Error:', err);
+        err.status = err.status || 500;
+        err.message = err.message || 'خطأ في عكس القيد';
         throw err;
     }
 }));

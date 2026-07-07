@@ -255,6 +255,13 @@
         });
 
         document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.jv-btn-reverse');
+            if (!btn) return;
+            e.preventDefault();
+            reverseJournal(Number(btn.dataset.id));
+        });
+
+        document.addEventListener('click', function (e) {
             var btn = e.target.closest('[data-jv-page]');
             if (!btn) return;
             e.preventDefault();
@@ -430,6 +437,7 @@
                     <a href="#" class="jv-view-lines jv-action-btn" data-id="' + e.id + '" title="عرض"><i class="fa-solid fa-eye"></i></a>\
                     <a href="#" class="jv-btn-print jv-action-btn" data-id="' + e.id + '" title="طباعة"><i class="fa-solid fa-print"></i></a>\
                     <a href="#" class="jv-btn-excel jv-action-btn" data-id="' + e.id + '" title="Excel"><i class="fa-solid fa-file-excel"></i></a>\
+                    ' + (e.is_reversed ? '<span style="color:var(--danger-color,#dc2626);font-size:0.8rem;margin-right:4px">ملغي</span>' : '<a href="#" class="jv-btn-reverse jv-action-btn" data-id="' + e.id + '" title="عكس القيد"><i class="fa-solid fa-undo"></i></a>') + '\
                 </td></tr>';
         }
         tbody.innerHTML = html;
@@ -570,6 +578,29 @@
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(link.href);
+    }
+
+    function reverseJournal(journalId) {
+        if (!confirm('هل أنت متأكد من عكس هذا القيد؟ سيتم إنشاء قيد عكسي جديد ولن يتم حذف القيد الأصلي.')) return;
+        var desc = prompt('سبب العكس (اختياري):', '');
+        var token = localStorage.getItem('auth_token');
+        fetch('/api/accounting/journals/' + journalId + '/reverse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ description: desc || '' })
+        }).then(function (r) {
+            if (r.status === 401) { localStorage.removeItem('auth_token'); window.location.hash = '#login'; throw new Error('انتهت الجلسة'); }
+            return r.json();
+        }).then(function (res) {
+            if (res.success) {
+                alert(res.message);
+                loadBrowser();
+            } else {
+                alert(res.message || 'خطأ في عكس القيد');
+            }
+        }).catch(function (err) {
+            alert(err.message || 'خطأ في الاتصال');
+        });
     }
 
     window.loadJournalVoucher = function () {
