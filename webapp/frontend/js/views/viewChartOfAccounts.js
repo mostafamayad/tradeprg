@@ -71,7 +71,7 @@
             const { node, parentEl, depth } = stack.pop();
 
             const nodeDiv = document.createElement('div');
-            nodeDiv.className = 'coa-node depth-' + Math.min(depth, 5);
+            nodeDiv.className = 'coa-node depth-' + Math.min(depth, 5) + (node.is_active === 0 ? ' coa-inactive-node' : '');
 
             const row = document.createElement('div');
             row.className = 'coa-node-row';
@@ -106,6 +106,17 @@
                 ? (bal >= 0 ? 'var(--success-color, #059669)' : 'var(--danger-color, #dc2626)')
                 : (bal >= 0 ? 'var(--danger-color, #dc2626)' : 'var(--success-color, #059669)');
             row.appendChild(balSpan);
+
+            var toggleBtn = document.createElement('span');
+            toggleBtn.className = 'coa-toggle-btn';
+            var isActive = node.is_active !== 0;
+            if (node.system_code) {
+                toggleBtn.innerHTML = '<i class="fa-solid fa-toggle-on" style="color:var(--text-muted,#9ca3af);cursor:default" title="حساب نظامي"></i>';
+            } else {
+                toggleBtn.innerHTML = '<i class="fa-solid ' + (isActive ? 'fa-toggle-on coa-active' : 'fa-toggle-off coa-inactive') + '" style="cursor:pointer;font-size:1.1rem" title="' + (isActive ? 'تعطيل' : 'تفعيل') + '"></i>';
+                toggleBtn.onclick = (function (id, active) { return function (e) { e.stopPropagation(); toggleAccountStatus(id, active); }; })(node.id, isActive);
+            }
+            row.appendChild(toggleBtn);
 
             var editBtn = document.createElement('span');
             editBtn.className = 'coa-edit';
@@ -155,6 +166,11 @@
             .coa-name { flex: 1; font-weight: 500; }
             .coa-balance { font-family: 'Courier New', monospace; font-weight: 600; min-width: 120px; text-align: right; direction: ltr; }
             .coa-edit { width: 24px; text-align: center; flex-shrink:0; }
+            .coa-toggle-btn { width: 28px; text-align: center; flex-shrink:0; }
+            .coa-toggle-btn .coa-active { color: var(--success-color, #059669); }
+            .coa-toggle-btn .coa-inactive { color: var(--text-muted, #9ca3af); }
+            .coa-inactive-node .coa-node-row { opacity: 0.55; }
+            .coa-inactive-node .coa-node-row .coa-name { text-decoration: line-through; }
             .depth-0 > .coa-node-row { font-weight: 700; border-bottom: 2px solid var(--border-color, #e5e7eb); padding: 14px 14px; }
             .depth-0 > .coa-node-row .coa-code { font-size: 1rem; }
             .depth-1 > .coa-node-row { padding-right: 30px; }
@@ -403,6 +419,30 @@
             }
 
             modal.classList.add('open');
+        });
+    }
+
+    function toggleAccountStatus(accountId, currentlyActive) {
+        var msg = currentlyActive ? 'هل أنت متأكد من تعطيل هذا الحساب؟' : 'هل أنت متأكد من تفعيل هذا الحساب؟';
+        if (!window.confirm(msg)) return;
+
+        apiFetch('/accounting/accounts/' + accountId + '/toggle', 'PATCH').then(function (res) {
+            if (res.success) {
+                if (cachedTreeData) {
+                    var all = flattenTree(cachedTreeData, 0);
+                    for (var i = 0; i < all.length; i++) {
+                        if (all[i].id === accountId) {
+                            all[i].is_active = currentlyActive ? 0 : 1;
+                            break;
+                        }
+                    }
+                }
+                renderAgain();
+            } else {
+                alert(res.message || 'حدث خطأ');
+            }
+        }).catch(function (err) {
+            alert(err.message || 'خطأ في الاتصال');
         });
     }
 

@@ -174,6 +174,30 @@ router.put('/accounts/:id', asyncHandler(async (req, res) => {
     }
 }));
 
+// PATCH Toggle Account Active Status
+router.patch('/accounts/:id/toggle', asyncHandler(async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+        if (!id) return res.status(400).json({ success: false, message: 'معرف الحساب مطلوب' });
+
+        const account = await accountRepo.getById(id);
+        if (!account) return res.status(404).json({ success: false, message: 'الحساب غير موجود' });
+        if (account.system_code) {
+            return res.status(400).json({ success: false, message: 'لا يمكن تعطيل حساب نظامي ("' + account.account_name + '")' });
+        }
+        if (await accountRepo.hasChildren(id)) {
+            return res.status(400).json({ success: false, message: 'لا يمكن تعطيل حساب لديه أبناء. قم بنقل أو حذف الأبناء أولاً' });
+        }
+
+        await accountRepo.toggleStatus(id);
+        const updated = await accountRepo.getById(id);
+        res.json({ success: true, message: 'تم تغيير حالة الحساب بنجاح', data: updated });
+    } catch (err) {
+        console.error('PATCH Toggle Account Error:', err);
+        res.status(500).json({ success: false, message: err.message || 'خطأ في الخادم' });
+    }
+}));
+
 // ── Journal Entries ──────────────────────────────────────────
 
 // List Journal Entries

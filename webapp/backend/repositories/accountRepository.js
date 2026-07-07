@@ -239,6 +239,13 @@ class AccountRepository {
             `);
     }
 
+    async toggleStatus(id) {
+        const pool = await getPool();
+        await pool.request()
+            .input('id', sql.Int, id)
+            .query('UPDATE chart_of_accounts SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END WHERE id = @id');
+    }
+
     async create(data) {
         const pool = await getPool();
         const parentId = data.parent_id ? Number(data.parent_id) : null;
