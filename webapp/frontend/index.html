@@ -468,6 +468,7 @@
             <div class="nav-popup-header">المحاسبة</div>
             <a href="#" class="popup-item" data-target="treasury"><i class="fa-solid fa-vault"></i> الخزينة</a>
             <a href="#" class="popup-item" data-target="accounting"><i class="fa-solid fa-book"></i> قيد اليومية</a>
+            <a href="#" class="popup-item" data-target="journal-inquiry"><i class="fa-solid fa-magnifying-glass"></i> الاستعلام عن القيود</a>
             <a href="#" class="popup-item" data-target="chart-of-accounts"><i class="fa-solid fa-sitemap"></i> شجرة الحسابات</a>
             <a href="#" class="popup-item" data-target="trial-balance"><i class="fa-solid fa-scale-balanced"></i> ميزان المراجعة</a>
             <a href="#" class="popup-item" data-target="ledger-statement"><i class="fa-solid fa-receipt"></i> كشف حساب أستاذ</a>
@@ -1997,6 +1998,16 @@
                         <div><h1 class="page-title">قيود اليومية</h1><p class="page-subtitle">تسجيل القيود المالية اليومية (مدين - دائن)</p></div>
                     </div>
                     <div id="journals-root"></div>
+                </div>
+
+                <!-- ======================================================== -->
+                <!--  VIEW: JOURNAL INQUIRY                                    -->
+                <!-- ======================================================== -->
+                <div class="view" id="view-journal-inquiry">
+                    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
+                        <div><h1 class="page-title">الاستعلام عن القيود</h1><p class="page-subtitle">بحث وتصفح القيود المالية مع الفلاتر المتقدمة</p></div>
+                    </div>
+                    <div id="journal-inquiry-root"></div>
                 </div>
 
                 <!-- ======================================================== -->
@@ -3766,6 +3777,7 @@
     <script src="js/views/viewBalanceSheet.js"></script>
     <script src="js/views/viewIncomeStatement.js"></script>
     <script src="js/views/viewFiscalPeriods.js"></script>
+    <script src="js/views/viewJournalInquiry.js"></script>
     <script>
         if (window.location.protocol === 'file:') {
             alert('âڑ ï¸ڈ افتح البرنامج من المتصفح عبر:\nhttp://localhost:3000\n\nوليس بفتح ملف index.html مباشرة');
@@ -3864,6 +3876,7 @@
                 'activity-logs': 'loadActivityLogs',
                 'chart-of-accounts': 'loadChartOfAccounts',
                 'accounting': 'loadJournalVoucher',
+                'journal-inquiry': 'loadJournalInquiry',
                 'trial-balance': 'loadTrialBalance',
                 'ledger-statement': 'loadLedger',
                 'balance-sheet': 'loadBalanceSheet',

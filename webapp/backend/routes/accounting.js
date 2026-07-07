@@ -376,7 +376,7 @@ router.post('/journals', asyncHandler(async (req, res) => {
 // Journal Browser with Pagination, Search, Filters
 router.get('/journals/browser', asyncHandler(async (req, res) => {
     try {
-        const { page = 1, pageSize = 20, from, to, ref_type, ref_id, search, sortBy, sortDirection, account_id, created_by, minAmount, maxAmount } = req.query;
+        const { page = 1, pageSize = 20, from, to, ref_type, ref_id, search, sortBy, sortDirection, account_id, created_by, minAmount, maxAmount, entry_no, source_module, source_document, is_reversed, is_system_generated } = req.query;
         const pageNum = Math.max(1, parseInt(page));
         const size = Math.min(100, Math.max(1, parseInt(pageSize) || 20));
         const offset = (pageNum - 1) * size;
@@ -384,8 +384,8 @@ router.get('/journals/browser', asyncHandler(async (req, res) => {
         const pool = await getPool();
         const request = pool.request();
 
-        const ALLOWED_SORT = { entry_no: 'j.entry_no', entry_date: 'j.entry_date', total_debit: 'j.total_debit', total_credit: 'j.total_credit', id: 'j.id', reference_type: 'j.reference_type', description: 'j.description' };
-        const sortCol = ALLOWED_SORT[sortBy] || 'j.id';
+        const ALLOWED_SORT = { entry_no: 'j.entry_no', entry_date: 'j.entry_date', total_debit: 'j.total_debit', total_credit: 'j.total_credit', id: 'j.id', reference_type: 'j.reference_type', description: 'j.description', created_at: 'j.created_at', source_module: 'j.source_module' };
+        const sortCol = ALLOWED_SORT[sortBy] || 'j.entry_date';
         const sortDir = (sortDirection && sortDirection.toUpperCase() === 'ASC') ? 'ASC' : 'DESC';
 
         let where = ' WHERE 1=1';
@@ -395,6 +395,16 @@ router.get('/journals/browser', asyncHandler(async (req, res) => {
         if (ref_type) { where += ' AND j.reference_type = @refType'; request.input('refType', sql.NVarChar, ref_type); }
         if (ref_id) { where += ' AND j.reference_id = @refId'; request.input('refId', sql.Int, parseInt(ref_id)); }
         if (search) { where += ' AND (j.description LIKE @search OR j.entry_no LIKE @search)'; request.input('search', sql.NVarChar, '%' + search + '%'); }
+        if (entry_no) { where += ' AND j.entry_no = @entryNo'; request.input('entryNo', sql.NVarChar, entry_no); }
+        if (source_module) { where += ' AND j.source_module = @srcMod'; request.input('srcMod', sql.NVarChar, source_module); }
+        if (source_document) { where += ' AND j.source_document LIKE @srcDoc'; request.input('srcDoc', sql.NVarChar, '%' + source_document + '%'); }
+        if (is_reversed !== undefined && is_reversed !== '') {
+            const rv = parseInt(is_reversed);
+            where += rv ? ' AND (j.is_reversed IS NOT NULL AND j.is_reversed = 1)' : ' AND (j.is_reversed IS NULL OR j.is_reversed = 0)';
+        }
+        if (is_system_generated !== undefined && is_system_generated !== '') {
+            where += parseInt(is_system_generated) ? ' AND j.is_system_generated = 1' : ' AND (j.is_system_generated IS NULL OR j.is_system_generated = 0)';
+        }
         if (created_by) { where += ' AND j.created_by = @createdBy'; request.input('createdBy', sql.Int, parseInt(created_by)); }
         if (minAmount) { where += ' AND j.total_debit >= @minAmt'; request.input('minAmt', sql.Decimal(18,2), parseFloat(minAmount)); }
         if (maxAmount) { where += ' AND j.total_debit <= @maxAmt'; request.input('maxAmt', sql.Decimal(18,2), parseFloat(maxAmount)); }
@@ -424,11 +434,12 @@ router.get('/journals/browser', asyncHandler(async (req, res) => {
                 `);
                 result.recordset.forEach(entry => {
                     const eid = Number(entry.id);
-                    entry.lines = linesRes.recordset.filter(l => Number(l.entry_id) === eid);
+                    entry.lines = linesRes.recordset.filter(l => Number(l.entry_id) === eid).sort((a, b) => Number(a.id) - Number(b.id));
                 });
             }
 
-            return res.json({ success: true, data: result.recordset, total, page: pageNum, pageSize: size, totalPages });
+            const pagination = { page: pageNum, pageSize: size, total, totalPages };
+            return res.json({ success: true, data: result.recordset, pagination, total, page: pageNum, pageSize: size, totalPages });
         }
 
         const countResult = await request.query(`SELECT COUNT(*) AS total ${fromClause}${where}`);
@@ -449,11 +460,12 @@ router.get('/journals/browser', asyncHandler(async (req, res) => {
             `);
             result.recordset.forEach(entry => {
                 const eid = Number(entry.id);
-                entry.lines = linesRes.recordset.filter(l => Number(l.entry_id) === eid);
+                entry.lines = linesRes.recordset.filter(l => Number(l.entry_id) === eid).sort((a, b) => Number(a.id) - Number(b.id));
             });
         }
 
-        res.json({ success: true, data: result.recordset, total, page: pageNum, pageSize: size, totalPages });
+        const pagination = { page: pageNum, pageSize: size, total, totalPages };
+        res.json({ success: true, data: result.recordset, pagination, total, page: pageNum, pageSize: size, totalPages });
     } catch (err) {
         console.error('GET Journals Browser Error:', err);
         err.status = 500;
