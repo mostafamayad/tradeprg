@@ -687,7 +687,7 @@ router.get('/trial-balance', asyncHandler(async (req, res) => {
 // General Ledger (الأستاذ العام / كشف حساب) — running balance via SQL window function
 router.get('/general-ledger', asyncHandler(async (req, res) => {
     try {
-        const { accountId, from, to, page = 1, pageSize = 50, includeOpening } = req.query;
+        const { accountId, from, to, page = 1, pageSize = 50, includeOpening, search, reference_type, created_by } = req.query;
         const pageNum = Math.max(1, parseInt(page));
         const size = Math.min(200, Math.max(1, parseInt(pageSize) || 50));
         const offset = (pageNum - 1) * size;
@@ -699,10 +699,16 @@ router.get('/general-ledger', asyncHandler(async (req, res) => {
         const hasFrom = !!from;
         const hasTo = !!to;
         const hasAccount = !!accountId;
+        const hasSearch = !!search;
+        const hasRefType = !!reference_type;
+        const hasCreatedBy = !!created_by;
 
         if (hasAccount) request.input('accId', sql.Int, parseInt(accountId));
         if (hasFrom) request.input('from', sql.NVarChar, from);
         if (hasTo) request.input('to', sql.NVarChar, to);
+        if (hasSearch) request.input('search', sql.NVarChar, '%' + search + '%');
+        if (hasRefType) request.input('refType', sql.NVarChar, reference_type);
+        if (hasCreatedBy) request.input('createdBy', sql.Int, parseInt(created_by));
 
         // 1) Opening balance before "from" date (only if from is provided)
         let openingRows = [];
@@ -716,6 +722,8 @@ router.get('/general-ledger', asyncHandler(async (req, res) => {
                 JOIN journal_entries j ON l.entry_id = j.id
                 WHERE j.entry_date < @from
                     ${hasAccount ? 'AND l.account_id = @accId' : ''}
+                    ${hasRefType ? 'AND j.reference_type = @refType' : ''}
+                    ${hasCreatedBy ? 'AND j.created_by = @createdBy' : ''}
                 GROUP BY l.account_id
             `;
             const ores = await request.query(openingSQL);
@@ -746,6 +754,9 @@ router.get('/general-ledger', asyncHandler(async (req, res) => {
                 ${hasFrom ? 'AND j.entry_date >= @from' : ''}
                 ${hasTo ? 'AND j.entry_date <= @to' : ''}
                 ${hasAccount ? 'AND l.account_id = @accId' : ''}
+                ${hasSearch ? 'AND (j.description LIKE @search OR j.entry_no LIKE @search OR COALESCE(l.description, j.description) LIKE @search)' : ''}
+                ${hasRefType ? 'AND j.reference_type = @refType' : ''}
+                ${hasCreatedBy ? 'AND j.created_by = @createdBy' : ''}
         ),
         with_running AS (
             SELECT *,
