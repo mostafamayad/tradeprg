@@ -1,6 +1,14 @@
 (function () {
     'use strict';
 
+    const ACCOUNT_TYPES = [
+        { value: 'asset', label: 'أصل' },
+        { value: 'liability', label: 'خصم' },
+        { value: 'equity', label: 'حق ملكية' },
+        { value: 'revenue', label: 'إيراد' },
+        { value: 'expense', label: 'مصروف' }
+    ];
+
     const fmt = (n) => {
         const v = Number(n || 0);
         return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -8,15 +16,16 @@
 
     const esc = (v) => String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-    async function apiGet(endpoint) {
+    let cachedTreeData = null;
+
+    async function apiFetch(endpoint, method, body) {
         const token = localStorage.getItem('auth_token');
-        const res = await fetch('/api' + endpoint, {
-            headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-        });
+        const opt = { method, headers: { 'Content-Type': 'application/json' } };
+        if (token) opt.headers['Authorization'] = 'Bearer ' + token;
+        if (body) opt.body = JSON.stringify(body);
+        const res = await fetch('/api' + endpoint, opt);
         return await res.json();
     }
-
-    const treeState = {};
 
     function toggleNode(nodeId) {
         const children = document.getElementById('coa-children-' + nodeId);
@@ -27,10 +36,21 @@
         if (icon) {
             icon.className = 'fa-solid ' + (isHidden ? 'fa-chevron-down' : 'fa-chevron-left');
         }
-        treeState[nodeId] = isHidden;
+    }
+
+    function flattenTree(nodes, depth) {
+        let result = [];
+        for (const n of nodes) {
+            result.push({ ...n, _depth: depth });
+            if (n.children && n.children.length > 0) {
+                result = result.concat(flattenTree(n.children, depth + 1));
+            }
+        }
+        return result;
     }
 
     function renderTree(roots) {
+        cachedTreeData = roots;
         const root = document.getElementById('coa-root');
         if (!root) return;
 
@@ -111,7 +131,6 @@
         style.id = 'coa-tree-styles';
         style.textContent = `
             .coa-tree { font-size: 0.9rem; }
-            .coa-node { }
             .coa-node-row {
                 display: flex; align-items: center; padding: 10px 14px;
                 cursor: pointer; border-radius: 6px; gap: 12px;
@@ -125,7 +144,6 @@
             }
             .coa-name { flex: 1; font-weight: 500; }
             .coa-balance { font-family: 'Courier New', monospace; font-weight: 600; min-width: 120px; text-align: right; direction: ltr; }
-
             .depth-0 > .coa-node-row { font-weight: 700; border-bottom: 2px solid var(--border-color, #e5e7eb); padding: 14px 14px; }
             .depth-0 > .coa-node-row .coa-code { font-size: 1rem; }
             .depth-1 > .coa-node-row { padding-right: 30px; }
@@ -133,11 +151,136 @@
             .depth-3 > .coa-node-row { padding-right: 80px; }
             .depth-4 > .coa-node-row { padding-right: 105px; }
             .depth-5 > .coa-node-row { padding-right: 130px; }
-
             .coa-children { display: none; }
             .coa-children:first-of-type { display: block; }
+            .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+            .form-grid-full { grid-column: 1 / -1; }
         `;
         document.head.appendChild(style);
+    }
+
+    function showAddAccountModal() {
+        const modal = document.getElementById('global-modal');
+        if (!modal) return;
+
+        const titleEl = document.getElementById('modal-title');
+        const bodyEl = document.getElementById('modal-body');
+        const saveBtn = document.getElementById('btn-modal-save');
+
+        titleEl.textContent = 'إضافة حساب جديد';
+
+        let parentOptions = '<option value="">-- بدون أب (حساب رئيسي) --</option>';
+        if (cachedTreeData) {
+            const flat = flattenTree(cachedTreeData, 0);
+            for (const acc of flat) {
+                const indent = '\u00A0\u00A0'.repeat(acc._depth);
+                const sysTag = acc.system_code ? ' [نظامي]' : '';
+                parentOptions += '<option value="' + acc.id + '">' + indent + esc(acc.account_code) + ' - ' + esc(acc.account_name) + sysTag + '</option>';
+            }
+        }
+
+        bodyEl.innerHTML = `
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>كود الحساب <span style="color:var(--danger-color)">*</span></label>
+                    <input type="text" id="f-acc-code" placeholder="مثال: 1.2.3" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label>نوع الحساب <span style="color:var(--danger-color)">*</span></label>
+                    <select id="f-acc-type">
+                        ${ACCOUNT_TYPES.map(t => '<option value="' + t.value + '">' + t.label + '</option>').join('')}
+                    </select>
+                </div>
+                <div class="form-group form-grid-full">
+                    <label>اسم الحساب <span style="color:var(--danger-color)">*</span></label>
+                    <input type="text" id="f-acc-name" placeholder="الاسم العربي للحساب" maxlength="255">
+                </div>
+                <div class="form-group form-grid-full">
+                    <label>الحساب الأب</label>
+                    <select id="f-acc-parent">${parentOptions}</select>
+                </div>
+            </div>
+            <div id="f-acc-error" style="color:var(--danger-color,#dc2626);margin-top:12px;display:none"></div>
+        `;
+
+        const parentSelect = document.getElementById('f-acc-parent');
+        const typeSelect = document.getElementById('f-acc-type');
+
+        parentSelect.addEventListener('change', function () {
+            const val = this.value;
+            if (val && cachedTreeData) {
+                const flat = flattenTree(cachedTreeData, 0);
+                const parent = flat.find(a => a.id === Number(val));
+                if (parent && parent.account_type) {
+                    typeSelect.value = parent.account_type;
+                }
+            }
+        });
+
+        const modalOverlay = modal;
+
+        function onSave() {
+            const code = document.getElementById('f-acc-code').value.trim();
+            const name = document.getElementById('f-acc-name').value.trim();
+            const type = document.getElementById('f-acc-type').value;
+            const parentId = document.getElementById('f-acc-parent').value;
+
+            if (!code || !name) {
+                const errEl = document.getElementById('f-acc-error');
+                errEl.textContent = 'كود الحساب واسم الحساب مطلوبان';
+                errEl.style.display = 'block';
+                return;
+            }
+
+            const errorEl = document.getElementById('f-acc-error');
+            errorEl.style.display = 'none';
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'جاري الحفظ...';
+
+            apiFetch('/accounting/accounts', 'POST', {
+                account_code: code,
+                account_name: name,
+                account_type: type,
+                parent_id: parentId || null
+            }).then(function (res) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'حفظ البيانات';
+                if (res.success) {
+                    modalOverlay.classList.remove('open');
+                    renderAgain();
+                } else {
+                    errorEl.textContent = res.message || 'حدث خطأ أثناء الحفظ';
+                    errorEl.style.display = 'block';
+                }
+            }).catch(function (err) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'حفظ البيانات';
+                errorEl.textContent = err.message || 'خطأ في الاتصال';
+                errorEl.style.display = 'block';
+            });
+        }
+
+        saveBtn.onclick = onSave;
+
+        var closeButtons = modalOverlay.querySelectorAll('.btn-close-modal');
+        for (var i = 0; i < closeButtons.length; i++) {
+            closeButtons[i].onclick = function () {
+                saveBtn.onclick = null;
+                modalOverlay.classList.remove('open');
+            };
+        }
+
+        modalOverlay.classList.add('open');
+    }
+
+    function renderAgain() {
+        const root = document.getElementById('coa-root');
+        if (!root) return;
+        root.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text-muted)"><i class="fa-solid fa-spinner fa-spin" style="font-size:2rem"></i><p style="margin-top:12px">جاري تحميل شجرة الحسابات...</p></div>';
+        apiFetch('/accounting/accounts/tree', 'GET').then(function (res) {
+            if (res.success && res.data) renderTree(res.data);
+        });
     }
 
     window.loadChartOfAccounts = async function () {
@@ -151,7 +294,7 @@
         root.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text-muted)"><i class="fa-solid fa-spinner fa-spin" style="font-size:2rem"></i><p style="margin-top:12px">جاري تحميل شجرة الحسابات...</p></div>';
 
         try {
-            const res = await apiGet('/accounting/accounts/tree');
+            const res = await apiFetch('/accounting/accounts/tree', 'GET');
             if (res.success && res.data) {
                 renderTree(res.data);
             } else {
@@ -161,5 +304,23 @@
             root.innerHTML = '<div class="empty-state"><i class="fa-solid fa-exclamation-triangle" style="font-size:3rem;color:var(--danger-color,#dc2626);margin-bottom:16px"></i><h3>خطأ في الاتصال</h3><p style="color:var(--text-muted)">' + esc(err.message) + '</p></div>';
         }
     };
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var btn = document.getElementById('btn-add-account');
+        if (btn) {
+            btn.addEventListener('click', function () {
+                if (!cachedTreeData) {
+                    apiFetch('/accounting/accounts/tree', 'GET').then(function (res) {
+                        if (res.success) {
+                            cachedTreeData = res.data;
+                        }
+                        showAddAccountModal();
+                    });
+                } else {
+                    showAddAccountModal();
+                }
+            });
+        }
+    });
 
 })();
