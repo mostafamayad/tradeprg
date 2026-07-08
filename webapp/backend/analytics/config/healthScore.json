@@ -1,0 +1,16 @@
+{
+  "negativeStockWeight": 25,
+  "deadStockWeight": 15,
+  "lowStockWeight": 20,
+  "healthyTurnoverBonus": 15,
+  "balancedAbcBonus": 20,
+  "damagedStockWeight": 10,
+  "noOverstockBonus": 25,
+  "targetTurnoverMin": 3,
+  "targetAbcRatioMin": 0.3,
+  "targetAbcRatioMax": 0.7,
+  "deadStockPctPenaltyFactor": 0.3,
+  "lowStockPctPenaltyFactor": 0.4,
+  "damagedPctPenaltyFactor": 0.2,
+  "negativePerItemPenalty": 5
+}

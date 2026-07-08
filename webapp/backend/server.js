@@ -202,6 +202,7 @@ app.use('/api/inventory',   applyPermissions('inventory'),   require('./routes/i
 app.use('/api/reports',     applyPermissions('reports'),     require('./routes/reports'));
 app.use('/api/reps',        applyPermissions('reps'),        require('./routes/reps'));
 app.use('/api/dashboard',   applyPermissions('dashboard'),   require('./routes/dashboard'));
+app.use('/api/analytics',   applyPermissions('reports'),     require('./analytics/routes/analyticsRoutes'));
 app.use('/api/users',       applyPermissions('users'),       require('./routes/users'));
 app.use('/api/settings',    applyPermissions('settings'),    require('./routes/settings'));
 app.use('/api/logs',        applyPermissions('logs'),        require('./routes/logs'));
