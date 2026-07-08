@@ -459,18 +459,21 @@ router.post('/year-close', asyncHandler(async (req, res) => {
     }
     console.log('✓ Integrity check passed (pre-close)');
 
-    // 0b. Double-close prevention (Risk #2)
+    // 0b. Fiscal period validation (H2)
     const year = new Date().getFullYear();
     const pool0 = await getPool();
-    const existingClose = await pool0.request()
-        .input('mod', sql.NVarChar, 'admin')
-        .input('act', sql.NVarChar, 'year_close')
-        .input('docPat', sql.NVarChar, `OPENING_BALANCE_${year}`)
-        .query(`SELECT COUNT(*) as cnt FROM journal_entries WHERE source_module = @mod AND source_action = @act AND source_document = @docPat`);
-    if (existingClose.recordset[0]?.cnt > 0) {
+    const periodsForYear = await pool0.request()
+        .input('yStart', sql.Date, `${year}-01-01`)
+        .input('yEnd', sql.Date, `${year}-12-31`)
+        .query(`SELECT id, name, status FROM fiscal_periods WHERE start_date <= @yEnd AND end_date >= @yStart ORDER BY start_date`);
+    if (periodsForYear.recordset.length === 0) {
+        return res.status(400).json({ success: false, message: `لا توجد فترات مالية للسنة ${year}. يرجى إنشاء الفترات المالية أولاً.` });
+    }
+    const allClosed = periodsForYear.recordset.every(p => p.status === 'closed');
+    if (allClosed) {
         return res.status(409).json({ success: false, message: `السنة المالية ${year} مغلقة بالفعل. لا يمكن إقفالها مرة أخرى.` });
     }
-    console.log(`✓ No existing close found for year ${year}`);
+    console.log(`✓ Fiscal periods for ${year}: ${periodsForYear.recordset.length} found, ${periodsForYear.recordset.filter(p => p.status === 'open').length} open`);
 
     let backupResult;
     try {
@@ -579,7 +582,31 @@ router.post('/year-close', asyncHandler(async (req, res) => {
             await txRequest.query(`UPDATE chart_of_accounts SET current_balance = @coa_bal_${acc.id} WHERE id = @coa_id_${acc.id}`);
         }
 
-        // 8. Verify
+        // 8. Close fiscal periods for the year and create next year (H2)
+        stepLog.push('--- Fiscal period management ---');
+        const openPeriods = periodsForYear.recordset.filter(p => p.status === 'open');
+        for (const fp of openPeriods) {
+            txRequest.input(`fp_close_id_${fp.id}`, sql.Int, fp.id);
+            txRequest.input(`fp_close_by_${fp.id}`, sql.Int, req.user.id);
+            await txRequest.query(`UPDATE fiscal_periods SET status = 'closed', closed_by = @fp_close_by_${fp.id}, closed_at = GETDATE() WHERE id = @fp_close_id_${fp.id} AND status = 'open'`);
+            stepLog.push(`  ✓ Period "${fp.name}" closed`);
+        }
+        const nextYear = year + 1;
+        const nextYearName = `FY ${nextYear}`;
+        txRequest.input('fp_ny_name', sql.NVarChar(100), nextYearName);
+        txRequest.input('fp_ny_start', sql.Date, `${nextYear}-01-01`);
+        txRequest.input('fp_ny_end', sql.Date, `${nextYear}-12-31`);
+        txRequest.input('fp_ny_by', sql.Int, req.user.id);
+        txRequest.input('fp_ny_notes', sql.NVarChar, `تم إنشاؤها تلقائياً بعد إقفال السنة ${year}`);
+        const existingNext = await txRequest.query(`SELECT COUNT(*) as cnt FROM fiscal_periods WHERE name = @fp_ny_name`);
+        if (existingNext.recordset[0]?.cnt === 0) {
+            await txRequest.query(`INSERT INTO fiscal_periods (name, start_date, end_date, status, opened_by, opened_at, notes) VALUES (@fp_ny_name, @fp_ny_start, @fp_ny_end, 'open', @fp_ny_by, GETDATE(), @fp_ny_notes)`);
+            stepLog.push(`  ✓ Next year period "${nextYearName}" created`);
+        } else {
+            stepLog.push(`  ~ Next year period "${nextYearName}" already exists`);
+        }
+
+        // 9. Verify
         stepLog.push('--- Verification ---');
         const counts = await verifyClean(txRequest);
         for (const [t, c] of Object.entries(counts)) {
@@ -594,16 +621,17 @@ router.post('/year-close', asyncHandler(async (req, res) => {
         console.log('======================');
 
         const integrity = await verifyIntegrity();
+        const fiscalInfo = { year, closedPeriods: openPeriods.map(p => p.name), nextYearPeriod: `FY ${nextYear}` };
 
         await logActivity(req, 'YEAR_CLOSE', 'admin', null, 'إقفال السنة المالية', null,
-            { backup: backupResult.name, integrity, cleanCounts: counts }, 'SUCCESS', null);
+            { backup: backupResult.name, integrity, cleanCounts: counts, fiscal: fiscalInfo }, 'SUCCESS', null);
 
         if (!integrity.allPassed) {
             return res.json({
                 success: true, warning: true,
                 message: 'تم إقفال السنة ولكن يوجد اختلال في بعض الأرصدة. يرجى مراجعة قسم الصحة.',
                 backup: { name: backupResult.name, path: backupResult.path, size: backupResult.size },
-                integrity, cleanCounts: counts
+                integrity, cleanCounts: counts, fiscal: fiscalInfo
             });
         }
 
@@ -611,7 +639,7 @@ router.post('/year-close', asyncHandler(async (req, res) => {
             success: true,
             message: 'تم إقفال السنة المالية ونقل الأرصدة بنجاح',
             backup: { name: backupResult.name, path: backupResult.path, size: backupResult.size },
-            integrity, cleanCounts: counts
+            integrity, cleanCounts: counts, fiscal: fiscalInfo
         });
     } catch (err) {
         if (transaction) { await transaction.rollback(); stepLog.push('✗ ROLLBACK'); }
