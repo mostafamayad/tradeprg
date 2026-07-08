@@ -6787,8 +6787,13 @@ function updateAdminOnlyVisibility() {
 }
 
 function restoreSavedView() {
-    const savedView = localStorage.getItem('activeView');
+    let savedView = localStorage.getItem('activeView');
     if (!savedView) return;
+    // Redirect old dashboard to executive-dashboard
+    if (savedView === 'dashboard') {
+        savedView = 'executive-dashboard';
+        localStorage.setItem('activeView', savedView);
+    }
     // Try nav-item first (direct sidebar links)
     const savedNavItem = document.querySelector(`.nav-item[data-target="${savedView}"]`);
     if (savedNavItem) {

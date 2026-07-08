@@ -4629,4 +4629,16 @@
         }
     };
 
+    // ── Auto-loader wrappers for views without explicit window.load ──
+    var _autoLoadViews = ['inventory', 'stock-count', 'stock-adjust', 'supplier-statement', 'crm-settlements', 'crm-targets', 'crm-workplan', 'sales-serials', 'sales-credit', 'new-year', 'fixed-assets', 'fiscal-periods', 'hr', 'payroll', 'hr-loans', 'license', 'collections'];
+    _autoLoadViews.forEach(function (id) {
+        var fnName = 'load' + id.charAt(0).toUpperCase() + id.slice(1).replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); });
+        if (typeof window[fnName] !== 'function') {
+            window[fnName] = function () {
+                var handler = viewHandlers['view-' + id];
+                if (handler) handler();
+            };
+        }
+    });
+
 })();

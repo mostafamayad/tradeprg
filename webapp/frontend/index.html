@@ -386,7 +386,7 @@
         <aside class="sidebar" id="sidebar">
             <nav class="sidebar-nav" id="sidebar-nav">
 
-                <a href="#" class="nav-item active" data-target="dashboard">
+                <a href="#" class="nav-item active" data-target="executive-dashboard">
                     <i class="fa-solid fa-house"></i>
                     <span>الرئيسية</span>
                 </a>
@@ -421,24 +421,14 @@
                     <span>الموردين</span>
                 </a>
 
+                <a href="#" class="nav-item has-submenu" data-menu="menu-hr">
+                    <i class="fa-solid fa-user-tie"></i>
+                    <span>الموارد البشرية</span>
+                </a>
+
                 <a href="#" class="nav-item has-submenu" data-menu="menu-reports">
                     <i class="fa-solid fa-chart-column"></i>
                     <span>التقارير</span>
-                </a>
-
-                <a href="#" class="nav-item" data-target="executive-dashboard">
-                    <i class="fa-solid fa-gauge-high"></i>
-                    <span>لوحة القيادة التنفيذية</span>
-                </a>
-
-                <a href="#" class="nav-item" data-target="cash-flow">
-                    <i class="fa-solid fa-money-bill-transfer"></i>
-                    <span>التدفقات النقدية</span>
-                </a>
-
-                <a href="#" class="nav-item" data-target="aging">
-                    <i class="fa-solid fa-chart-gantt"></i>
-                    <span>أعمار الديون</span>
                 </a>
 
                 <a href="#" class="nav-item has-submenu" data-menu="menu-settings">
@@ -455,42 +445,31 @@
             <a href="#" class="popup-item" data-target="sales-invoice"><i class="fa-solid fa-file-invoice-dollar"></i> فاتورة بيع</a>
             <a href="#" class="popup-item" data-target="sales-return"><i class="fa-solid fa-rotate-left"></i> مرتجع بيع</a>
             <a href="#" class="popup-item" data-target="ar-payment"><i class="fa-solid fa-hand-holding-dollar"></i> تحصيلات</a>
-            <a href="#" class="popup-item" data-target="reports-sales"><i class="fa-solid fa-chart-bar"></i> تقارير المبيعات</a>
             <a href="#" class="popup-item" data-target="crm-workplan"><i class="fa-solid fa-route"></i> خط سير المندوبين</a>
+            <a href="#" class="popup-item" data-target="crm-targets"><i class="fa-solid fa-bullseye"></i> تارجت ومستهدفات</a>
         </div>
 
         <div class="nav-popup" id="menu-purchases">
             <div class="nav-popup-header">المشتريات</div>
             <a href="#" class="popup-item" data-target="purchase-invoice"><i class="fa-solid fa-cart-shopping"></i> فاتورة شراء</a>
             <a href="#" class="popup-item" data-target="purchase-return"><i class="fa-solid fa-arrow-rotate-left"></i> مرتجع شراء</a>
-            <a href="#" class="popup-item" data-target="reports-purchases"><i class="fa-solid fa-chart-line"></i> تقارير المشتريات</a>
         </div>
 
         <div class="nav-popup" id="menu-warehouses">
             <div class="nav-popup-header">المخازن</div>
             <a href="#" class="popup-item" data-target="products"><i class="fa-solid fa-box-open"></i> دليل الأصناف</a>
             <a href="#" class="popup-item" data-target="stores-management"><i class="fa-solid fa-warehouse"></i> إدارة المخازن</a>
-            <a href="#" class="popup-item" data-target="inventory"><i class="fa-solid fa-boxes-stacked"></i> جرد المخازن</a>
             <a href="#" class="popup-item" data-target="inventory-transfers"><i class="fa-solid fa-truck-ramp-box"></i> تحويلات بين المخازن</a>
             <a href="#" class="popup-item" data-target="inventory-damaged"><i class="fa-solid fa-trash-can"></i> توالف ورواكد</a>
-            <a href="#" class="popup-item" data-target="inventory-card"><i class="fa-solid fa-clipboard-list"></i> بطاقة حركة الصنف</a>
             <a href="#" class="popup-item" data-target="stock-count"><i class="fa-solid fa-clipboard-check"></i> الجرد الفعلي</a>
             <a href="#" class="popup-item" data-target="stock-adjust"><i class="fa-solid fa-sliders"></i> تعديل المخزون</a>
-            <a href="#" class="popup-item" data-target="reports-inventory"><i class="fa-solid fa-chart-pie"></i> تقارير المخازن</a>
-            <a href="#" class="popup-item" data-target="inventory-analytics"><i class="fa-solid fa-gauge-high"></i> تحليلات المخزون (BI)</a>
-            <a href="#" class="popup-item" data-target="profitability"><i class="fa-solid fa-chart-line"></i> تحليل الربحية (BI)</a>
         </div>
 
         <div class="nav-popup" id="menu-accounting">
             <div class="nav-popup-header">المحاسبة</div>
             <a href="#" class="popup-item" data-target="treasury"><i class="fa-solid fa-vault"></i> الخزينة</a>
             <a href="#" class="popup-item" data-target="accounting"><i class="fa-solid fa-book"></i> قيد اليومية</a>
-            <a href="#" class="popup-item" data-target="journal-inquiry"><i class="fa-solid fa-magnifying-glass"></i> الاستعلام عن القيود</a>
             <a href="#" class="popup-item" data-target="chart-of-accounts"><i class="fa-solid fa-sitemap"></i> شجرة الحسابات</a>
-            <a href="#" class="popup-item" data-target="trial-balance"><i class="fa-solid fa-scale-balanced"></i> ميزان المراجعة</a>
-            <a href="#" class="popup-item" data-target="ledger-statement"><i class="fa-solid fa-receipt"></i> كشف حساب أستاذ</a>
-            <a href="#" class="popup-item" data-target="balance-sheet"><i class="fa-solid fa-balance-scale"></i> الميزانية العمومية</a>
-            <a href="#" class="popup-item" data-target="income-statement"><i class="fa-solid fa-chart-line"></i> قائمة الدخل</a>
             <a href="#" class="popup-item" data-target="fiscal-periods"><i class="fa-solid fa-calendar"></i> الفترات المالية</a>
             <a href="#" class="popup-item" data-target="fixed-assets"><i class="fa-solid fa-building"></i> الأصول الثابتة</a>
         </div>
@@ -498,7 +477,6 @@
         <div class="nav-popup" id="menu-customers">
             <div class="nav-popup-header">العملاء</div>
             <a href="#" class="popup-item" data-target="customers"><i class="fa-solid fa-users"></i> إدارة العملاء</a>
-            <a href="#" class="popup-item" data-target="aging"><i class="fa-solid fa-hourglass-half"></i> آجال العملاء</a>
             <a href="#" class="popup-item" data-target="ar-cheques"><i class="fa-solid fa-money-check"></i> شيكات العملاء</a>
             <a href="#" class="popup-item" data-target="ar-security-cheques"><i class="fa-solid fa-shield"></i> شيكات تأمينية</a>
             <a href="#" class="popup-item" data-target="ar-notice"><i class="fa-solid fa-circle-exclamation"></i> إشعار خصم / إضافة</a>
@@ -515,11 +493,68 @@
             <a href="#" class="popup-item" data-target="ap-matching"><i class="fa-solid fa-link"></i> مطابقة السداد</a>
         </div>
 
-        <div class="nav-popup" id="menu-reports">
-            <div class="nav-popup-header">التقارير</div>
-            <a href="#" class="popup-item" data-target="reports-sales"><i class="fa-solid fa-chart-line"></i> تقارير المبيعات</a>
-            <a href="#" class="popup-item" data-target="reports-purchases"><i class="fa-solid fa-chart-bar"></i> تقارير المشتريات</a>
-            <a href="#" class="popup-item" data-target="reports-inventory"><i class="fa-solid fa-chart-pie"></i> تقارير المخازن</a>
+        <div class="nav-popup" id="menu-hr">
+            <div class="nav-popup-header">الموارد البشرية</div>
+            <a href="#" class="popup-item" data-target="hr"><i class="fa-solid fa-user-tie"></i> ملفات الموظفين</a>
+            <a href="#" class="popup-item" data-target="payroll"><i class="fa-solid fa-money-check-dollar"></i> مسير الرواتب</a>
+            <a href="#" class="popup-item" data-target="hr-loans"><i class="fa-solid fa-hand-holding-dollar"></i> السلف والخصومات</a>
+        </div>
+
+        <div class="nav-popup nav-popup--reports" id="menu-reports">
+            <div class="nav-popup-header">📑 التقارير</div>
+
+            <div style="display:flex;gap:0">
+                <!-- Column 1 -->
+                <div style="flex:1;min-width:0">
+
+                    <div class="nav-popup-section-header">تقارير المبيعات</div>
+                    <a href="#" class="popup-item" data-target="reports-sales"><i class="fa-solid fa-chart-line"></i> تقارير المبيعات</a>
+                    <a href="#" class="popup-item" data-target="crm-targets"><i class="fa-solid fa-bullseye"></i> تارجت ومستهدفات</a>
+                    <a href="#" class="popup-item" data-target="sales-serials"><i class="fa-solid fa-qrcode"></i> تتبع السيريالات</a>
+
+                    <div class="nav-popup-section-header">تقارير المشتريات</div>
+                    <a href="#" class="popup-item" data-target="reports-purchases"><i class="fa-solid fa-chart-bar"></i> تقارير المشتريات</a>
+
+                    <div class="nav-popup-section-header">تقارير المخازن</div>
+                    <a href="#" class="popup-item" data-target="inventory"><i class="fa-solid fa-boxes-stacked"></i> المخزون الحالي</a>
+                    <a href="#" class="popup-item" data-target="inventory-card"><i class="fa-solid fa-clipboard-list"></i> بطاقة حركة الصنف</a>
+                    <a href="#" class="popup-item" data-target="reports-inventory"><i class="fa-solid fa-chart-pie"></i> تقارير المخازن</a>
+                    <a href="#" class="popup-item" data-target="inventory-analytics"><i class="fa-solid fa-gauge-high"></i> تحليلات المخزون</a>
+
+                    <div class="nav-popup-section-header">التقارير المالية</div>
+                    <a href="#" class="popup-item" data-target="trial-balance"><i class="fa-solid fa-scale-balanced"></i> ميزان المراجعة</a>
+                    <a href="#" class="popup-item" data-target="ledger-statement"><i class="fa-solid fa-receipt"></i> كشف حساب أستاذ</a>
+                    <a href="#" class="popup-item" data-target="income-statement"><i class="fa-solid fa-chart-line"></i> قائمة الدخل</a>
+                    <a href="#" class="popup-item" data-target="balance-sheet"><i class="fa-solid fa-balance-scale"></i> الميزانية العمومية</a>
+                    <a href="#" class="popup-item" data-target="cash-flow"><i class="fa-solid fa-money-bill-transfer"></i> التدفقات النقدية</a>
+                    <a href="#" class="popup-item" data-target="journal-inquiry"><i class="fa-solid fa-magnifying-glass"></i> الاستعلام عن القيود</a>
+                    <a href="#" class="popup-item" data-target="profitability"><i class="fa-solid fa-chart-line"></i> تحليل الربحية</a>
+
+                </div>
+
+                <!-- Column 2 -->
+                <div style="flex:1;min-width:0">
+
+                    <div class="nav-popup-section-header">تقارير العملاء</div>
+                    <a href="#" class="popup-item" data-target="aging"><i class="fa-solid fa-hourglass-half"></i> أعمار الديون (عملاء)</a>
+                    <a href="#" class="popup-item" data-target="reports-sales"><i class="fa-solid fa-crown"></i> العملاء الأكثر شراءً</a>
+                    <a href="#" class="popup-item" data-target="collections"><i class="fa-solid fa-hand-holding-dollar"></i> تحصيلات العملاء</a>
+                    <a href="#" class="popup-item" data-target="crm-settlements"><i class="fa-solid fa-scale-balanced"></i> تسويات العملاء</a>
+
+                    <div class="nav-popup-section-header">تقارير الموردين</div>
+                    <a href="#" class="popup-item" data-target="supplier-statement"><i class="fa-solid fa-file-invoice"></i> كشف حساب المورد</a>
+                    <a href="#" class="popup-item" data-target="supplier-payments"><i class="fa-solid fa-money-check-dollar"></i> مدفوعات الموردين</a>
+
+                    <div class="nav-popup-section-header">تقارير المندوبين</div>
+                    <a href="#" class="popup-item" data-target="crm-workplan"><i class="fa-solid fa-route"></i> خطط سير المندوبين</a>
+                    <a href="#" class="popup-item" data-target="crm-targets"><i class="fa-solid fa-bullseye"></i> تحقيق الهدف</a>
+                    <a href="#" class="popup-item" data-target="reports-sales"><i class="fa-solid fa-user-tie"></i> أداء المندوبين</a>
+
+                    <div class="nav-popup-section-header">تقارير الضرائب</div>
+                    <a href="#" class="popup-item" data-target="reports-sales"><i class="fa-solid fa-file-invoice-dollar"></i> ضريبة القيمة المضافة</a>
+
+                </div>
+            </div>
         </div>
 
         <div class="nav-popup" id="menu-settings">
@@ -527,10 +562,7 @@
             <a href="#" class="popup-item" data-target="settings"><i class="fa-solid fa-sliders"></i> الإعدادات</a>
             <a href="#" class="popup-item admin-only" data-target="license"><i class="fa-solid fa-key"></i> إدارة الترخيص</a>
             <a href="#" class="popup-item admin-only" data-target="activity-logs"><i class="fa-solid fa-list-check"></i> سجل الحركات</a>
-            <div class="nav-popup-divider"></div>
-            <a href="#" class="popup-item" data-target="hr"><i class="fa-solid fa-user-tie"></i> ملفات الموظفين</a>
-            <a href="#" class="popup-item" data-target="payroll"><i class="fa-solid fa-money-check-dollar"></i> مسار الرواتب</a>
-            <a href="#" class="popup-item" data-target="hr-loans"><i class="fa-solid fa-hand-holding-dollar"></i> السلف والخصومات</a>
+            <a href="#" class="popup-item" data-target="new-year"><i class="fa-solid fa-calendar-xmark"></i> إقفال السنة المالية</a>
         </div>
 
         <!-- Nav Popup Backdrop -->
@@ -4479,13 +4511,14 @@
 
             // Trigger loaders — must match nav-item handler in app.js
             var loaders = {
-                'dashboard': 'loadDashboard',
                 'executive-dashboard': 'loadExecutiveDashboard',
                 'cash-flow': 'loadCashFlow',
                 'collections': 'loadCollections',
                 'aging': 'loadAging',
                 'sales-invoice': 'loadSalesInvoicesList',
                 'sales-return': 'initSalesReturn',
+                'sales-serials': 'loadSalesSerials',
+                'sales-credit': 'loadSalesCredit',
                 'ar-payment': 'initArPayment',
                 'ar-cheques': 'initArCheques',
                 'ar-security-cheques': 'initArSecurityCheques',
@@ -4496,16 +4529,20 @@
                 'ap-notice': 'initApNotice',
                 'ap-matching': 'initApMatching',
                 'supplier-payments': 'loadSupplierPayments',
+                'supplier-statement': 'loadSupplierStatement',
                 'stores-management': 'loadStoresManagement',
                 'suppliers': 'loadSuppliersList',
                 'purchase-invoice': 'initPurchaseInvoice',
                 'purchase-return': 'initPurchaseReturn',
                 'reports-purchases': 'initPurchasesReport',
                 'reports-inventory': 'initInventoryReport',
+                'inventory': 'loadInventory',
                 'inventory-card': 'initInventoryCard',
                 'inventory-transfers': 'initInventoryTransfers',
                 'inventory-damaged': 'initInventoryDamaged',
                 'inventory-analytics': 'loadInventoryAnalytics',
+                'stock-count': 'loadStockCount',
+                'stock-adjust': 'loadStockAdjust',
                 'profitability': 'loadProfitability',
                 'activity-logs': 'loadActivityLogs',
                 'chart-of-accounts': 'loadChartOfAccounts',
@@ -4514,7 +4551,17 @@
                 'trial-balance': 'loadTrialBalance',
                 'ledger-statement': 'loadLedger',
                 'balance-sheet': 'loadBalanceSheet',
-                'income-statement': 'loadIncomeStatement'
+                'income-statement': 'loadIncomeStatement',
+                'crm-workplan': 'loadCrmWorkplan',
+                'crm-targets': 'loadCrmTargets',
+                'crm-settlements': 'loadCrmSettlements',
+                'new-year': 'loadNewYear',
+                'fixed-assets': 'loadFixedAssets',
+                'fiscal-periods': 'loadFiscalPeriods',
+                'hr': 'loadHr',
+                'payroll': 'loadPayroll',
+                'hr-loans': 'loadHrLoans',
+                'license': 'loadLicense'
             };
             var fnName = loaders[targetId];
             if (fnName && typeof window[fnName] === 'function') {
