@@ -535,26 +535,63 @@ router.post('/year-close', asyncHandler(async (req, res) => {
         }
         stepLog.push('✓ Opening balances saved');
 
-        // 3. Post opening journal entry
+        // 3. Close P&L accounts to retained earnings & post opening entry (H4)
         const sysRetainedEarnings = await getSystemAccountAsync(txRequest, 'SYS_RETAINED_EARNINGS');
-        const lines = [];
-        let totalDebit = 0, totalCredit = 0;
-        for (const acc of coaBalances.recordset) {
+        const balanceAccounts = coaBalances.recordset.filter(a => a.account_type !== 'revenue' && a.account_type !== 'expense');
+        const plAccounts = coaBalances.recordset.filter(a => a.account_type === 'revenue' || a.account_type === 'expense');
+
+        // 3a. Closing entry: zero out revenue/expense, transfer net to retained earnings
+        let closeTotalDebit = 0, closeTotalCredit = 0;
+        let netIncome = 0; // Hoisted for COA re-apply step
+        const closeLines = [];
+        for (const acc of plAccounts) {
             const bal = parseFloat(acc.current_balance) || 0;
             if (Math.abs(bal) < 0.01) continue;
-            const isDebitType = acc.account_type === 'asset' || acc.account_type === 'expense';
-            if ((isDebitType && bal > 0) || (!isDebitType && bal < 0)) {
-                lines.push({ account_id: acc.id, debit: Math.abs(bal), credit: 0, description: `رصيد افتتاحي ${acc.account_name}` });
-                totalDebit += Math.abs(bal);
+            const isRevenue = acc.account_type === 'revenue';
+            const isDebitBal = (isRevenue && bal < 0) || (!isRevenue && bal > 0);
+            if (isDebitBal) {
+                closeLines.push({ account_id: acc.id, debit: Math.abs(bal), credit: 0, description: `إقفال ${acc.account_name}` });
+                closeTotalDebit += Math.abs(bal);
             } else {
-                lines.push({ account_id: acc.id, debit: 0, credit: Math.abs(bal), description: `رصيد افتتاحي ${acc.account_name}` });
-                totalCredit += Math.abs(bal);
+                closeLines.push({ account_id: acc.id, debit: 0, credit: Math.abs(bal), description: `إقفال ${acc.account_name}` });
+                closeTotalCredit += Math.abs(bal);
             }
         }
-        if (lines.length > 0) {
-            const diff = totalDebit - totalCredit;
+        netIncome = closeTotalCredit - closeTotalDebit;
+        if (closeLines.length > 0) {
+            if (Math.abs(netIncome) > 0.01) {
+                if (netIncome > 0) {
+                    closeLines.push({ account_id: sysRetainedEarnings, debit: 0, credit: netIncome, description: 'صافي الربح المرحل إلى الأرباح المحتجزة' });
+                } else {
+                    closeLines.push({ account_id: sysRetainedEarnings, debit: Math.abs(netIncome), credit: 0, description: 'صافي الخسارة المرحل إلى الأرباح المحتجزة' });
+                }
+            }
+            await postJournalEntryAsync(txRequest, `${year}-12-31`,
+                `قيود إقفال حسابات الإيرادات والمصروفات للسنة ${year}`, closeLines,
+                'year_close', null, req.user.id,
+                { module: 'admin', action: 'year_close', document: `CLOSING_${year}`, isSystem: true });
+        }
+        stepLog.push(`✓ Closing entry posted (${closeLines.length} lines)`);
+
+        // 3b. Opening entry: carry forward only balance sheet accounts
+        let openTotalDebit = 0, openTotalCredit = 0;
+        const openLines = [];
+        for (const acc of balanceAccounts) {
+            const bal = parseFloat(acc.current_balance) || 0;
+            if (Math.abs(bal) < 0.01) continue;
+            const isDebitType = acc.account_type === 'asset';
+            if ((isDebitType && bal > 0) || (!isDebitType && bal < 0)) {
+                openLines.push({ account_id: acc.id, debit: Math.abs(bal), credit: 0, description: `رصيد افتتاحي ${acc.account_name}` });
+                openTotalDebit += Math.abs(bal);
+            } else {
+                openLines.push({ account_id: acc.id, debit: 0, credit: Math.abs(bal), description: `رصيد افتتاحي ${acc.account_name}` });
+                openTotalCredit += Math.abs(bal);
+            }
+        }
+        if (openLines.length > 0) {
+            const diff = openTotalDebit - openTotalCredit;
             if (Math.abs(diff) > 0.01) {
-                lines.push({
+                openLines.push({
                     account_id: sysRetainedEarnings,
                     debit: diff > 0 ? 0 : Math.abs(diff),
                     credit: diff > 0 ? diff : 0,
@@ -562,11 +599,11 @@ router.post('/year-close', asyncHandler(async (req, res) => {
                 });
             }
             await postJournalEntryAsync(txRequest, `${year}-12-31`,
-                `قيود افتتاحية للسنة المالية ${year}`, lines,
+                `قيود افتتاحية للسنة المالية ${year + 1}`, openLines,
                 'year_close', null, req.user.id,
                 { module: 'admin', action: 'year_close', document: `OPENING_BALANCE_${year}`, isSystem: true });
         }
-        stepLog.push(`✓ Opening entry posted (${lines.length} lines)`);
+        stepLog.push(`✓ Opening entry posted (${openLines.length} lines)`);
 
         // 4. Delete transactional data
         stepLog.push('--- Deleting transactional data ---');
@@ -582,13 +619,19 @@ router.post('/year-close', asyncHandler(async (req, res) => {
         await txRequest.query(`UPDATE chart_of_accounts SET current_balance = 0`);
         stepLog.push('✓ Master balances restored');
 
-        // 7. Re-apply COA opening balances
+        // 7. Re-apply COA opening balances (H4: revenue/expense zeroed, RE adjusted)
         for (const acc of coaBalances.recordset) {
             const bal = parseFloat(acc.current_balance) || 0;
-            if (Math.abs(bal) < 0.01) continue;
-            txRequest.input(`coa_bal_${acc.id}`, sql.Decimal(18,2), bal);
-            txRequest.input(`coa_id_${acc.id}`, sql.Int, acc.id);
-            await txRequest.query(`UPDATE chart_of_accounts SET current_balance = @coa_bal_${acc.id} WHERE id = @coa_id_${acc.id}`);
+            const isPL = acc.account_type === 'revenue' || acc.account_type === 'expense';
+            if (isPL) {
+                txRequest.input(`coa_pl_${acc.id}`, sql.Int, acc.id);
+                await txRequest.query(`UPDATE chart_of_accounts SET current_balance = 0 WHERE id = @coa_pl_${acc.id}`);
+            } else if (Math.abs(bal) >= 0.01) {
+                const adjustedBal = (acc.account_type === 'equity' && acc.id === sysRetainedEarnings) ? bal + netIncome : bal;
+                txRequest.input(`coa_bal_${acc.id}`, sql.Decimal(18,2), adjustedBal);
+                txRequest.input(`coa_id_${acc.id}`, sql.Int, acc.id);
+                await txRequest.query(`UPDATE chart_of_accounts SET current_balance = @coa_bal_${acc.id} WHERE id = @coa_id_${acc.id}`);
+            }
         }
 
         // 8. Close fiscal periods for the year and create next year (H2)
