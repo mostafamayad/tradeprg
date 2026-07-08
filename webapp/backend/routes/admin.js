@@ -451,6 +451,16 @@ router.post('/year-close', asyncHandler(async (req, res) => {
         return res.status(400).json({ success: false, message: 'يرجى تحديد مسار حفظ النسخة الاحتياطية' });
     }
 
+    // 0. Year parameter (H3)
+    const year = parseInt(req.body.year) || new Date().getFullYear();
+    if (isNaN(year) || year < 2000 || year > 2100) {
+        return res.status(400).json({ success: false, message: 'سنة غير صالحة. يرجى إدخال سنة بين 2000 و 2100.' });
+    }
+    const currentYear = new Date().getFullYear();
+    if (year > currentYear) {
+        return res.status(400).json({ success: false, message: `لا يمكن إقفال السنة ${year} لأنها في المستقبل.` });
+    }
+
     // 0. Pre-close integrity validation (Risk #6)
     const preIntegrity = await verifyIntegrity();
     if (!preIntegrity.allPassed) {
@@ -460,7 +470,6 @@ router.post('/year-close', asyncHandler(async (req, res) => {
     console.log('✓ Integrity check passed (pre-close)');
 
     // 0b. Fiscal period validation (H2)
-    const year = new Date().getFullYear();
     const pool0 = await getPool();
     const periodsForYear = await pool0.request()
         .input('yStart', sql.Date, `${year}-01-01`)
@@ -552,10 +561,10 @@ router.post('/year-close', asyncHandler(async (req, res) => {
                     description: 'فارق ترحيل الأرصدة الافتتاحية'
                 });
             }
-            await postJournalEntryAsync(txRequest, new Date().toISOString().slice(0,10),
-                'قيود افتتاحية للسنة المالية الجديدة', lines,
+            await postJournalEntryAsync(txRequest, `${year}-12-31`,
+                `قيود افتتاحية للسنة المالية ${year}`, lines,
                 'year_close', null, req.user.id,
-                { module: 'admin', action: 'year_close', document: 'OPENING_BALANCE_' + new Date().getFullYear(), isSystem: true });
+                { module: 'admin', action: 'year_close', document: `OPENING_BALANCE_${year}`, isSystem: true });
         }
         stepLog.push(`✓ Opening entry posted (${lines.length} lines)`);
 
