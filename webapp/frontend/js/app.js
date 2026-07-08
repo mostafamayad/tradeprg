@@ -7091,6 +7091,7 @@ const availableScreens = [
     { id: 'cash-flow', name: 'التدفقات النقدية (BI)' },
     { id: 'aging', name: 'أعمار الديون (BI)' },
     { id: 'inventory-analytics', name: 'تحليلات المخزون (BI)' },
+    { id: 'profitability', name: 'تحليل الربحية (BI)' },
     { id: 'sales-invoices', name: 'فواتير المبيعات' },
     { id: 'sales-returns', name: 'مرتجعات المبيعات' },
     { id: 'customers', name: 'قائمة العملاء (دخول للشاشة)' },

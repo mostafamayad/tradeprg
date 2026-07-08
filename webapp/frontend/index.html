@@ -478,6 +478,7 @@
             <a href="#" class="popup-item" data-target="stock-adjust"><i class="fa-solid fa-sliders"></i> تعديل المخزون</a>
             <a href="#" class="popup-item" data-target="reports-inventory"><i class="fa-solid fa-chart-pie"></i> تقارير المخازن</a>
             <a href="#" class="popup-item" data-target="inventory-analytics"><i class="fa-solid fa-gauge-high"></i> تحليلات المخزون (BI)</a>
+            <a href="#" class="popup-item" data-target="profitability"><i class="fa-solid fa-chart-line"></i> تحليل الربحية (BI)</a>
         </div>
 
         <div class="nav-popup" id="menu-accounting">
@@ -2326,6 +2327,124 @@
                                 </div>
                             </div>
                             <div id="inv-alert-section" style="font-size:0.9rem;color:#64748b">جاري التحميل...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ======================================================== -->
+                <!--  VIEW: PROFITABILITY ANALYTICS (BI-5)                     -->
+                <!-- ======================================================== -->
+                <div class="view" id="view-profitability">
+                    <div class="page-header-between">
+                        <div>
+                            <h1 class="page-title"><i class="fa-solid fa-chart-line" style="color:#10b981"></i> تحليل الربحية</h1>
+                            <p class="page-subtitle">مستوى الشركة — الفروع — المندوبين — المنتجات — الفئات</p>
+                        </div>
+                    </div>
+
+                    <!-- Company KPIs -->
+                    <div class="exec-stats">
+                        <div class="stat-card stat-card--green">
+                            <div class="stat-details">
+                                <span class="stat-label"><i class="fa-solid fa-coins"></i> الإيرادات</span>
+                                <h3 class="stat-value" id="prof-revenue">—</h3>
+                            </div>
+                            <div class="stat-media stat-media--green"><i class="fa-solid fa-chart-line"></i></div>
+                        </div>
+                        <div class="stat-card stat-card--orange">
+                            <div class="stat-details">
+                                <span class="stat-label"><i class="fa-solid fa-cube"></i> تكلفة المبيعات</span>
+                                <h3 class="stat-value" id="prof-cogs">—</h3>
+                            </div>
+                            <div class="stat-media stat-media--orange"><i class="fa-solid fa-box"></i></div>
+                        </div>
+                        <div class="stat-card stat-card--purple">
+                            <div class="stat-details">
+                                <span class="stat-label"><i class="fa-solid fa-hand-holding-dollar"></i> إجمالي الربح</span>
+                                <h3 class="stat-value" id="prof-gross-profit">—</h3>
+                                <div class="stat-footer"><span class="stat-trend stat-trend--up">الهامش</span><span class="stat-period" id="prof-margin">—</span></div>
+                            </div>
+                            <div class="stat-media stat-media--primary"><i class="fa-solid fa-percentage"></i></div>
+                        </div>
+                    </div>
+
+                    <!-- Tab navigation for levels -->
+                    <div style="display:flex;gap:0;margin-bottom:24px;border-bottom:2px solid #e2e8f0">
+                        <button class="prof-tab active" data-level="branch" style="padding:8px 20px;border:none;background:none;font-weight:600;color:#10b981;border-bottom:2px solid #10b981;cursor:pointer;font-family:inherit"><i class="fa-solid fa-store"></i> الفروع</button>
+                        <button class="prof-tab" data-level="rep" style="padding:8px 20px;border:none;background:none;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit"><i class="fa-solid fa-user-tie"></i> المندوبين</button>
+                        <button class="prof-tab" data-level="product" style="padding:8px 20px;border:none;background:none;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit"><i class="fa-solid fa-box"></i> المنتجات</button>
+                        <button class="prof-tab" data-level="category" style="padding:8px 20px;border:none;background:none;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit"><i class="fa-solid fa-layer-group"></i> الفئات</button>
+                    </div>
+
+                    <!-- Profit Trend Chart -->
+                    <div class="dashboard-grid">
+                        <div class="dashboard-grid-main">
+                            <div class="page-card dashboard-chart-card">
+                                <div class="page-card-header">
+                                    <h3 class="page-card-title"><i class="fa-solid fa-chart-line" style="color:#10b981"></i> اتجاه الربحية (شهري)</h3>
+                                </div>
+                                <div class="dash-chart-container"><canvas id="prof-trend-chart"></canvas></div>
+                            </div>
+                        </div>
+                        <div class="page-card dashboard-grid-side">
+                            <div class="page-card-header">
+                                <h3 class="page-card-title"><i class="fa-solid fa-trophy" style="color:#f59e0b"></i> أفضل العملاء</h3>
+                            </div>
+                            <ul id="prof-top-customers" class="dash-list"><li class="dash-list-loading">جاري التحميل...</li></ul>
+                        </div>
+                    </div>
+
+                    <!-- Level detail table -->
+                    <div class="page-section">
+                        <div class="page-card" style="min-height:300px">
+                            <div class="page-card-header">
+                                <h3 class="page-card-title"><i class="fa-solid fa-table" style="color:#10b981"></i> تفاصيل <span id="prof-level-title">الفروع</span></h3>
+                            </div>
+                            <div class="page-table-wrap">
+                                <div id="prof-level-content" style="font-size:0.9rem">جاري التحميل...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pareto chart -->
+                    <div class="dashboard-grid">
+                        <div class="page-card dashboard-chart-card">
+                            <div class="page-card-header">
+                                <h3 class="page-card-title"><i class="fa-solid fa-chart-bar" style="color:#7c3aed"></i> هامش الربح حسب الفرع</h3>
+                            </div>
+                            <div class="dash-chart-container"><canvas id="prof-margin-chart"></canvas></div>
+                        </div>
+                        <div class="page-card" style="min-height:380px">
+                            <div class="page-card-header">
+                                <h3 class="page-card-title"><i class="fa-solid fa-chart-pie" style="color:#f59e0b"></i> الربح حسب الفئة</h3>
+                            </div>
+                            <div class="dash-chart-container"><canvas id="prof-category-chart"></canvas></div>
+                        </div>
+                    </div>
+
+                    <!-- Top 10 lists -->
+                    <div class="dashboard-dual-grid">
+                        <div class="page-card">
+                            <div class="page-card-header">
+                                <h3 class="page-card-title"><i class="fa-solid fa-box" style="color:#3b82f6"></i> أفضل 10 منتجات</h3>
+                            </div>
+                            <div class="page-table-wrap">
+                                <table class="data-table" style="font-size:0.85rem">
+                                    <thead><tr><th>المنتج</th><th>الإيراد</th><th>الربح</th><th>الهامش</th></tr></thead>
+                                    <tbody id="prof-top-products"><tr><td colspan="4" class="text-center">جاري التحميل...</td></tr></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="page-card">
+                            <div class="page-card-header">
+                                <h3 class="page-card-title"><i class="fa-solid fa-user-tie" style="color:#f59e0b"></i> أفضل المندوبين</h3>
+                            </div>
+                            <div class="page-table-wrap">
+                                <table class="data-table" style="font-size:0.85rem">
+                                    <thead><tr><th>المندوب</th><th>المنطقة</th><th>الإيراد</th><th>الربح</th></tr></thead>
+                                    <tbody id="prof-top-reps"><tr><td colspan="4" class="text-center">جاري التحميل...</td></tr></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -4387,6 +4506,7 @@
                 'inventory-transfers': 'initInventoryTransfers',
                 'inventory-damaged': 'initInventoryDamaged',
                 'inventory-analytics': 'loadInventoryAnalytics',
+                'profitability': 'loadProfitability',
                 'activity-logs': 'loadActivityLogs',
                 'chart-of-accounts': 'loadChartOfAccounts',
                 'accounting': 'loadJournalVoucher',

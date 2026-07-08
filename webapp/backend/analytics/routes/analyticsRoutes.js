@@ -5,6 +5,7 @@ const service = require('../services/analyticsService');
 const cfService = require('../services/cashFlowService');
 const agingService = require('../services/agingService');
 const inventoryService = require('../services/inventoryService');
+const profitabilityService = require('../services/profitabilityService');
 const { respond, cacheMiddleware, TTL } = require('../utils/analyticsResponse');
 
 // ─── v1 Router ──────────────────────────────────────────
@@ -308,6 +309,16 @@ v1.get('/cash-flow/forecast',
         const start = Date.now();
         const { lookbackMonths, forecastMonths } = req.query;
         const result = await cfService.getCashFlowForecast(lookbackMonths, forecastMonths);
+        respond(res, result, start);
+    })
+);
+
+// ── Profitability (BI-5) ────────────────────────────────
+v1.get('/profitability/dashboard',
+    cacheMiddleware('profitability-dashboard', TTL.PROFITABILITY_DASHBOARD),
+    asyncHandler(async (req, res) => {
+        const start = Date.now();
+        const result = await profitabilityService.getProfitabilityDashboard(req.query);
         respond(res, result, start);
     })
 );

@@ -999,6 +999,185 @@
     };
 
     // ============================================================
+    // VIEW: PROFITABILITY ANALYTICS (BI-5)
+    // ============================================================
+    let profTrendChart = null, profMarginChart = null, profCategoryChart = null;
+
+    viewHandlers['view-profitability'] = async function () {
+        const set = (id, val) => { const e = document.getElementById(id); if (e) e.innerHTML = val; };
+        const fmtP = (v) => parseFloat(v || 0).toLocaleString('ar-EG');
+        const escHtml = (s) => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
+
+        // Tab switching
+        const tabs = document.querySelectorAll('#view-profitability .prof-tab');
+        tabs.forEach(tab => {
+            if (tab.dataset.bound) return;
+            tab.dataset.bound = '1';
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => { t.style.color = '#64748b'; t.style.borderBottomColor = 'transparent'; });
+                tab.style.color = '#10b981'; tab.style.borderBottomColor = '#10b981';
+                document.getElementById('prof-level-title').textContent = tab.textContent.trim();
+                renderLevelTable(tab.dataset.level);
+            });
+        });
+
+        let data = null;
+
+        function renderLevelTable(level) {
+            if (!data) return;
+            const levels = data.data.levels;
+            let rows = [];
+            let title = '';
+            if (level === 'branch') { rows = levels.branch; title = 'الفرع'; }
+            else if (level === 'rep') { rows = levels.sales_rep; title = 'المندوب'; }
+            else if (level === 'product') { rows = levels.product; title = 'المنتج'; }
+            else { rows = levels.category; title = 'الفئة'; }
+
+            const container = document.getElementById('prof-level-content');
+            if (!rows || rows.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:30px;color:#64748b">لا توجد بيانات</div>';
+                return;
+            }
+
+            if (level === 'product') {
+                container.innerHTML = '<table class="data-table" style="font-size:0.85rem"><thead><tr><th>' + title + '</th><th>الفئة</th><th>الإيراد</th><th>التكلفة</th><th>الربح</th><th>الهامش</th><th>الكمية</th></tr></thead><tbody>'
+                    + rows.map(r => '<tr><td>' + escHtml(r.product_name) + '</td><td>' + escHtml(r.category) + '</td><td>' + fmtP(r.revenue) + '</td><td>' + fmtP(r.cogs) + '</td><td style="color:#10b981;font-weight:600">' + fmtP(r.profit) + '</td><td>' + r.margin + '%</td><td>' + fmtP(r.qty_sold) + '</td></tr>').join('')
+                    + '</tbody></table>';
+            } else if (level === 'category') {
+                container.innerHTML = '<table class="data-table" style="font-size:0.85rem"><thead><tr><th>' + title + '</th><th>الإيراد</th><th>التكلفة</th><th>الربح</th><th>الهامش</th></tr></thead><tbody>'
+                    + rows.map(r => '<tr><td>' + escHtml(r.category) + '</td><td>' + fmtP(r.revenue) + '</td><td>' + fmtP(r.cogs) + '</td><td style="color:#10b981;font-weight:600">' + fmtP(r.profit) + '</td><td>' + r.margin + '%</td></tr>').join('')
+                    + '</tbody></table>';
+            } else {
+                container.innerHTML = '<table class="data-table" style="font-size:0.85rem"><thead><tr><th>' + title + '</th><th>المنطقة</th><th>الفواتير</th><th>الإيراد</th><th>التكلفة</th><th>الربح</th><th>الهامش</th></tr></thead><tbody>'
+                    + rows.map(r => '<tr><td>' + escHtml(r.store_name || r.rep_name || '-') + '</td><td>' + escHtml(r.region || '-') + '</td><td>' + (r.invoice_count || 0) + '</td><td>' + fmtP(r.revenue) + '</td><td>' + fmtP(r.cogs) + '</td><td style="color:#10b981;font-weight:600">' + fmtP(r.profit) + '</td><td>' + r.margin + '%</td></tr>').join('')
+                    + '</tbody></table>';
+            }
+        }
+
+        try {
+            const res = await req('/analytics/v1/profitability/dashboard');
+            if (!res.success) return;
+            data = res;
+            const d = res.data;
+            const c = d.company;
+
+            set('prof-revenue', fmtP(c.revenue) + ' ج.م');
+            set('prof-cogs', fmtP(c.cogs) + ' ج.م');
+            set('prof-gross-profit', fmtP(c.gross_profit) + ' ج.م');
+            set('prof-margin', c.gross_margin + '%');
+
+            // Trend chart
+            const trendCtx = document.getElementById('prof-trend-chart');
+            if (trendCtx && typeof Chart !== 'undefined' && d.charts.profit_trend && d.charts.profit_trend.length > 0) {
+                if (profTrendChart) profTrendChart.destroy();
+                const t = d.charts.profit_trend;
+                profTrendChart = new Chart(trendCtx, {
+                    type: 'line',
+                    data: {
+                        labels: t.map(r => r.month),
+                        datasets: [
+                            { label: 'الإيراد', data: t.map(r => r.revenue), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.4, borderWidth: 2 },
+                            { label: 'الربح', data: t.map(r => r.profit), borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.4, borderWidth: 2 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { position: 'top', labels: { font: { family: 'Cairo' } } } },
+                        scales: {
+                            y: { beginAtZero: true, grid: { borderDash: [5, 5] }, ticks: { font: { family: 'Cairo' } } },
+                            x: { grid: { display: false }, ticks: { font: { family: 'Cairo' }, maxTicksLimit: 8 } }
+                        }
+                    }
+                });
+            }
+
+            // Margin by branch chart
+            const marginCtx = document.getElementById('prof-margin-chart');
+            if (marginCtx && typeof Chart !== 'undefined' && d.charts.margin_by_branch && d.charts.margin_by_branch.length > 0) {
+                if (profMarginChart) profMarginChart.destroy();
+                const mb = d.charts.margin_by_branch;
+                profMarginChart = new Chart(marginCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: mb.map(b => b.name),
+                        datasets: [
+                            { label: 'الربح', data: mb.map(b => b.profit), backgroundColor: '#10b981', borderRadius: 4 },
+                            { label: 'الهامش %', data: mb.map(b => b.margin), backgroundColor: '#7c3aed', borderRadius: 4 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { position: 'top', labels: { font: { family: 'Cairo' } } } },
+                        scales: {
+                            y: { beginAtZero: true, grid: { borderDash: [5, 5] }, ticks: { font: { family: 'Cairo' } } },
+                            x: { grid: { display: false }, ticks: { font: { family: 'Cairo' } } }
+                        }
+                    }
+                });
+            }
+
+            // Category chart (doughnut)
+            const catCtx = document.getElementById('prof-category-chart');
+            if (catCtx && typeof Chart !== 'undefined' && d.charts.profit_by_category && d.charts.profit_by_category.length > 0) {
+                if (profCategoryChart) profCategoryChart.destroy();
+                const pc = d.charts.profit_by_category;
+                profCategoryChart = new Chart(catCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: pc.map(c => c.category + ' (' + c.margin + '%)'),
+                        datasets: [{ data: pc.map(c => c.profit), backgroundColor: ['#7c3aed', '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6'], borderWidth: 0 }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom', labels: { font: { family: 'Cairo' } } } }
+                    }
+                });
+            }
+
+            // Top customers list
+            const tcEl = document.getElementById('prof-top-customers');
+            if (tcEl && d.top10 && d.top10.customers) {
+                tcEl.innerHTML = d.top10.customers.map((c, i) => {
+                    const badges = ['#fbbf24', '#94a3b8', '#f87171'];
+                    return '<li style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9">'
+                        + '<div style="display:flex;align-items:center;gap:10px">'
+                        + '<span style="font-size:1.1rem;color:' + (badges[i] || '#cbd5e1') + '"><i class="fa-solid fa-medal"></i></span>'
+                        + '<div><span style="font-weight:600;color:#1e293b;font-size:0.85rem">' + escHtml(c.customer_name) + '</span>'
+                        + '<br><span style="font-size:0.75rem;color:#64748b">' + escHtml(c.region || '-') + ' · ' + c.margin + '%</span></div></div>'
+                        + '<strong style="color:#10b981;font-size:0.85rem">' + fmtP(c.profit) + ' ج.م</strong></li>';
+                }).join('');
+            }
+
+            // Top products table
+            const tpEl = document.getElementById('prof-top-products');
+            if (tpEl && d.top10 && d.top10.products) {
+                tpEl.innerHTML = d.top10.products.map(p =>
+                    '<tr><td><strong>' + escHtml(p.product_name) + '</strong></td><td>' + fmtP(p.revenue) + '</td><td style="color:#10b981;font-weight:600">' + fmtP(p.profit) + '</td><td>' + p.margin + '%</td></tr>'
+                ).join('') || '<tr><td colspan="4" class="text-center">لا توجد بيانات</td></tr>';
+            }
+
+            // Top reps table
+            const trEl = document.getElementById('prof-top-reps');
+            if (trEl && d.top10 && d.top10.sales_reps) {
+                trEl.innerHTML = d.top10.sales_reps.map(r =>
+                    '<tr><td><strong>' + escHtml(r.rep_name) + '</strong></td><td>' + escHtml(r.region || '-') + '</td><td>' + fmtP(r.revenue) + '</td><td style="color:#10b981;font-weight:600">' + fmtP(r.profit) + '</td></tr>'
+                ).join('') || '<tr><td colspan="4" class="text-center">لا توجد بيانات</td></tr>';
+            }
+
+            // Initial tab render
+            renderLevelTable('branch');
+
+        } catch (e) {
+            console.error('Profitability Analytics Error:', e);
+        }
+    };
+
+    window.loadProfitability = function () {
+        const handler = viewHandlers['view-profitability'];
+        if (handler) handler();
+    };
+
+    // ============================================================
     // VIEW: INVENTORY
     // ============================================================
     viewHandlers['view-inventory'] = async function () {
@@ -3091,7 +3270,7 @@
         });
 
         // ── Users ──
-        const permList = ['dashboard', 'executive-dashboard', 'cash-flow', 'aging', 'inventory-analytics', 'sales-invoices', 'sales-returns', 'customers', 'customers.create', 'customers.update',
+        const permList = ['dashboard', 'executive-dashboard', 'cash-flow', 'aging', 'inventory-analytics', 'profitability', 'sales-invoices', 'sales-returns', 'customers', 'customers.create', 'customers.update',
             'customers.delete', 'customers.export', 'customers.block', 'customer-payments', 'purchase-invoices',
             'purchase-returns', 'suppliers-list', 'supplier-payments', 'inventory-list', 'inventory-transfers',
             'settings', 'reports', 'accounting', 'treasury', 'stores', 'reps', 'logs'];
