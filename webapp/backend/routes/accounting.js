@@ -361,7 +361,7 @@ router.post('/journals', asyncHandler(async (req, res) => {
             'manual_je',
             null,
             userId,
-            { module: 'accounting', action: 'manual_entry', document: 'N/A', isSystem: false }
+            { module: 'accounting', action: 'manual_entry', document: `MANUAL_${Date.now()}`, isSystem: false }
         );
 
         await transaction.commit();

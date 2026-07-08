@@ -4,7 +4,7 @@
 // Run: node server.js
 // ============================================================
 
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
 if (!process.env.JWT_SECRET) {
     console.error('\x1b[31m%s\x1b[0m', 'FATAL ERROR: JWT_SECRET is not defined in environment variables.');
@@ -205,6 +205,7 @@ app.use('/api/dashboard',   applyPermissions('dashboard'),   require('./routes/d
 app.use('/api/users',       applyPermissions('users'),       require('./routes/users'));
 app.use('/api/settings',    applyPermissions('settings'),    require('./routes/settings'));
 app.use('/api/logs',        applyPermissions('logs'),        require('./routes/logs'));
+app.use('/api/admin',       require('./routes/admin'));
 
 // ─── SPA Fallback (for direct URL access) ────────────────────
 app.get('*', (req, res) => {
