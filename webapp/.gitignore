@@ -1,0 +1,74 @@
+# ─── Sensitive Files ───────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.env
+
+# ─── Backups & Database ────────────────────────────────────────
+*.bak
+*.backup
+Backups/
+
+# ─── Node.js ───────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-error.log
+
+# ─── Temp / Scratch files ──────────────────────────────────────
+tmp_*.js
+test_restore.js
+test_sales_return_flow.js
+test_seed_comprehensive.js
+tmp_check_cols.js
+tmp_http_check.js
+tmp_integration_test.js
+tmp_test_insert.js
+tmp_test_prod.js
+tmp_test_returns.js
+tmp_test_scenarios.js
+tmp_test_setup.js
+
+# ─── Root test / patch / audit files ────────────────────────────
+test-*.js
+test_*.js
+patch_*.js
+audit-results*.json
+AUDIT_REPORT.md
+progress_report.txt
+uat_*.log
+uat_*.log.*
+uat_*.pid
+uat_*.svr
+
+# ─── Runtime files ──────────────────────────────────────────────
+*.pid
+.erp_pid
+.token
+*.log
+*.log.err
+*.log.svr
+
+# ─── Server output files ────────────────────────────────────────
+server*.log
+server*.err
+server*.txt
+startup.log
+startup.err
+
+# ─── Backup files ───────────────────────────────────────────────
+*.bak
+*.backup
+*.corrupted
+
+# ─── Test baseline reports (too many) ───────────────────────────
+backend/tests/reports/baseline-*.json
+
+# ─── Dead code folders ──────────────────────────────────────────
+backend/api/
+
+# ─── OS / Editor ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
