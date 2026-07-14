@@ -103,8 +103,8 @@ app.use(cors({
     credentials: true
 }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'tiny' : 'dev'));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 // ─── Health Check (public, no auth) ─────────────────────────
 const { getHealth } = require('./database/mssql_db');
