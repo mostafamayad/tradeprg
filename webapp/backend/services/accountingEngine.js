@@ -82,6 +82,7 @@ const REQUIRED_SYSTEM_ACCOUNTS = [
     { code: '114', name: 'المخزون',                       type: 'asset',      parent: '11', sys: 'SYS_INVENTORY' },
     { code: '115', name: 'ضريبة القيمة المضافة (مدخلات)',  type: 'asset',      parent: '11', sys: 'SYS_VAT_INPUT' },
     { code: '116', name: 'مخزون تالف / منتهي الصلاحية',    type: 'asset',      parent: '11', sys: 'SYS_DAMAGED_INVENTORY' },
+    { code: '117', name: 'شيكات تحت التحصيل',              type: 'asset',      parent: '11', sys: 'SYS_AR_CHEQUES' },
     { code: '211', name: 'الموردين (الذمم الدائنة)',       type: 'liability',  parent: '21', sys: 'SYS_AP' },
     { code: '212', name: 'ضريبة القيمة المضافة (مخرجات)',  type: 'liability',  parent: '21', sys: 'SYS_VAT_OUTPUT' },
     { code: '32',  name: 'الأرباح المحتجزة',              type: 'equity',     parent: '3',  sys: 'SYS_RETAINED_EARNINGS' },

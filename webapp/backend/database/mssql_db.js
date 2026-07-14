@@ -135,6 +135,213 @@ async function initializeDatabase() {
                     `);
                     console.log('[MSSQL] Inserted default treasury account.');
                 }
+                // ── Fixed Assets Tables (auto-create if missing) ──
+                const faTablesCheck = await pool.request().query(`SELECT 1 FROM sys.tables WHERE name = 'asset_categories'`);
+                if (faTablesCheck.recordset.length === 0) {
+                    console.log('[MSSQL] Creating fixed assets tables...');
+                    await pool.request().query(`
+                        CREATE TABLE asset_categories (
+                            id INT IDENTITY(1,1) PRIMARY KEY,
+                            name NVARCHAR(200) NOT NULL,
+                            description NVARCHAR(500),
+                            useful_life_months DECIMAL(7,1) NOT NULL DEFAULT 60,
+                            depreciation_method NVARCHAR(50) DEFAULT 'straight-line',
+                            parent_id INT,
+                            created_by INT,
+                            created_at DATETIME DEFAULT GETDATE(),
+                            updated_by INT,
+                            updated_at DATETIME,
+                            deleted_by INT,
+                            deleted_at DATETIME
+                        );
+
+                        CREATE TABLE fixed_assets (
+                            id INT IDENTITY(1,1) PRIMARY KEY,
+                            asset_code NVARCHAR(50) NOT NULL,
+                            asset_name NVARCHAR(300) NOT NULL,
+                            category_id INT,
+                            purchase_date NVARCHAR(20),
+                            purchase_cost DECIMAL(18,2) NOT NULL DEFAULT 0,
+                            salvage_value DECIMAL(18,2) DEFAULT 0,
+                            useful_life_months DECIMAL(7,1) NOT NULL DEFAULT 60,
+                            depreciation_method NVARCHAR(50) DEFAULT 'straight-line',
+                            accumulated_depreciation DECIMAL(18,2) DEFAULT 0,
+                            location NVARCHAR(300),
+                            serial_number NVARCHAR(200),
+                            notes NVARCHAR(MAX),
+                            asset_status NVARCHAR(30) DEFAULT 'active',
+                            created_by INT,
+                            created_at DATETIME DEFAULT GETDATE(),
+                            updated_by INT,
+                            updated_at DATETIME,
+                            deleted_by INT,
+                            deleted_at DATETIME
+                        );
+
+                        CREATE TABLE asset_depreciation (
+                            id INT IDENTITY(1,1) PRIMARY KEY,
+                            asset_id INT NOT NULL,
+                            period_date NVARCHAR(20) NOT NULL,
+                            depreciation_amount DECIMAL(18,2) NOT NULL,
+                            accumulated_after DECIMAL(18,2) NOT NULL,
+                            journal_entry_id INT,
+                            created_by INT,
+                            created_at DATETIME DEFAULT GETDATE()
+                        );
+
+                        CREATE TABLE asset_movements (
+                            id INT IDENTITY(1,1) PRIMARY KEY,
+                            movement_no NVARCHAR(50) NOT NULL,
+                            asset_id INT NOT NULL,
+                            movement_type NVARCHAR(50) NOT NULL,
+                            movement_date NVARCHAR(20),
+                            amount DECIMAL(18,2),
+                            buyer_name NVARCHAR(300),
+                            from_location NVARCHAR(300),
+                            to_location NVARCHAR(300),
+                            workflow_status NVARCHAR(30) DEFAULT 'draft',
+                            journal_entry_id INT,
+                            notes NVARCHAR(MAX),
+                            created_by INT,
+                            created_at DATETIME DEFAULT GETDATE(),
+                            updated_by INT,
+                            updated_at DATETIME,
+                            deleted_at DATETIME
+                        );
+
+                        INSERT INTO invoice_counters (counter_name, prefix, last_number) VALUES ('fixed_assets', 'FA', 0);
+                        INSERT INTO invoice_counters (counter_name, prefix, last_number) VALUES ('fa_movements', 'MV', 0);
+                    `);
+                    console.log('[MSSQL] Fixed assets tables created.');
+                }
+
+                // ── HR Tables (auto-create if missing) ──
+                const hrTablesCheck = await pool.request().query(`SELECT 1 FROM sys.tables WHERE name = 'emp_attendance'`);
+                if (hrTablesCheck.recordset.length === 0) {
+                    console.log('[MSSQL] Creating HR tables (attendance, vacations, penalties, rewards)...');
+                    await pool.request().query(`
+                        IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[employees]') AND type in (N'U'))
+                        BEGIN
+                            CREATE TABLE [dbo].[employees] (
+                                [id] INT IDENTITY(1,1) PRIMARY KEY,
+                                [emp_code] NVARCHAR(255) NOT NULL UNIQUE,
+                                [emp_name] NVARCHAR(255) NOT NULL,
+                                [department] NVARCHAR(255),
+                                [job_title] NVARCHAR(255),
+                                [basic_salary] DECIMAL(18,4) DEFAULT 0,
+                                [hire_date] NVARCHAR(255),
+                                [phone] NVARCHAR(255),
+                                [national_id] NVARCHAR(255),
+                                [status] NVARCHAR(255) DEFAULT 'active',
+                                [created_at] NVARCHAR(255) DEFAULT CONVERT(VARCHAR(19), GETDATE(), 120)
+                            );
+                        END;
+
+                        IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[emp_loans]') AND type in (N'U'))
+                        BEGIN
+                            CREATE TABLE [dbo].[emp_loans] (
+                                [id] INT IDENTITY(1,1) PRIMARY KEY,
+                                [emp_id] INT NOT NULL,
+                                [loan_date] NVARCHAR(255) NOT NULL,
+                                [amount] DECIMAL(18,4) NOT NULL,
+                                [monthly_installment] DECIMAL(18,4) DEFAULT 0,
+                                [paid_amount] DECIMAL(18,4) DEFAULT 0,
+                                [reason] NVARCHAR(MAX),
+                                [status] NVARCHAR(255) DEFAULT 'active',
+                                [created_at] NVARCHAR(255) DEFAULT CONVERT(VARCHAR(19), GETDATE(), 120),
+                                CONSTRAINT [FK_emp_loans_emp] FOREIGN KEY ([emp_id]) REFERENCES [dbo].[employees] ([id])
+                            );
+                        END;
+
+                        IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[salary_slips]') AND type in (N'U'))
+                        BEGIN
+                            CREATE TABLE [dbo].[salary_slips] (
+                                [id] INT IDENTITY(1,1) PRIMARY KEY,
+                                [slip_no] NVARCHAR(255) NOT NULL UNIQUE,
+                                [period] NVARCHAR(255) NOT NULL,
+                                [emp_id] INT NOT NULL,
+                                [basic_salary] DECIMAL(18,4) DEFAULT 0,
+                                [allowances] DECIMAL(18,4) DEFAULT 0,
+                                [deductions] DECIMAL(18,4) DEFAULT 0,
+                                [loans] DECIMAL(18,4) DEFAULT 0,
+                                [net_salary] DECIMAL(18,4) DEFAULT 0,
+                                [status] NVARCHAR(255) DEFAULT 'draft',
+                                [notes] NVARCHAR(MAX),
+                                [created_at] NVARCHAR(255) DEFAULT CONVERT(VARCHAR(19), GETDATE(), 120),
+                                CONSTRAINT [FK_salary_slips_emp] FOREIGN KEY ([emp_id]) REFERENCES [dbo].[employees] ([id])
+                            );
+                        END;
+
+                        IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[emp_attendance]') AND type in (N'U'))
+                        BEGIN
+                            CREATE TABLE [dbo].[emp_attendance] (
+                                [id] INT IDENTITY(1,1) PRIMARY KEY,
+                                [emp_id] INT NOT NULL,
+                                [att_date] NVARCHAR(255) NOT NULL,
+                                [check_in] NVARCHAR(255),
+                                [check_out] NVARCHAR(255),
+                                [status] NVARCHAR(255) DEFAULT 'present',
+                                [late_minutes] INT DEFAULT 0,
+                                [overtime_minutes] INT DEFAULT 0,
+                                [notes] NVARCHAR(MAX),
+                                [created_at] NVARCHAR(255) DEFAULT CONVERT(VARCHAR(19), GETDATE(), 120),
+                                CONSTRAINT [FK_emp_attendance_emp] FOREIGN KEY ([emp_id]) REFERENCES [dbo].[employees] ([id])
+                            );
+                            CREATE UNIQUE INDEX IX_emp_attendance_emp_date ON emp_attendance(emp_id, att_date);
+                        END;
+
+                        IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[emp_vacations]') AND type in (N'U'))
+                        BEGIN
+                            CREATE TABLE [dbo].[emp_vacations] (
+                                [id] INT IDENTITY(1,1) PRIMARY KEY,
+                                [emp_id] INT NOT NULL,
+                                [vac_type] NVARCHAR(255) DEFAULT 'annual',
+                                [start_date] NVARCHAR(255) NOT NULL,
+                                [end_date] NVARCHAR(255) NOT NULL,
+                                [days] INT NOT NULL DEFAULT 1,
+                                [reason] NVARCHAR(MAX),
+                                [status] NVARCHAR(255) DEFAULT 'pending',
+                                [approved_by] NVARCHAR(255),
+                                [approved_at] NVARCHAR(255),
+                                [notes] NVARCHAR(MAX),
+                                [created_at] NVARCHAR(255) DEFAULT CONVERT(VARCHAR(19), GETDATE(), 120),
+                                CONSTRAINT [FK_emp_vacations_emp] FOREIGN KEY ([emp_id]) REFERENCES [dbo].[employees] ([id])
+                            );
+                        END;
+
+                        IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[emp_penalties]') AND type in (N'U'))
+                        BEGIN
+                            CREATE TABLE [dbo].[emp_penalties] (
+                                [id] INT IDENTITY(1,1) PRIMARY KEY,
+                                [emp_id] INT NOT NULL,
+                                [penalty_type] NVARCHAR(255) NOT NULL,
+                                [penalty_date] NVARCHAR(255) NOT NULL,
+                                [amount] DECIMAL(18,4) DEFAULT 0,
+                                [reason] NVARCHAR(MAX),
+                                [status] NVARCHAR(255) DEFAULT 'active',
+                                [created_at] NVARCHAR(255) DEFAULT CONVERT(VARCHAR(19), GETDATE(), 120),
+                                CONSTRAINT [FK_emp_penalties_emp] FOREIGN KEY ([emp_id]) REFERENCES [dbo].[employees] ([id])
+                            );
+                        END;
+
+                        IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[emp_rewards]') AND type in (N'U'))
+                        BEGIN
+                            CREATE TABLE [dbo].[emp_rewards] (
+                                [id] INT IDENTITY(1,1) PRIMARY KEY,
+                                [emp_id] INT NOT NULL,
+                                [reward_type] NVARCHAR(255) NOT NULL,
+                                [reward_date] NVARCHAR(255) NOT NULL,
+                                [amount] DECIMAL(18,4) DEFAULT 0,
+                                [reason] NVARCHAR(MAX),
+                                [status] NVARCHAR(255) DEFAULT 'active',
+                                [created_at] NVARCHAR(255) DEFAULT CONVERT(VARCHAR(19), GETDATE(), 120),
+                                CONSTRAINT [FK_emp_rewards_emp] FOREIGN KEY ([emp_id]) REFERENCES [dbo].[employees] ([id])
+                            );
+                        END;
+                    `);
+                    console.log('[MSSQL] HR tables created.');
+                }
+
                 const counters = ['sales', 'purchases', 'collections', 'supplier_payments', 'sales_returns', 'purchase_returns', 'treasury',
                           'transfer', 'damaged', 'adjustment', 'count', 'journal', 'expense'];
                 const prefixes = {

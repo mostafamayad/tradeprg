@@ -1171,43 +1171,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (targetId === 'suppliers') {
                     if (typeof window.loadSuppliersList === 'function') {
                         window.loadSuppliersList();
-                        // Wire buttons once
-                        const supSection = document.getElementById('view-suppliers');
-                        if (supSection && !supSection.dataset.wired) {
-                            supSection.dataset.wired = '1';
-                            const btnAdd = document.getElementById('btn-add-supplier');
-                            if (btnAdd) btnAdd.addEventListener('click', () => window.openSupplierForm());
-                            const btnRefresh = document.getElementById('btn-refresh-suppliers');
-                            if (btnRefresh) btnRefresh.addEventListener('click', () => window.loadSuppliersList());
-                            const supSearch = document.getElementById('sup-search-q');
-                            if (supSearch) {
-                                supSearch.addEventListener('input', () => {
-                                    clearTimeout(_supSearchTimer);
-                                    _supSearchTimer = setTimeout(() => { _supPage = 1; window.loadSuppliersList(); }, 350);
-                                });
-                            }
-                            const supFilter = document.getElementById('sup-filter-active');
-                            if (supFilter) {
-                                supFilter.addEventListener('change', () => { _supPage = 1; window.loadSuppliersList(); });
-                            }
-                            // Sortable columns
-                            document.querySelectorAll('#suppliers-table th[data-sort]').forEach(th => {
-                                th.addEventListener('click', () => {
-                                    const col = th.dataset.sort;
-                                    if (_supSortBy === col) {
-                                        _supSortOrder = _supSortOrder === 'ASC' ? 'DESC' : 'ASC';
-                                    } else {
-                                        _supSortBy = col;
-                                        _supSortOrder = 'ASC';
-                                    }
-                                    document.querySelectorAll('#suppliers-table th[data-sort] i').forEach(i => i.className = 'fa-solid fa-sort');
-                                    const icon = th.querySelector('i');
-                                    if (icon) icon.className = 'fa-solid fa-sort-' + (_supSortOrder === 'ASC' ? 'up' : 'down');
-                                    _supPage = 1;
-                                    window.loadSuppliersList();
-                                });
-                            });
-                        }
                     }
                 }
                 if (targetId === 'reports-purchases' && typeof window.initPurchasesReport === 'function') {
@@ -1856,16 +1819,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
                             };
                         } else {
-                            // Generic Fallback Form
-                            modalBody.innerHTML = `
-                                <div class="form-grid">
-                                    <div class="form-group"><label>الاسم / البيان</label><input type="text" placeholder="أدخل البيان..."></div>
-                                    <div class="form-group"><label>ملاحظات</label><input type="text" placeholder="..."></div>
-                                </div>
-                            `;
-                            btnModalSave.onclick = () => {
-                                globalModal.classList.remove('active');
-                            };
+                            // No specific handler for this button - do nothing
+                            return;
                         }
                         
                         globalModal.classList.add('active');
@@ -3217,6 +3172,43 @@ window.loadSuppliersList = async function(q, active, page) {
     const tbody = document.getElementById('suppliers-list-body');
     if (!tbody) return;
 
+    // One-time button wiring (handles both direct nav and popup nav paths)
+    const supSection = document.getElementById('view-suppliers');
+    if (supSection && !supSection.dataset.wired) {
+        supSection.dataset.wired = '1';
+        const btnAdd = document.getElementById('btn-add-supplier');
+        if (btnAdd) btnAdd.addEventListener('click', () => window.openSupplierForm());
+        const btnRefresh = document.getElementById('btn-refresh-suppliers');
+        if (btnRefresh) btnRefresh.addEventListener('click', () => window.loadSuppliersList());
+        const supSearch = document.getElementById('sup-search-q');
+        if (supSearch) {
+            supSearch.addEventListener('input', () => {
+                clearTimeout(_supSearchTimer);
+                _supSearchTimer = setTimeout(() => { _supPage = 1; window.loadSuppliersList(); }, 350);
+            });
+        }
+        const supFilter = document.getElementById('sup-filter-active');
+        if (supFilter) {
+            supFilter.addEventListener('change', () => { _supPage = 1; window.loadSuppliersList(); });
+        }
+        document.querySelectorAll('#suppliers-table th[data-sort]').forEach(th => {
+            th.addEventListener('click', () => {
+                const col = th.dataset.sort;
+                if (_supSortBy === col) {
+                    _supSortOrder = _supSortOrder === 'ASC' ? 'DESC' : 'ASC';
+                } else {
+                    _supSortBy = col;
+                    _supSortOrder = 'ASC';
+                }
+                document.querySelectorAll('#suppliers-table th[data-sort] i').forEach(i => i.className = 'fa-solid fa-sort');
+                const icon = th.querySelector('i');
+                if (icon) icon.className = 'fa-solid fa-sort-' + (_supSortOrder === 'ASC' ? 'up' : 'down');
+                _supPage = 1;
+                window.loadSuppliersList();
+            });
+        });
+    }
+
     const searchQ = document.getElementById('sup-search-q');
     const filterActive = document.getElementById('sup-filter-active');
 
@@ -3298,17 +3290,17 @@ window.openSupplierForm = function(supplier) {
     modalTitle.textContent = isEdit ? 'تعديل بيانات المورد' : 'إضافة مورد جديد';
     modalBody.innerHTML = `
         <div class="form-grid" style="grid-template-columns:1fr 1fr;">
-            <div class="form-group"><label>كود المورد</label><input type="text" id="sf-code" class="form-control" placeholder="تلقائي" value="${isEdit ? (supplier.supplier_code || '') : ''}" ${isEdit ? 'disabled' : ''}></div>
-            <div class="form-group"><label>اسم المورد <span class="text-danger">*</span></label><input type="text" id="sf-name" class="form-control" value="${isEdit ? escapeHtml(supplier.supplier_name || '') : ''}"></div>
-            <div class="form-group"><label>التليفون</label><input type="text" id="sf-phone" class="form-control" value="${isEdit ? escapeHtml(supplier.phone || '') : ''}"></div>
-            <div class="form-group"><label>موبايل</label><input type="text" id="sf-mobile" class="form-control" value="${isEdit ? escapeHtml(supplier.mobile || '') : ''}"></div>
-            <div class="form-group"><label>البريد الإلكتروني</label><input type="email" id="sf-email" class="form-control" value="${isEdit ? escapeHtml(supplier.email || '') : ''}"></div>
-            <div class="form-group"><label>الرقم الضريبي</label><input type="text" id="sf-tax" class="form-control" value="${isEdit ? escapeHtml(supplier.tax_number || '') : ''}"></div>
-            <div class="form-group"><label>الرصيد الافتتاحي</label><input type="number" id="sf-ob" class="form-control" value="${isEdit ? (supplier.opening_balance || 0) : 0}" min="0"></div>
-            <div class="form-group" style="grid-column:1/-1;"><label>العنوان</label><input type="text" id="sf-address" class="form-control" value="${isEdit ? escapeHtml(supplier.address || '') : ''}"></div>
-            <div class="form-group" style="grid-column:1/-1;"><label>ملاحظات</label><textarea id="sf-notes" class="form-control" rows="2">${isEdit ? escapeHtml(supplier.notes || '') : ''}</textarea></div>
+            <div class="form-group"><label>كود المورد</label><input type="text" id="sup-code" class="form-control" placeholder="تلقائي" value="${isEdit ? (supplier.supplier_code || '') : ''}" ${isEdit ? 'disabled' : ''}></div>
+            <div class="form-group"><label>اسم المورد <span class="text-danger">*</span></label><input type="text" id="sup-name" class="form-control" value="${isEdit ? escapeHtml(supplier.supplier_name || '') : ''}"></div>
+            <div class="form-group"><label>التليفون</label><input type="text" id="sup-phone" class="form-control" value="${isEdit ? escapeHtml(supplier.phone || '') : ''}"></div>
+            <div class="form-group"><label>موبايل</label><input type="text" id="sup-mobile" class="form-control" value="${isEdit ? escapeHtml(supplier.mobile || '') : ''}"></div>
+            <div class="form-group"><label>البريد الإلكتروني</label><input type="email" id="sup-email" class="form-control" value="${isEdit ? escapeHtml(supplier.email || '') : ''}"></div>
+            <div class="form-group"><label>الرقم الضريبي</label><input type="text" id="sup-tax" class="form-control" value="${isEdit ? escapeHtml(supplier.tax_number || '') : ''}"></div>
+            <div class="form-group"><label>الرصيد الافتتاحي</label><input type="number" id="sup-ob" class="form-control" value="${isEdit ? (supplier.opening_balance || 0) : 0}" min="0"></div>
+            <div class="form-group" style="grid-column:1/-1;"><label>العنوان</label><input type="text" id="sup-address" class="form-control" value="${isEdit ? escapeHtml(supplier.address || '') : ''}"></div>
+            <div class="form-group" style="grid-column:1/-1;"><label>ملاحظات</label><textarea id="sup-notes" class="form-control" rows="2">${isEdit ? escapeHtml(supplier.notes || '') : ''}</textarea></div>
             <div class="form-group d-flex align-items-center" style="gap:8px;">
-                <label class="checkbox-label" style="margin:0"><input type="checkbox" id="sf-active" ${!isEdit || supplier.is_active ? 'checked' : ''}> <span>نشط</span></label>
+                <label class="checkbox-label" style="margin:0"><input type="checkbox" id="sup-active" ${!isEdit || supplier.is_active ? 'checked' : ''}> <span>نشط</span></label>
             </div>
         </div>
     `;
@@ -3319,20 +3311,20 @@ window.openSupplierForm = function(supplier) {
     btnSave.parentNode.replaceChild(newBtn, btnSave);
     newBtn.innerHTML = '<i class="fa-solid fa-floppy-disk" style="margin-left:6px"></i> ' + (isEdit ? 'حفظ التعديلات' : 'إضافة المورد');
     newBtn.onclick = async () => {
-        const name = document.getElementById('sf-name').value.trim();
+        const name = document.getElementById('sup-name').value.trim();
         if (!name) { window.showAlert('اسم المورد مطلوب', { type: 'warning' }); return; }
 
         const data = {
             supplier_name: name,
-            supplier_code: document.getElementById('sf-code').value.trim() || undefined,
-            phone: document.getElementById('sf-phone').value.trim(),
-            mobile: document.getElementById('sf-mobile').value.trim(),
-            email: document.getElementById('sf-email').value.trim(),
-            tax_number: document.getElementById('sf-tax').value.trim(),
-            address: document.getElementById('sf-address').value.trim(),
-            opening_balance: parseFloat(document.getElementById('sf-ob').value) || 0,
-            notes: document.getElementById('sf-notes').value.trim(),
-            is_active: document.getElementById('sf-active').checked ? 1 : 0
+            supplier_code: document.getElementById('sup-code').value.trim() || undefined,
+            phone: document.getElementById('sup-phone').value.trim(),
+            mobile: document.getElementById('sup-mobile').value.trim(),
+            email: document.getElementById('sup-email').value.trim(),
+            tax_number: document.getElementById('sup-tax').value.trim(),
+            address: document.getElementById('sup-address').value.trim(),
+            opening_balance: parseFloat(document.getElementById('sup-ob').value) || 0,
+            notes: document.getElementById('sup-notes').value.trim(),
+            is_active: document.getElementById('sup-active').checked ? 1 : 0
         };
 
         newBtn.disabled = true;
@@ -3428,9 +3420,9 @@ window.showSupplierDetail = async function(id) {
         const totalPayments = parseFloat(totals.total_payments || 0);
         const totalReturns = parseFloat(totals.total_returns || 0);
 
-        document.getElementById('sd-total-purchases').textContent = formatMoney(totalPurchases) + ' ج.م';
-        document.getElementById('sd-total-payments').textContent = formatMoney(totalPayments) + ' ج.م';
-        document.getElementById('sd-total-returns').textContent = formatMoney(totalReturns) + ' ج.م';
+        document.getElementById('sd-total-purchases').innerHTML = formatMoney(totalPurchases) + ' ج.م';
+        document.getElementById('sd-total-payments').innerHTML = formatMoney(totalPayments) + ' ج.م';
+        document.getElementById('sd-total-returns').innerHTML = formatMoney(totalReturns) + ' ج.م';
 
         const invHtml = (detail.recent_invoices || []).map(i =>
             '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee;">' +

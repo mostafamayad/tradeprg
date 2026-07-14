@@ -83,8 +83,8 @@ router.get('/transactions', asyncHandler(async (req, res) => {
                        WHERE 1=1`;
 
         if (account_id) { sqlQuery += ` AND t.account_id = @accountId`; request.input('accountId', sql.Int, account_id); }
-        if (from) { sqlQuery += ` AND t.trans_date >= @from`; request.input('from', sql.NVarChar, from); }
-        if (to) { sqlQuery += ` AND t.trans_date <= @to`; request.input('to', sql.NVarChar, to); }
+        if (from) { sqlQuery += ` AND CAST(t.trans_date AS DATE) >= @from`; request.input('from', sql.NVarChar, from); }
+        if (to) { sqlQuery += ` AND CAST(t.trans_date AS DATE) <= @to`; request.input('to', sql.NVarChar, to); }
         if (trans_type) { sqlQuery += ` AND t.trans_type = @transType`; request.input('transType', sql.NVarChar, trans_type); }
         sqlQuery += ` ORDER BY t.id DESC`;
 

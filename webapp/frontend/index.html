@@ -498,6 +498,10 @@
             <a href="#" class="popup-item" data-target="hr"><i class="fa-solid fa-user-tie"></i> ملفات الموظفين</a>
             <a href="#" class="popup-item" data-target="payroll"><i class="fa-solid fa-money-check-dollar"></i> مسير الرواتب</a>
             <a href="#" class="popup-item" data-target="hr-loans"><i class="fa-solid fa-hand-holding-dollar"></i> السلف والخصومات</a>
+            <a href="#" class="popup-item" data-target="hr-attendance"><i class="fa-solid fa-clock"></i> الحضور والانصراف</a>
+            <a href="#" class="popup-item" data-target="hr-vacations"><i class="fa-solid fa-calendar-days"></i> الإجازات</a>
+            <a href="#" class="popup-item" data-target="hr-penalties"><i class="fa-solid fa-gavel"></i> الجزاءات</a>
+            <a href="#" class="popup-item" data-target="hr-rewards"><i class="fa-solid fa-trophy"></i> المكافآت</a>
         </div>
 
         <div class="nav-popup nav-popup--reports" id="menu-reports">
@@ -1497,7 +1501,7 @@
                 <div class="view" id="view-crm-workplan">
                     <div class="page-header page-header-between">
                         <div><h1 class="page-title">خطط سير المناديب والزيارات</h1><p class="page-subtitle">إعداد مسارات الزيارات اليومية وتتبع نشاط مناديب البيع</p></div>
-                        <button class="btn btn-primary"><i class="fa-solid fa-route"></i> خطة جديدة</button>
+                        <button class="btn btn-primary" id="btn-crm-wp-new"><i class="fa-solid fa-route"></i> خطة جديدة</button>
                     </div>
                     <div class="page-section">
                         <div class="page-card">
@@ -1524,7 +1528,7 @@
                 <div class="view" id="view-crm-targets">
                     <div class="page-header page-header-between">
                         <div><h1 class="page-title">تارجت ومستهدفات البيع</h1><p class="page-subtitle">تحديد المستهدفات شهرياً وتقييم نسبة إنجاز المناديب</p></div>
-                        <button class="btn btn-primary"><i class="fa-solid fa-bullseye"></i> مستهدف جديد</button>
+                        <button class="btn btn-primary" id="btn-crm-tg-new"><i class="fa-solid fa-bullseye"></i> مستهدف جديد</button>
                     </div>
                     <div class="page-section">
                         <div class="page-card">
@@ -1556,7 +1560,7 @@
                 <div class="view" id="view-crm-settlements">
                     <div class="page-header page-header-between">
                         <div><h1 class="page-title">تسويات العملاء</h1><p class="page-subtitle">تسوية أرصدة العملاء ومعالجة الفروقات في الحسابات</p></div>
-                        <button class="btn btn-primary"><i class="fa-solid fa-handshake"></i> تسوية جديدة</button>
+                        <button class="btn btn-primary" id="btn-crm-st-new"><i class="fa-solid fa-handshake"></i> تسوية جديدة</button>
                     </div>
                     <div class="page-section">
                         <div class="page-card">
@@ -2583,26 +2587,78 @@
                 <!-- ======================================================== -->
                 <div class="view" id="view-treasury">
                     <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
-                        <div><h1 class="page-title">الخزينة والبنوف</h1><p class="page-subtitle">إدارة حرفات الخزينة والحسابات البنفية والشيفات</p></div>
+                        <div><h1 class="page-title">الخزينة والبنوك</h1><p class="page-subtitle">إدارة حركات الخزينة والحسابات البنكية</p></div>
                         <div style="display:flex;gap:10px">
-                            <button class="btn btn-outline" style="color:var(--success-color)"><i class="fa-solid fa-arrow-down"></i> وارد (إيداع)</button>
-                            <button class="btn btn-outline" style="color:var(--danger-color)"><i class="fa-solid fa-arrow-up"></i> صادر (سحب)</button>
+                            <button class="btn btn-outline" id="btn-treasury-deposit" onclick="window.openTreasuryModal('in')" style="color:var(--success-color)"><i class="fa-solid fa-arrow-down"></i> وارد (إيداع)</button>
+                            <button class="btn btn-outline" id="btn-treasury-withdraw" onclick="window.openTreasuryModal('out')" style="color:var(--danger-color)"><i class="fa-solid fa-arrow-up"></i> صادر (سحب)</button>
+                            <button class="btn btn-outline" id="btn-treasury-refresh"><i class="fa-solid fa-rotate"></i></button>
                         </div>
                     </div>
-                    <div class="dashboard-stats">
-                        <div class="stat-card"><div class="stat-icon sales-icon"><i class="fa-solid fa-vault"></i></div><div class="stat-details"><span class="stat-label">رصيد الخزينة الرئيسية</span><h3 class="stat-value">120,450 ج.م</h3></div></div>
-                        <div class="stat-card"><div class="stat-icon clients-icon"><i class="fa-solid fa-building-columns"></i></div><div class="stat-details"><span class="stat-label">البنف الأهلي</span><h3 class="stat-value">350,000 ج.م</h3></div></div>
+                    <div class="dashboard-stats" id="treasury-stats">
+                        <div class="stat-card"><div class="stat-icon sales-icon"><i class="fa-solid fa-vault"></i></div><div class="stat-details"><span class="stat-label">إجمالي الخزينة النقدية</span><h3 class="stat-value" id="treasury-cash-total">0 ج.م</h3></div></div>
+                        <div class="stat-card"><div class="stat-icon clients-icon"><i class="fa-solid fa-building-columns"></i></div><div class="stat-details"><span class="stat-label">إجمالي البنوك</span><h3 class="stat-value" id="treasury-bank-total">0 ج.م</h3></div></div>
+                        <div class="stat-card"><div class="stat-icon sales-icon"><i class="fa-solid fa-coins"></i></div><div class="stat-details"><span class="stat-label">الإجمالي الكلي</span><h3 class="stat-value" id="treasury-total">0 ج.م</h3></div></div>
                     </div>
                     <div class="card">
-                        <h3 class="card-title">آخر حرفات الخزينة</h3>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                            <h3 class="card-title" style="margin:0">آخر حركات الخزينة</h3>
+                            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                                <select id="treasury-account-filter" style="width:160px"><option value="">كل الحسابات</option></select>
+                                <input type="date" id="treasury-filter-from" style="width:140px">
+                                <input type="date" id="treasury-filter-to" style="width:140px">
+                            </div>
+                        </div>
                         <div class="table-responsive">
                             <table class="data-table">
-                                <thead><tr><th>التاريخ</th><th>نوع الحرفة</th><th>البيان</th><th>وارد</th><th>صادر</th><th>الرصيد</th></tr></thead>
-                                <tbody>
-                                    <tr><td>2026-06-21</td><td>تحصيل نقدي</td><td>سداد العميل - مؤسسة السلام</td><td class="text-success">5,000 ج.م</td><td>-</td><td>120,450 ج.م</td></tr>
-                                    <tr><td>2026-06-20</td><td>صرف نثريات</td><td>بوفيه الشركة</td><td>-</td><td class="text-danger">500 ج.م</td><td>115,450 ج.م</td></tr>
+                                <thead><tr><th>التاريخ</th><th>رقم المستند</th><th>الحساب</th><th>البيان</th><th>وارد</th><th>صادر</th></tr></thead>
+                                <tbody id="treasury-tbody">
+                                    <tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted)">جاري التحميل...</td></tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                    <!-- Treasury Transaction Modal -->
+                    <div class="modal-overlay" id="treasury-modal" style="display:none">
+                        <div class="modal-content" style="max-width:500px">
+                            <div class="modal-header">
+                                <h3 id="treasury-modal-title">حركة خزينة جديدة</h3>
+                                <button class="icon-btn btn-close-modal" id="btn-treasury-modal-close"><i class="fa-solid fa-times"></i></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="treasury-form">
+                                    <div class="form-group">
+                                        <label>نوع الحركة</label>
+                                        <select id="tf-type" class="form-control" required>
+                                            <option value="in">وارد (إيداع)</option>
+                                            <option value="out">صادر (سحب)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>الحساب</label>
+                                        <select id="tf-account" class="form-control" required><option value="">-- اختر الحساب --</option></select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>التاريخ</label>
+                                        <input type="date" id="tf-date" class="form-control">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>المبلغ</label>
+                                        <input type="number" id="tf-amount" class="form-control" min="0.01" step="0.01" required placeholder="أدخل المبلغ">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>البيان</label>
+                                        <input type="text" id="tf-desc" class="form-control" placeholder="سبب الحركة">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>رقم المستند (اختياري)</label>
+                                        <input type="text" id="tf-doc-no" class="form-control" placeholder="رقم الإشارة">
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-outline" id="btn-treasury-modal-cancel">إلغاء</button>
+                                <button class="btn btn-primary" id="btn-treasury-modal-save" onclick="window.saveTreasuryTx()">حفظ الحركة</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2632,85 +2688,151 @@
                 <!--  VIEW: FIXED ASSETS                                       -->
                 <!-- ======================================================== -->
                 <div class="view" id="view-fixed-assets">
-                    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
-                        <div><h1 class="page-title">الأصول الثابتة والإهلافات</h1><p class="page-subtitle">سجل الأصول الثابتة للشركة وحساب الإهلاف السنوي</p></div>
-                        <button class="btn btn-primary"><i class="fa-solid fa-plus"></i> أصل ثابت جديد</button>
-                    </div>
-                    <div class="card">
-                        <div class="table-responsive">
-                            <table class="data-table">
-                                <thead><tr><th>الأصل</th><th>تاريخ الشرا،</th><th>القيمة الأصلية</th><th>معدل الإهلاف</th><th>مجمع الإهلاف</th><th>القيمة الدفترية</th></tr></thead>
-                                <tbody>
-                                    <tr><td>سيارة توزيع فيات</td><td>2023-01-15</td><td>250,000 ج.م</td><td>20% سنوياً</td><td>100,000 ج.م</td><td>150,000 ج.م</td></tr>
-                                    <tr><td>معدات مفتبية</td><td>2022-06-01</td><td>50,000 ج.م</td><td>25% سنوياً</td><td>37,500 ج.م</td><td>12,500 ج.م</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    <div class="fa-main"></div>
                 </div>
 
                 <!-- ======================================================== -->
                 <!--  VIEW: HR                                                 -->
                 <!-- ======================================================== -->
                 <div class="view" id="view-hr">
-                    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
+                    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
                         <div><h1 class="page-title">ملفات الموظفين</h1><p class="page-subtitle">إدارة سجلات الموظفين وبياناتهم الوظيفية</p></div>
-                        <button class="btn btn-primary"><i class="fa-solid fa-user-plus"></i> موظف جديد</button>
+                        <button class="btn btn-primary" id="btn-hr-new"><i class="fa-solid fa-user-plus"></i> موظف جديد</button>
                     </div>
+                    <div id="hr-stats-bar" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px"></div>
                     <div class="card">
+                        <div class="table-actions">
+                            <div class="search-box"><i class="fa-solid fa-search"></i><input type="text" id="hr-search" placeholder="بحث بالكود أو الاسم أو الهاتف..."></div>
+                            <select id="hr-status-filter"><option value="">كل الحالات</option><option value="active">نشط</option><option value="inactive">غير نشط</option></select>
+                            <select id="hr-dept-filter"><option value="">كل الأقسام</option></select>
+                        </div>
                         <div class="table-responsive">
                             <table class="data-table">
-                                <thead><tr><th>الكود</th><th>الاسم</th><th>القسم</th><th>الراتب الأساسي</th><th>رصيد الإجازات</th><th>الحالة</th><th>ملف</th></tr></thead>
-                                <tbody>
-                                    <tr><td>EMP-001</td><td>أحمد محمد علي</td><td>المبيعات</td><td>5,000 ج.م</td><td>18 يوم</td><td><span class="badge-status paid">نشط</span></td><td><button class="icon-btn btn-view"><i class="fa-solid fa-eye"></i></button></td></tr>
-                                    <tr><td>EMP-002</td><td>سارة محمود</td><td>الحسابات</td><td>6,500 ج.م</td><td>21 يوم</td><td><span class="badge-status paid">نشط</span></td><td><button class="icon-btn btn-view"><i class="fa-solid fa-eye"></i></button></td></tr>
-                                </tbody>
+                                <thead><tr><th>الكود</th><th>الاسم</th><th>القسم</th><th>المسمى الوظيفي</th><th>الراتب الأساسي</th><th>تاريخ التعيين</th><th>الحالة</th><th>الإجراءات</th></tr></thead>
+                                <tbody id="hr-tbody"><tr><td colspan="8" class="text-center" style="padding:30px;color:var(--text-muted)">جاري التحميل...</td></tr></tbody>
                             </table>
                         </div>
                     </div>
                 </div>
 
-                <!-- ======================================================== -->
-                <!--  VIEW: PAYROLL                                            -->
-                <!-- ======================================================== -->
                 <div class="view" id="view-payroll">
-                    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
-                        <div><h1 class="page-title">مسير الرواتب الشهري</h1><p class="page-subtitle">إعداد وباعة مسير رواتب الموظفين</p></div>
-                        <div style="display:flex;gap:10px">
-                            <select><option>يونيو 2026</option><option>مايو 2026</option></select>
-                            <button class="btn btn-outline"><i class="fa-solid fa-print"></i> باعة المسير</button>
-                            <button class="btn btn-primary"><i class="fa-solid fa-check"></i> ترحيل الرواتب</button>
+                    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                        <div><h1 class="page-title">مسير الرواتب الشهري</h1><p class="page-subtitle">إعداد وترحيل مسير رواتب الموظفين</p></div>
+                        <div style="display:flex;gap:10px;flex-wrap:wrap">
+                            <input type="month" id="payroll-period" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:13px">
+                            <button class="btn btn-primary" id="btn-payroll-generate"><i class="fa-solid fa-wand-magic-sparkles"></i> إعداد المسير</button>
                         </div>
                     </div>
                     <div class="card">
+                        <div class="table-actions">
+                            <select id="payroll-status-filter"><option value="">كل الحالات</option><option value="draft">مسودة</option><option value="paid">مدفوع</option></select>
+                        </div>
                         <div class="table-responsive">
                             <table class="data-table">
-                                <thead><tr><th>الموظف</th><th>الراتب الأساسي</th><th>بدلات</th><th>سلف مستقطعة</th><th>غيابات/تأخيرات</th><th>الضريبة</th><th>صافي الراتب</th></tr></thead>
-                                <tbody>
-                                    <tr><td>أحمد محمد علي</td><td>5,000</td><td>500</td><td class="text-danger">200</td><td class="text-danger">0</td><td>0</td><td class="text-success"><strong>5,300 ج.م</strong></td></tr>
-                                    <tr><td>سارة محمود</td><td>6,500</td><td>750</td><td class="text-danger">0</td><td class="text-danger">100</td><td>325</td><td class="text-success"><strong>6,825 ج.م</strong></td></tr>
-                                </tbody>
+                                <thead><tr><th>رقم السند</th><th>الفترة</th><th>الموظف</th><th>القسم</th><th>الراتب الأساسي</th><th>البدلات</th><th>الخصومات</th><th>سلف</th><th>صافي الراتب</th><th>الحالة</th><th>الإجراءات</th></tr></thead>
+                                <tbody id="payroll-tbody"><tr><td colspan="11" class="text-center" style="padding:30px;color:var(--text-muted)">جاري التحميل...</td></tr></tbody>
                             </table>
                         </div>
-                        <div style="text-align:left;padding:15px;font-size:1.1rem"><strong>إجمالي الرواتب هذا الشهر: <span class="text-primary">12,125 ج.م</span></strong></div>
+                        <div id="payroll-summary" style="display:none;text-align:left;padding:15px;font-size:1.1rem;border-top:1px solid #e5e7eb;margin-top:8px"></div>
                     </div>
                 </div>
 
-                <!-- ======================================================== -->
-                <!--  VIEW: HR LOANS                                           -->
-                <!-- ======================================================== -->
                 <div class="view" id="view-hr-loans">
-                    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
+                    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
                         <div><h1 class="page-title">السلف والخصومات</h1><p class="page-subtitle">إدارة سلف الموظفين وتسجيل الخصومات الشهرية</p></div>
-                        <button class="btn btn-primary"><i class="fa-solid fa-hand-holding-dollar"></i> سلفة جديدة</button>
+                        <button class="btn btn-primary" id="btn-hr-loan-new"><i class="fa-solid fa-hand-holding-dollar"></i> سلفة جديدة</button>
                     </div>
                     <div class="card">
+                        <div class="table-actions">
+                            <div class="search-box"><i class="fa-solid fa-search"></i><input type="text" id="hr-loans-search" placeholder="بحث باسم الموظف أو الكود..."></div>
+                            <select id="hr-loans-status-filter"><option value="">كل الحالات</option><option value="active">جارية</option><option value="settled">مسددة</option></select>
+                        </div>
                         <div class="table-responsive">
                             <table class="data-table">
-                                <thead><tr><th>الموظف</th><th>تاريخ السلفة</th><th>المبلغ</th><th>القسط الشهري</th><th>المسدد</th><th>المتبقي</th><th>الحالة</th></tr></thead>
-                                <tbody>
-                                    <tr><td>أحمد محمد علي</td><td>2026-04-01</td><td>1,000 ج.م</td><td>200 ج.م</td><td>400 ج.م</td><td class="text-warning">600 ج.م</td><td><span class="badge-status pending">جاري السداد</span></td></tr>
-                                </tbody>
+                                <thead><tr><th>الكود</th><th>الموظف</th><th>القسم</th><th>تاريخ السلفة</th><th>المبلغ</th><th>القسط الشهري</th><th>المسدد</th><th>المتبقي</th><th>الحالة</th><th>الإجراءات</th></tr></thead>
+                                <tbody id="hr-loans-tbody"><tr><td colspan="10" class="text-center" style="padding:30px;color:var(--text-muted)">جاري التحميل...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="view" id="view-hr-attendance">
+                    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                        <div><h1 class="page-title">الحضور والانصراف</h1><p class="page-subtitle">تسجيل ومتابعة حضور وانصراف الموظفين</p></div>
+                        <div style="display:flex;gap:10px;flex-wrap:wrap">
+                            <button class="btn btn-outline" id="btn-att-summary"><i class="fa-solid fa-chart-bar"></i> ملخص الشهر</button>
+                            <button class="btn btn-primary" id="btn-att-new"><i class="fa-solid fa-plus"></i> تسجيل حضور</button>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="table-actions">
+                            <div class="search-box"><i class="fa-solid fa-search"></i><input type="text" id="att-search" placeholder="بحث باسم الموظف أو الكود..."></div>
+                            <input type="date" id="att-date-from" title="من تاريخ" style="width:140px;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px">
+                            <input type="date" id="att-date-to" title="إلى تاريخ" style="width:140px;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px">
+                            <select id="att-status-filter"><option value="">كل الحالات</option><option value="present">حاضر</option><option value="absent">غائب</option><option value="late">متأخر</option><option value="leave">إجازة</option></select>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead><tr><th>الكود</th><th>الموظف</th><th>القسم</th><th>التاريخ</th><th>وقت الحضور</th><th>وقت الانصراف</th><th>الحالة</th><th>دقائق التأخر</th><th>الإضافي</th><th>الإجراءات</th></tr></thead>
+                                <tbody id="att-tbody"><tr><td colspan="10" class="text-center" style="padding:30px;color:var(--text-muted)">جاري التحميل...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="view" id="view-hr-vacations">
+                    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                        <div><h1 class="page-title">الإجازات</h1><p class="page-subtitle">إدارة طلبات إجازات الموظفين ورصيد الإجازات</p></div>
+                        <button class="btn btn-primary" id="btn-vac-new"><i class="fa-solid fa-plus"></i> طلب إجازة</button>
+                    </div>
+                    <div id="vac-balance-bar" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px"></div>
+                    <div class="card">
+                        <div class="table-actions">
+                            <div class="search-box"><i class="fa-solid fa-search"></i><input type="text" id="vac-search" placeholder="بحث باسم الموظف أو الكود..."></div>
+                            <select id="vac-status-filter"><option value="">كل الحالات</option><option value="pending">قيد الانتظار</option><option value="approved">معتمدة</option><option value="rejected">مرفوضة</option></select>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead><tr><th>الكود</th><th>الموظف</th><th>القسم</th><th>النوع</th><th>من</th><th>إلى</th><th>الأيام</th><th>السبب</th><th>الحالة</th><th>الإجراءات</th></tr></thead>
+                                <tbody id="vac-tbody"><tr><td colspan="10" class="text-center" style="padding:30px;color:var(--text-muted)">جاري التحميل...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="view" id="view-hr-penalties">
+                    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                        <div><h1 class="page-title">الجزاءات</h1><p class="page-subtitle">تسجيل ومتابعة الجزاءات الوظيفية</p></div>
+                        <button class="btn btn-primary" id="btn-pen-new"><i class="fa-solid fa-plus"></i> جزاء جديد</button>
+                    </div>
+                    <div class="card">
+                        <div class="table-actions">
+                            <div class="search-box"><i class="fa-solid fa-search"></i><input type="text" id="pen-search" placeholder="بحث باسم الموظف أو الكود..."></div>
+                            <select id="pen-status-filter"><option value="">كل الحالات</option><option value="active">نشط</option><option value="cancelled">ملغي</option></select>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead><tr><th>الكود</th><th>الموظف</th><th>القسم</th><th>النوع</th><th>التاريخ</th><th>المبلغ</th><th>السبب</th><th>الحالة</th><th>الإجراءات</th></tr></thead>
+                                <tbody id="pen-tbody"><tr><td colspan="9" class="text-center" style="padding:30px;color:var(--text-muted)">جاري التحميل...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="view" id="view-hr-rewards">
+                    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                        <div><h1 class="page-title">المكافآت</h1><p class="page-subtitle">تسجيل ومتابعة مكافآت وحوافز الموظفين</p></div>
+                        <button class="btn btn-primary" id="btn-rew-new"><i class="fa-solid fa-plus"></i> مكافأة جديدة</button>
+                    </div>
+                    <div class="card">
+                        <div class="table-actions">
+                            <div class="search-box"><i class="fa-solid fa-search"></i><input type="text" id="rew-search" placeholder="بحث باسم الموظف أو الكود..."></div>
+                            <select id="rew-status-filter"><option value="">كل الحالات</option><option value="active">نشط</option><option value="cancelled">ملغي</option></select>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead><tr><th>الكود</th><th>الموظف</th><th>القسم</th><th>النوع</th><th>التاريخ</th><th>المبلغ</th><th>السبب</th><th>الحالة</th><th>الإجراءات</th></tr></thead>
+                                <tbody id="rew-tbody"><tr><td colspan="9" class="text-center" style="padding:30px;color:var(--text-muted)">جاري التحميل...</td></tr></tbody>
                             </table>
                         </div>
                     </div>
@@ -3767,7 +3889,7 @@
                 <div class="view" id="view-ar-cheques">
                     <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
                         <div><h1 class="page-title">شيكات العملاء</h1><p class="page-subtitle">إدارة شيكات العملاء ومتابعة حالاتها</p></div>
-                        <button class="btn btn-primary" id="btn-ar-cheque-new"><i class="fa-solid fa-plus"></i> شيك جديد</button>
+                        <button class="btn btn-primary" id="btn-ar-cheque-new" data-action="custom"><i class="fa-solid fa-plus"></i> شيك جديد</button>
                     </div>
                     <div class="card">
                         <div class="table-actions" style="flex-wrap:wrap">
@@ -3789,7 +3911,7 @@
                 <div class="view" id="view-ar-security-cheques">
                     <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
                         <div><h1 class="page-title">شيكات تأمينية</h1><p class="page-subtitle">تسجيل ومتابعة الشيكات التأمينية للعملاء</p></div>
-                        <button class="btn btn-primary" id="btn-ar-sec-cheque-new"><i class="fa-solid fa-plus"></i> شيك تأميني جديد</button>
+                        <button class="btn btn-primary" id="btn-ar-sec-cheque-new" data-action="custom"><i class="fa-solid fa-plus"></i> شيك تأميني جديد</button>
                     </div>
                     <div class="card">
                         <div class="table-actions">
@@ -3906,7 +4028,7 @@
                 <div class="view" id="view-ap-cheques">
                     <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
                         <div><h1 class="page-title">شيكات الموردين</h1><p class="page-subtitle">إدارة شيكات الموردين ومتابعة حالاتها</p></div>
-                        <button class="btn btn-primary" id="btn-ap-cheque-new"><i class="fa-solid fa-plus"></i> شيك جديد</button>
+                        <button class="btn btn-primary" id="btn-ap-cheque-new" data-action="custom"><i class="fa-solid fa-plus"></i> شيك جديد</button>
                     </div>
                     <div class="card">
                         <div class="table-actions">
@@ -4267,7 +4389,7 @@
                         <div><h1 class="page-title">الجرد الفعلي (Stock Count)</h1><p class="page-subtitle">إجراء جرد شامل للأصناف وتسجيل الفروقات وتطبيقها</p></div>
                         <div style="display:flex;gap:10px">
                             <button class="btn btn-outline" onclick="window.print()"><i class="fa-solid fa-print"></i> باعة</button>
-                            <button class="btn btn-primary" id="btn-new-count"><i class="fa-solid fa-plus"></i> جرد جديد</button>
+                            <button class="btn btn-primary" id="btn-new-count" data-action="custom"><i class="fa-solid fa-plus"></i> جرد جديد</button>
                         </div>
                     </div>
                     <div class="card">
@@ -4391,11 +4513,49 @@
                                 <option value="100">100</option>
                                 <option value="200">200</option>
                             </select>
-                        </div>
+                </div>
                     </div>
                 </div>
-
             </div><!-- end #view-container -->
+
+    <!-- Treasury modal save handler (global fallback) -->
+    <script>
+    window.saveTreasuryTx = async function() {
+        var account_id = document.getElementById('tf-account')?.value;
+        var trans_type = document.getElementById('tf-type')?.value;
+        var trans_date = document.getElementById('tf-date')?.value;
+        var amount = document.getElementById('tf-amount')?.value;
+        var description = document.getElementById('tf-desc')?.value;
+        var document_no = document.getElementById('tf-doc-no')?.value;
+        if (!account_id) { alert('الرجاء اختيار الحساب'); return; }
+        if (!amount || parseFloat(amount) <= 0) { alert('الرجاء إدخال مبلغ صحيح'); return; }
+        var btn = document.getElementById('btn-treasury-modal-save');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الحفظ...';
+        try {
+            var token = localStorage.getItem('auth_token');
+            var r = await fetch('/api/treasury/transactions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ account_id: parseInt(account_id), trans_type: trans_type, trans_date: trans_date || undefined, amount: parseFloat(amount), description: description || '', document_no: document_no || null })
+            });
+            var data = await r.json();
+            if (data.success) {
+                alert('تم تسجيل الحركة بنجاح');
+                var tm = document.getElementById('treasury-modal');
+                tm.style.display = 'none';
+                tm.classList.remove('active');
+                location.reload();
+            } else {
+                alert(data.message || 'فشل الحفظ');
+            }
+        } catch(e) {
+            alert('خطأ: ' + e.message);
+        }
+        btn.disabled = false;
+        btn.innerHTML = 'حفظ الحركة';
+    };
+    </script>
         </main>
     </div>
 
@@ -4416,13 +4576,14 @@
         </div>
     </div>
 
+    <script src="js/components/toast.js"></script>
     <script src="js/components/dialog.js"></script>
     <script src="js/utils/real_data.js"></script>
-    <script src="js/api/api.js"></script>
+    <script src="js/api/api.js?v=2.0.7"></script>
     <script src="js/utils/time.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="js/app.js?v=2.0.5"></script>
-    <script src="js/accounting.js?v=2.0.5"></script>
+    <script src="js/app.js?v=2.0.7"></script>
+    <script src="js/accounting.js?v=2.0.7"></script>
     <script src="js/services/reportPrintEngine.js"></script>
     <script src="js/views/views.js"></script>
     <script src="js/reports/reportUtils.js"></script>
@@ -4440,6 +4601,8 @@
     <script src="js/views/viewIncomeStatement.js"></script>
     <script src="js/views/viewFiscalPeriods.js"></script>
     <script src="js/views/viewJournalInquiry.js"></script>
+    <script src="js/views/viewFixedAssets.js"></script>
+    <script src="js/views/viewHR.js"></script>
     <script>
         if (window.location.protocol === 'file:') {
             alert('âڑ ï¸ڈ افتح البرنامج من المتصفح عبر:\nhttp://localhost:3000\n\nوليس بفتح ملف index.html مباشرة');
@@ -4459,6 +4622,17 @@
                 if (overlay) overlay.style.display = 'flex';
             }
         })();
+    </script>
+
+    <!-- Global closeModal function -->
+    <script>
+    function closeModal(id) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.style.display = 'none';
+            el.classList.remove('active', 'open');
+        }
+    }
     </script>
 
     <!-- Sidebar Navigation Popup Logic -->
@@ -4561,6 +4735,10 @@
                 'hr': 'loadHr',
                 'payroll': 'loadPayroll',
                 'hr-loans': 'loadHrLoans',
+                'hr-attendance': 'loadAttendance',
+                'hr-vacations': 'loadVacations',
+                'hr-penalties': 'loadPenalties',
+                'hr-rewards': 'loadRewards',
                 'license': 'loadLicense'
             };
             var fnName = loaders[targetId];
@@ -4582,6 +4760,54 @@
             if (typeof genericFn === 'function') {
                 genericFn();
             }
+        };
+
+        // Global treasury modal handler (called from HTML onclick as fallback)
+        window.openTreasuryModal = function(type) {
+            var modal = document.getElementById('treasury-modal');
+            if (!modal) { alert('مودال الخزينة غير موجود'); return; }
+            document.getElementById('treasury-modal-title').textContent = type === 'in' ? 'إيداع نقدي (وارد)' : 'سحب نقدي (صادر)';
+            document.getElementById('tf-type').value = type;
+            document.getElementById('tf-date').value = new Date().toISOString().slice(0, 10);
+            document.getElementById('tf-amount').value = '';
+            document.getElementById('tf-desc').value = '';
+            document.getElementById('tf-doc-no').value = '';
+            // Load accounts if empty
+            var accSel = document.getElementById('tf-account');
+            if (accSel && accSel.options.length <= 1) {
+                var token = localStorage.getItem('auth_token');
+                fetch('/api/treasury/accounts', { headers: { 'Authorization': 'Bearer ' + token } })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            accSel.innerHTML = '<option value="">-- اختر الحساب --</option>';
+                            data.data.forEach(function(a) {
+                                var o = document.createElement('option');
+                                o.value = a.id;
+                                o.textContent = a.account_name + (a.bank_name ? ' (' + a.bank_name + ')' : '');
+                                accSel.appendChild(o);
+                            });
+                        }
+                    });
+            }
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+
+            // Wire close button
+            var closeBtn = document.getElementById('btn-treasury-modal-close');
+            if (closeBtn) {
+                closeBtn.onclick = function() {
+                    modal.style.display = 'none';
+                    modal.classList.remove('active');
+                };
+            }
+            // Click overlay to close
+            modal.onclick = function(e) {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                    modal.classList.remove('active');
+                }
+            };
         };
 
         // Click on has-submenu items

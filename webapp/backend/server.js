@@ -111,7 +111,14 @@ const { getHealth } = require('./database/mssql_db');
 app.get('/health', (req, res) => { res.json(getHealth()); });
 
 // ─── Serve Static Frontend ───────────────────────────────────
-app.use(express.static(path.join(__dirname, '../frontend')));
+app.use(express.static(path.join(__dirname, '../frontend'), {
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.js') || filePath.endsWith('.html') || filePath.endsWith('.css')) {
+            res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+            res.set('Pragma', 'no-cache');
+        }
+    }
+}));
 
 // ─── Rate Limiting ────────────────────────────────────────────
 const rateLimit = require('express-rate-limit');
@@ -207,19 +214,42 @@ app.use('/api/users',       applyPermissions('users'),       require('./routes/u
 app.use('/api/settings',    applyPermissions('settings'),    require('./routes/settings'));
 app.use('/api/logs',        applyPermissions('logs'),        require('./routes/logs'));
 app.use('/api/admin',       require('./routes/admin'));
+app.use('/api/fixed-assets', require('./routes/fixed_assets'));
+app.use('/api/ar/cheques', require('./routes/ar_cheques'));
+app.use('/api/ar/notes', require('./routes/ar_notes'));
+app.use('/api/ar/payments', require('./routes/ar_payments'));
+app.use('/api/ar/security-cheques', require('./routes/ar_security_cheques'));
+app.use('/api/ap/cheques', require('./routes/ap_cheques'));
+app.use('/api/ap/notes', require('./routes/ap_notes'));
+app.use('/api/ap/payments', require('./routes/ap_payments'));
+app.use('/api/crm/workplans', require('./routes/crm_workplans'));
+app.use('/api/crm/targets', require('./routes/crm_targets'));
+app.use('/api/crm/settlements', require('./routes/crm_settlements'));
+app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/hr', require('./routes/hr'));
 
 // ─── SPA Fallback (for direct URL access) ────────────────────
 app.get('*', (req, res) => {
+    // API routes that don't exist should return 404 JSON, not HTML
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({
+            success: false,
+            message: 'المسار غير موجود: ' + req.path
+        });
+    }
     res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
 // ─── Global Error Handler ─────────────────────────────────────
 app.use((err, req, res, next) => {
-    console.error('[ERROR]', err.message);
-    res.status(err.status || 500).json({
-        success: false,
-        message: err.message || 'حدث خطأ في الخادم'
-    });
+    const msg = (typeof err === 'string' ? err : err && err.message) || 'حدث خطأ في الخادم';
+    console.error('[ERROR]', msg);
+    if (res.headersSent) { return next(err); }
+    try {
+        res.status(500).json({ success: false, message: String(msg) });
+    } catch (_) {
+        res.status(500).end(JSON.stringify({ success: false, message: 'حدث خطأ في الخادم' }));
+    }
 });
 
 // ─── Start Server ─────────────────────────────────────────────

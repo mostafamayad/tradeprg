@@ -39,18 +39,73 @@ async function recalcSupplierBalanceAsync(poolOrTxReq, supplierId) {
 router.get('/', asyncHandler(async (req, res) => {
     try {
         const pool = await getPool();
-        const result = await pool.request().query('SELECT * FROM suppliers WHERE is_active = 1 ORDER BY supplier_name');
-        res.json({ success: true, data: result.recordset });
+        const { q, active, page, limit, sort_by, sort_order } = req.query;
+
+        let conditions = [];
+        const params = [];
+
+        if (active === '0') {
+            conditions.push('is_active = 0');
+        } else if (active === '' || active === 'all') {
+            // no filter on active
+        } else {
+            conditions.push('is_active = 1');
+        }
+
+        if (q) {
+            conditions.push('(supplier_name LIKE @q OR supplier_code LIKE @q OR phone LIKE @q OR mobile LIKE @q)');
+            params.push({ name: 'q', type: sql.NVarChar, value: `%${q}%` });
+        }
+
+        const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+
+        // Sorting — whitelist allowed columns to prevent SQL injection
+        const allowedSortColumns = ['supplier_code', 'supplier_name', 'phone', 'current_balance', 'id'];
+        const sortCol = allowedSortColumns.includes(sort_by) ? sort_by : 'supplier_name';
+        const sortDir = sort_order === 'DESC' ? 'DESC' : 'ASC';
+
+        // Pagination
+        const pageNum = Math.max(1, parseInt(page) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 15));
+        const offset = (pageNum - 1) * limitNum;
+
+        // Count total
+        let countReq = pool.request();
+        params.forEach(p => countReq.input(p.name, p.type, p.value));
+        const countResult = await countReq.query(`SELECT COUNT(*) AS total FROM suppliers ${whereClause}`);
+        const total = countResult.recordset[0].total;
+
+        // Fetch data
+        let dataReq = pool.request();
+        params.forEach(p => dataReq.input(p.name, p.type, p.value));
+        const dataResult = await dataReq
+            .query(`SELECT * FROM suppliers ${whereClause} ORDER BY ${sortCol} ${sortDir} OFFSET ${offset} ROWS FETCH NEXT ${limitNum} ROWS ONLY`);
+
+        res.json({ success: true, data: dataResult.recordset, total, page: pageNum, limit: limitNum });
     } catch (err) {
         console.error('Suppliers GET error:', err);
-        err.status = 500;
-        err.message = 'خطأ في قاعدة البيانات';
-        throw err;
+        res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات' });
+    }
+}));
+
+router.get('/:id', asyncHandler(async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('id', sql.Int, req.params.id)
+            .query('SELECT * FROM suppliers WHERE id = @id');
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ success: false, message: 'المورد غير موجود' });
+        }
+        res.json({ success: true, data: result.recordset[0] });
+    } catch (err) {
+        console.error('Suppliers GET by ID error:', err);
+        res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات' });
     }
 }));
 
 router.post('/', asyncHandler(async (req, res) => {
-    const { supplier_code, supplier_name, phone, address, opening_balance, notes } = req.body;
+    const { supplier_code, supplier_name, phone, mobile, email, address, tax_number, opening_balance, notes } = req.body;
     let transaction;
     try {
         const pool = await getPool();
@@ -74,17 +129,20 @@ router.post('/', asyncHandler(async (req, res) => {
             .input('code', sql.NVarChar, code)
             .input('name', sql.NVarChar, supplier_name)
             .input('phone', sql.NVarChar, phone)
+            .input('mobile', sql.NVarChar, mobile)
+            .input('email', sql.NVarChar, email)
             .input('address', sql.NVarChar, address)
+            .input('tax', sql.NVarChar, tax_number)
             .input('ob', sql.Decimal(18, 2), ob)
             .input('notes', sql.NVarChar, notes)
             .query(`
-                INSERT INTO suppliers (supplier_code, supplier_name, phone, address, opening_balance, current_balance, notes)
+                INSERT INTO suppliers (supplier_code, supplier_name, phone, mobile, email, address, tax_number, opening_balance, current_balance, notes)
                 OUTPUT INSERTED.id
-                VALUES (@code, @name, @phone, @address, @ob, @ob, @notes)
+                VALUES (@code, @name, @phone, @mobile, @email, @address, @tax, @ob, @ob, @notes)
             `);
             
         await transaction.commit();
-        logActivity(req, 'CREATE', 'suppliers', code, `تم إنشاء المورد ${supplier_name}`, null, { supplier_name, code, phone, address }, 'SUCCESS', null);
+        logActivity(req, 'CREATE', 'suppliers', code, `تم إنشاء المورد ${supplier_name}`, null, { supplier_name, code, phone, mobile, email, address, tax_number }, 'SUCCESS', null);
         res.status(201).json({ success: true, id: result.recordset[0].id });
     } catch (err) {
         if (transaction) await transaction.rollback();
@@ -95,7 +153,7 @@ router.post('/', asyncHandler(async (req, res) => {
 }));
 
 router.put('/:id', asyncHandler(async (req, res) => {
-    const { supplier_name, phone, address, opening_balance, notes } = req.body;
+    const { supplier_name, phone, mobile, email, address, tax_number, opening_balance, notes } = req.body;
     let transaction;
     try {
         const pool = await getPool();
@@ -116,20 +174,23 @@ router.put('/:id', asyncHandler(async (req, res) => {
         await request
             .input('name', sql.NVarChar, supplier_name)
             .input('phone', sql.NVarChar, phone)
+            .input('mobile', sql.NVarChar, mobile)
+            .input('email', sql.NVarChar, email)
             .input('address', sql.NVarChar, address)
+            .input('tax', sql.NVarChar, tax_number)
             .input('ob', sql.Decimal(18, 2), opening_balance || 0)
             .input('notes', sql.NVarChar, notes)
             .input('id', sql.Int, req.params.id)
             .query(`
                 UPDATE suppliers 
-                SET supplier_name = @name, phone = @phone, address = @address, opening_balance = @ob, notes = @notes 
+                SET supplier_name = @name, phone = @phone, mobile = @mobile, email = @email, address = @address, tax_number = @tax, opening_balance = @ob, notes = @notes 
                 WHERE id = @id
             `);
             
         await recalcSupplierBalanceAsync(request, req.params.id);
         
         await transaction.commit();
-        logActivity(req, 'UPDATE', 'suppliers', null, `تم تحديث المورد ${supplier_name}`, null, { supplier_name, phone, address }, 'SUCCESS', null);
+        logActivity(req, 'UPDATE', 'suppliers', null, `تم تحديث المورد ${supplier_name}`, null, { supplier_name, phone, mobile, email, address, tax_number }, 'SUCCESS', null);
         res.json({ success: true, message: 'تم تحديث المورد' });
     } catch (err) {
         if (transaction) await transaction.rollback();
