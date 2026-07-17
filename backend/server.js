@@ -158,9 +158,10 @@ app.use('/api', apiLimiter);
 
 // ─── Cloud/Multi-Tenant (only when BUILD_PROFILE=cloud) ────────
 if (process.env.BUILD_PROFILE === 'cloud') {
+    // Super Admin must come BEFORE tenant resolver (it manages all tenants)
+    app.use('/api/superadmin', require('./routes/super_admin'));
     const tenantResolver = require('./middleware/tenantResolver');
     app.use('/api', tenantResolver);
-    app.use('/api/superadmin', require('./routes/super_admin'));
     console.log('[SERVER] Cloud mode: tenant resolver + super admin enabled');
 }
 
