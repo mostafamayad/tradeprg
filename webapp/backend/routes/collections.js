@@ -433,6 +433,27 @@ router.post('/', asyncHandler(async (req, res) => {
 
             await tx.commit();
             await logActivity(req, 'CREATE', 'collections', colNo, `سند تحصيل ${colNo}`, null, { collection_no: colNo, customer_id, amount: amountValue, payment_method: method }, 'SUCCESS', null);
+
+            try {
+                const commissionEmitter = require('../services/commission/emitter');
+                commissionEmitter.emit('collection.created', {
+                    collection: {
+                        id: collectionId,
+                        customer_id,
+                        rep_id: repIdValue,
+                        amount: amountValue,
+                        collection_no: colNo,
+                        collection_date: colDate,
+                        company_id: null,
+                        customer_name: null,
+                        invoice_no: null,
+                        invoice_date: null
+                    }
+                });
+            } catch (e) {
+                console.warn('[Commission] Emit failed:', e.message);
+            }
+
             res.status(201).json({ success: true, message: 'تم تسجيل التحصيل', id: collectionId, collection_no: colNo });
         } catch (err) {
             await tx.rollback();

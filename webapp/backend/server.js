@@ -156,6 +156,15 @@ const apiLimiter = rateLimit({
 app.use('/api/auth/login', loginLimiter);
 app.use('/api', apiLimiter);
 
+// ─── Cloud/Multi-Tenant (only when BUILD_PROFILE=cloud) ────────
+if (process.env.BUILD_PROFILE === 'cloud') {
+    // Super Admin must come BEFORE tenant resolver (it manages all tenants)
+    app.use('/api/superadmin', require('./routes/super_admin'));
+    const tenantResolver = require('./middleware/tenantResolver');
+    app.use('/api', tenantResolver);
+    console.log('[SERVER] Cloud mode: tenant resolver + super admin enabled');
+}
+
 // ─── API Routes ──────────────────────────────────────────────
 const authenticate = require('./middleware/auth');
 const autoLogger = require('./middleware/autoLogger');
@@ -213,20 +222,22 @@ app.use('/api/analytics',   applyPermissions('reports'),     require('./analytic
 app.use('/api/users',       applyPermissions('users'),       require('./routes/users'));
 app.use('/api/settings',    applyPermissions('settings'),    require('./routes/settings'));
 app.use('/api/logs',        applyPermissions('logs'),        require('./routes/logs'));
-app.use('/api/admin',       require('./routes/admin'));
-app.use('/api/fixed-assets', require('./routes/fixed_assets'));
-app.use('/api/ar/cheques', require('./routes/ar_cheques'));
-app.use('/api/ar/notes', require('./routes/ar_notes'));
-app.use('/api/ar/payments', require('./routes/ar_payments'));
-app.use('/api/ar/security-cheques', require('./routes/ar_security_cheques'));
-app.use('/api/ap/cheques', require('./routes/ap_cheques'));
-app.use('/api/ap/notes', require('./routes/ap_notes'));
-app.use('/api/ap/payments', require('./routes/ap_payments'));
-app.use('/api/crm/workplans', require('./routes/crm_workplans'));
-app.use('/api/crm/targets', require('./routes/crm_targets'));
-app.use('/api/crm/settlements', require('./routes/crm_settlements'));
-app.use('/api/notifications', require('./routes/notifications'));
-app.use('/api/hr', require('./routes/hr'));
+app.use('/api/admin',              applyPermissions('settings'),    require('./routes/admin'));
+app.use('/api/fixed-assets',       applyPermissions('accounting'),  require('./routes/fixed_assets'));
+app.use('/api/ar/cheques',         applyPermissions('collections'), require('./routes/ar_cheques'));
+app.use('/api/ar/notes',           applyPermissions('collections'), require('./routes/ar_notes'));
+app.use('/api/ar/payments',        applyPermissions('collections'), require('./routes/ar_payments'));
+app.use('/api/ar/security-cheques',applyPermissions('collections'), require('./routes/ar_security_cheques'));
+app.use('/api/ap/cheques',         applyPermissions('payments'),    require('./routes/ap_cheques'));
+app.use('/api/ap/notes',           applyPermissions('payments'),    require('./routes/ap_notes'));
+app.use('/api/ap/payments',        applyPermissions('payments'),    require('./routes/ap_payments'));
+app.use('/api/crm/workplans',      applyPermissions('customers'),   require('./routes/crm_workplans'));
+app.use('/api/crm/targets',        applyPermissions('customers'),   require('./routes/crm_targets'));
+app.use('/api/crm/settlements',    applyPermissions('customers'),   require('./routes/crm_settlements'));
+app.use('/api/notifications',      require('./routes/notifications'));
+app.use('/api/hr',                 applyPermissions('settings'),    require('./routes/hr'));
+app.use('/api/commissions',        applyPermissions('commission'),  require('./routes/commissions'));
+app.use('/api/commission-plans',   applyPermissions('commission'),  require('./routes/commission_plans'));
 
 // ─── SPA Fallback (for direct URL access) ────────────────────
 app.get('*', (req, res) => {

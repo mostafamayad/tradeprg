@@ -1,3 +1,4 @@
+const asyncHandler = require('../utils/asyncHandler');
 // ============================================================
 // ROUTE: Sales Invoices
 // ============================================================
@@ -528,14 +529,29 @@ router.post('/invoices', asyncHandler(async (req, res) => {
 
         await transaction.commit();
         await logActivity(req, 'CREATE', 'sales', invoiceNo, `فاتورة مبيعات ${invoiceNo}`, null, { invoice_no: invoiceNo, customer_id, grand_total: grandTotal, items_count: items.length, payment_type }, 'SUCCESS', null);
-        res.status(201).json({ success: true, message: 'تم حفظ الفاتورة بنجاح', invoiceNo, invoiceId, grandTotal, remaining });
+        let creditWarning = false;
+        if (customer_id) {
+            try {
+                const pool = await getPool();
+                const custRes = await pool.request()
+                    .input("cw_cid", sql.Int, customer_id)
+                    .query("SELECT credit_limit, current_balance FROM customers WHERE id = @cw_cid");
+                if (custRes.recordset.length > 0) {
+                    const cust = custRes.recordset[0];
+                    if (cust.credit_limit > 0 && cust.current_balance > cust.credit_limit) {
+                        creditWarning = true; var newBalance = cust.current_balance; var limit = cust.credit_limit;
+                    }
+                }
+            } catch (cwErr) { console.error("Credit warning check failed:", cwErr); }
+        }
+        res.status(201).json({ success: true, message: 'تم حفظ الفاتورة بنجاح', invoiceNo, invoiceId, grandTotal, remaining, creditWarning, newBalance, creditLimit: limit });
     } catch (err) {
         if (transaction) await transaction.rollback();
         console.error('Sales POST error:', err);
         await logActivity(req, 'CREATE', 'sales', req.body.invoice_no || null, 'إنشاء فاتورة مبيعات', null, null, 'FAILED', err.message);
         res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات' });
     }
-});
+}));
 
 router.put('/invoices/:id/cancel', async (req, res) => {
     const invoiceId = parseInt(req.params.id);
@@ -1094,7 +1110,7 @@ router.get('/returns/available-qty/:invoiceId', async (req, res) => {
         console.error('Available qty error:', err);
 res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات' });
     }
-}));
+});
 // ── Create sales return (full ERP workflow) ──────────────
 router.post('/returns', asyncHandler(async (req, res) => {
     const {
@@ -1528,6 +1544,26 @@ router.post('/returns', asyncHandler(async (req, res) => {
 
         await transaction.commit();
         await logActivity(req, 'CREATE', 'sales_returns', retNo, `مرتجع مبيعات ${retNo}`, null, { return_no: retNo, customer_id, invoice_id, grand_total: grandTotal, items_count: enrichedItems.length, workflow_status: wfStatus }, 'SUCCESS', null);
+
+        try {
+            const commissionEmitter = require('../services/commission/emitter');
+            let returnRepId = null;
+            let returnInvoiceNo = null;
+            if (invoice_id) {
+                const invResult = await pool.request().input('iid', sql.Int, invoice_id).query('SELECT rep_id, invoice_no FROM sales_invoices WHERE id = @iid');
+                if (invResult.recordset.length > 0) {
+                    returnRepId = invResult.recordset[0].rep_id;
+                    returnInvoiceNo = invResult.recordset[0].invoice_no;
+                }
+            }
+            commissionEmitter.emit('return.posted', {
+                returnData: { id: returnId, invoice_id, invoice_no: returnInvoiceNo, grand_total: grandTotal },
+                repId: returnRepId
+            });
+        } catch (e) {
+            console.warn('[Commission] Emit return failed:', e.message);
+        }
+
         res.status(201).json({
             success: true,
             message: wfStatus === 'pending_approval'
@@ -1542,7 +1578,7 @@ router.post('/returns', asyncHandler(async (req, res) => {
         await logActivity(req, 'CREATE', 'sales_returns', null, 'إنشاء مرتجع مبيعات', null, null, 'FAILED', err.message);
         res.status(500).json({ success: false, message: 'خطأ في حفظ مرتجع المبيعات', error_detail: err.message });
     }
-});
+}));
 
 // ── Approve a pending return (Rule: inspection→saleable/damaged) ──
 router.post('/returns/:id/approve', async (req, res) => {
@@ -1720,7 +1756,7 @@ router.post('/returns/:id/approve', async (req, res) => {
         console.error('Approve return error:', err);
 res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات: ' + err.message });
     }
-}));
+});
 // ── Reverse an existing return (Rule 12: never delete) ───
 router.post('/returns/:id/reverse', asyncHandler(async (req, res) => {
     const returnId = parseInt(req.params.id);
@@ -1829,7 +1865,7 @@ router.post('/returns/:id/reverse', asyncHandler(async (req, res) => {
         console.error('Reverse return error:', err);
         res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات: ' + err.message });
     }
-});
+}));
 
 // ── Reject a pending return ──
 router.post('/returns/:id/reject', async (req, res) => {
@@ -1910,7 +1946,7 @@ router.post('/returns/:id/submit', async (req, res) => {
         console.error('Submit return error:', err);
 res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات: ' + err.message });
     }
-}));
+});
 // ── Edit an existing return (recalculates everything atomically) ──
 router.put('/returns/:id', async (req, res) => {
     const returnId = parseInt(req.params.id);
@@ -2144,7 +2180,7 @@ await transaction.commit();
         console.error('Edit return error:', err);
         res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات: ' + err.message });
     }
-}));
+});
 router.post('/invoices/fix-status', async (req, res) => {
     let transaction;
     try {
