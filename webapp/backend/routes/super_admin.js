@@ -105,6 +105,41 @@ router.post('/tenants/:id/suspend', async (req, res) => {
     }
 });
 
+router.post('/tenants/:id/reset-password', async (req, res) => {
+    const { username, new_password } = req.body;
+    if (!username || !new_password) {
+        return res.status(400).json({ success: false, message: 'username and new_password are required' });
+    }
+
+    try {
+        const pool = await getMasterPool();
+        const tenantRes = await pool.request()
+            .input('id', sql.Int, req.params.id)
+            .query('SELECT db_name FROM tenants WHERE id = @id');
+
+        if (tenantRes.recordset.length === 0) {
+            return res.status(404).json({ success: false, message: 'Tenant not found' });
+        }
+
+        const { getTenantPool } = require('../database/mssql_db');
+        const tenantPool = await getTenantPool(tenantRes.recordset[0].db_name);
+        const hash = bcrypt.hashSync(new_password, 10);
+
+        const result = await tenantPool.request()
+            .input('username', sql.NVarChar, username)
+            .input('hash', sql.NVarChar, hash)
+            .query('UPDATE users SET password_hash = @hash WHERE username = @username');
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ success: false, message: 'User not found in tenant database' });
+        }
+
+        res.json({ success: true, message: `Password reset for ${username} in tenant ${req.params.id}` });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 router.post('/tenants/:id/activate', async (req, res) => {
     try {
         const pool = await getMasterPool();

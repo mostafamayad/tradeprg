@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradePro Cloud - لوحة تحكم السوبر أدمن</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #7c3aed;
+            --primary-dark: #6d28d9;
+            --bg: #f3f4f6;
+            --surface: #ffffff;
+            --text: #1f2937;
+            --border: #e5e7eb;
+        }
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: var(--bg);
+            margin: 0;
+            padding: 0;
+            color: var(--text);
+        }
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        .container {
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        .card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: inherit;
+        }
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+        }
+        button:hover {
+            background: var(--primary-dark);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: right;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: #f8fafc;
+        }
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .badge.active { background: #dcfce7; color: #166534; }
+        .badge.inactive { background: #fee2e2; color: #991b1b; }
+        
+        .login-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .login-box {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            width: 400px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-overlay" id="loginOverlay">
+        <div class="login-box">
+            <h2>تسجيل الدخول - Super Admin</h2>
+            <div class="form-group">
+                <label>مفتاح السوبر أدمن السري:</label>
+                <input type="password" id="adminKey" placeholder="أدخل المفتاح السري (Super Admin Key)">
+            </div>
+            <button onclick="login()">دخول</button>
+        </div>
+    </div>
+
+    <div class="header">
+        <h1>☁️ لوحة تحكم السوبر أدمن - TradePro Cloud</h1>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <h2>إضافة شركة جديدة (Tenant)</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>اسم الشركة:</label>
+                    <input type="text" id="companyName" placeholder="مثال: شركة الأمل للتجارة">
+                </div>
+                <div class="form-group">
+                    <label>اسم قاعدة البيانات (الرابط الفرعي):</label>
+                    <input type="text" id="dbName" placeholder="مثال: al-amal (فقط حروف انجليزية)">
+                </div>
+                <div class="form-group">
+                    <label>خطة الاشتراك:</label>
+                    <select id="planName">
+                        <option value="basic">أساسي (Basic)</option>
+                        <option value="pro">احترافي (Pro)</option>
+                        <option value="enterprise">مؤسسي (Enterprise)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>الحد الأقصى للمستخدمين:</label>
+                    <input type="number" id="maxUsers" value="5">
+                </div>
+            </div>
+            <button onclick="createTenant()" style="margin-top: 10px;">إنشاء الشركة وبناء قاعدة البيانات</button>
+        </div>
+
+        <div class="card">
+            <h2>الشركات المسجلة في السحابة</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>الرقم</th>
+                        <th>اسم الشركة</th>
+                        <th>الرابط الفرعي / الـ DB</th>
+                        <th>الخطة</th>
+                        <th>الحالة</th>
+                        <th>إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="tenantsTableBody">
+                    <!-- Data will load here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let apiKey = '';
+
+        function login() {
+            apiKey = document.getElementById('adminKey').value;
+            if(!apiKey) return alert('يرجى إدخال المفتاح');
+            document.getElementById('loginOverlay').style.display = 'none';
+            loadTenants();
+        }
+
+        async function loadTenants() {
+            try {
+                const res = await fetch('/api/superadmin/tenants', {
+                    headers: { 'x-super-admin-key': apiKey }
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.message);
+
+                const tbody = document.getElementById('tenantsTableBody');
+                tbody.innerHTML = '';
+                data.data.forEach(t => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${t.id}</td>
+                            <td>${t.company_name}</td>
+                            <td><strong>${t.db_name}</strong>.tradepro.com</td>
+                            <td>${t.plan_name}</td>
+                            <td><span class="badge ${t.is_active ? 'active' : 'inactive'}">${t.is_active ? 'نشط' : 'موقوف'}</span></td>
+                            <td>
+                                ${t.is_active 
+                                    ? `<button onclick="toggleTenant(${t.id}, 'suspend')" style="background: #dc2626; padding: 5px 10px; font-size: 12px;">إيقاف</button>`
+                                    : `<button onclick="toggleTenant(${t.id}, 'activate')" style="background: #16a34a; padding: 5px 10px; font-size: 12px;">تفعيل</button>`
+                                }
+                                <button onclick="resetPassword(${t.id}, '${t.db_name}')" style="background: #7c3aed; padding: 5px 10px; font-size: 12px; margin-top:4px;">reset pass</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (e) {
+                alert('خطأ: ' + e.message);
+                document.getElementById('loginOverlay').style.display = 'flex';
+            }
+        }
+
+        async function createTenant() {
+            const company_name = document.getElementById('companyName').value;
+            const db_name = document.getElementById('dbName').value;
+            const plan_name = document.getElementById('planName').value;
+            const max_users = document.getElementById('maxUsers').value;
+
+            if(!company_name || !db_name) return alert('البيانات ناقصة');
+
+            try {
+                const res = await fetch('/api/superadmin/tenants', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'x-super-admin-key': apiKey 
+                    },
+                    body: JSON.stringify({ company_name, db_name, plan_name, max_users })
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.message);
+                
+                alert('تم إنشاء الشركة بنجاح!\n\nبيانات الدخول:\nUsername: admin@3smcompany.com\nPassword: admin123');
+                document.getElementById('companyName').value = '';
+                document.getElementById('dbName').value = '';
+                loadTenants();
+            } catch (e) {
+                alert('خطأ: ' + e.message);
+            }
+        }
+
+        async function toggleTenant(id, action) {
+            if(!confirm('هل أنت متأكد؟')) return;
+            try {
+                const res = await fetch(`/api/superadmin/tenants/${id}/${action}`, {
+                    method: 'POST',
+                    headers: { 'x-super-admin-key': apiKey }
+                });
+                loadTenants();
+            } catch (e) {
+                alert('خطأ');
+            }
+        }
+
+        async function resetPassword(id, dbName) {
+            const newPass = prompt('أدخل الباسورد الجديد:');
+            if (!newPass) return;
+            try {
+                const res = await fetch(`/api/superadmin/tenants/${id}/reset-password`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'x-super-admin-key': apiKey 
+                    },
+                    body: JSON.stringify({ username: 'admin@3smcompany.com', new_password: newPass })
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.message);
+                alert('تم تغيير الباسورد بنجاح!');
+            } catch (e) {
+                alert('خطأ: ' + e.message);
+            }
+        }
+    </script>
+</body>
+</html>
