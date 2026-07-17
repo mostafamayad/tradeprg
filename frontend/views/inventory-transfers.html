@@ -1,0 +1,60 @@
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 class="page-title">التحويلات المخزنية (صادر ووارد)</h1>
+        <p class="page-subtitle">نقل البضائع بين المخازن والفروع، ومتابعة استلامها</p>
+    </div>
+    <button class="btn btn-primary">
+        <i class="fa-solid fa-truck-fast"></i> إذن تحويل جديد
+    </button>
+</div>
+
+<div class="card">
+    <div class="table-actions">
+        <select style="width: 200px;">
+            <option value="">كل المخازن</option>
+            <option value="1">المخزن الرئيسي</option>
+            <option value="2">مخزن فرع الإسكندرية</option>
+        </select>
+        <button class="btn btn-outline"><i class="fa-solid fa-filter"></i> تصفية</button>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>رقم الإذن</th>
+                    <th>التاريخ</th>
+                    <th>من مخزن (المُصدر)</th>
+                    <th>إلى مخزن (المُستلم)</th>
+                    <th>حالة التحويل</th>
+                    <th>البيان</th>
+                    <th>تفاصيل</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>TRN-001</td>
+                    <td>2026-06-21</td>
+                    <td>المخزن الرئيسي</td>
+                    <td>فرع الإسكندرية</td>
+                    <td><span class="badge" style="background: var(--warning-color);">في الطريق (قيد الاستلام)</span></td>
+                    <td>بضاعة نواقص فرع</td>
+                    <td class="actions-cell">
+                        <button class="icon-btn btn-view"><i class="fa-solid fa-eye"></i></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>TRN-002</td>
+                    <td>2026-06-18</td>
+                    <td>مخزن الترانزيت</td>
+                    <td>المخزن الرئيسي</td>
+                    <td><span class="badge" style="background: var(--success-color);">تم الاستلام</span></td>
+                    <td>نقل بضاعة مستوردة</td>
+                    <td class="actions-cell">
+                        <button class="icon-btn btn-view"><i class="fa-solid fa-eye"></i></button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,6252 @@
+{
+  "mode": "memory",
+  "results": {
+    "memory": {
+      "samples": [
+        {
+          "elapsed": 15,
+          "memory": {
+            "rss": 100622336,
+            "heapTotal": 24965120,
+            "heapUsed": 19438288,
+            "external": 5871751,
+            "arrayBuffers": 1983650
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 108,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 4,
+            "available": 4,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:06:43.779Z"
+        },
+        {
+          "elapsed": 30,
+          "memory": {
+            "rss": 101400576,
+            "heapTotal": 26800128,
+            "heapUsed": 21652224,
+            "external": 5873584,
+            "arrayBuffers": 1985483
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 123,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:06:58.780Z"
+        },
+        {
+          "elapsed": 45,
+          "memory": {
+            "rss": 100925440,
+            "heapTotal": 24178688,
+            "heapUsed": 19317728,
+            "external": 4045024,
+            "arrayBuffers": 156923
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 138,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:07:13.782Z"
+        },
+        {
+          "elapsed": 60,
+          "memory": {
+            "rss": 101249024,
+            "heapTotal": 25227264,
+            "heapUsed": 20333832,
+            "external": 4046857,
+            "arrayBuffers": 158756
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 153,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:07:28.782Z"
+        },
+        {
+          "elapsed": 75,
+          "memory": {
+            "rss": 101949440,
+            "heapTotal": 27586560,
+            "heapUsed": 23080240,
+            "external": 4584150,
+            "arrayBuffers": 696049
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 168,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:07:43.781Z"
+        },
+        {
+          "elapsed": 90,
+          "memory": {
+            "rss": 104968192,
+            "heapTotal": 25751552,
+            "heapUsed": 19452840,
+            "external": 7001011,
+            "arrayBuffers": 3112910
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 183,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:07:58.781Z"
+        },
+        {
+          "elapsed": 105,
+          "memory": {
+            "rss": 105517056,
+            "heapTotal": 29159424,
+            "heapUsed": 22196680,
+            "external": 6719193,
+            "arrayBuffers": 2831092
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 198,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:08:13.781Z"
+        },
+        {
+          "elapsed": 120,
+          "memory": {
+            "rss": 105758720,
+            "heapTotal": 24440832,
+            "heapUsed": 18703176,
+            "external": 6639106,
+            "arrayBuffers": 2751005
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 213,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:08:28.783Z"
+        },
+        {
+          "elapsed": 135,
+          "memory": {
+            "rss": 103493632,
+            "heapTotal": 25489408,
+            "heapUsed": 21157888,
+            "external": 4069600,
+            "arrayBuffers": 181499
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 228,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:08:43.784Z"
+        },
+        {
+          "elapsed": 150,
+          "memory": {
+            "rss": 103428096,
+            "heapTotal": 29159424,
+            "heapUsed": 18471744,
+            "external": 4116919,
+            "arrayBuffers": 163282
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 243,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:08:58.785Z"
+        },
+        {
+          "elapsed": 165,
+          "memory": {
+            "rss": 103886848,
+            "heapTotal": 27062272,
+            "heapUsed": 21088048,
+            "external": 4129637,
+            "arrayBuffers": 241536
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 258,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:09:13.785Z"
+        },
+        {
+          "elapsed": 180,
+          "memory": {
+            "rss": 104763392,
+            "heapTotal": 28635136,
+            "heapUsed": 18402064,
+            "external": 4014089,
+            "arrayBuffers": 125988
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 273,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:09:28.785Z"
+        },
+        {
+          "elapsed": 195,
+          "memory": {
+            "rss": 105422848,
+            "heapTotal": 25489408,
+            "heapUsed": 21069840,
+            "external": 4046857,
+            "arrayBuffers": 158756
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 288,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:09:43.785Z"
+        },
+        {
+          "elapsed": 210,
+          "memory": {
+            "rss": 105668608,
+            "heapTotal": 28897280,
+            "heapUsed": 18691848,
+            "external": 4014089,
+            "arrayBuffers": 125988
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 303,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:09:58.786Z"
+        },
+        {
+          "elapsed": 225,
+          "memory": {
+            "rss": 108093440,
+            "heapTotal": 26800128,
+            "heapUsed": 20588664,
+            "external": 4038665,
+            "arrayBuffers": 150564
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 318,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:10:13.787Z"
+        },
+        {
+          "elapsed": 240,
+          "memory": {
+            "rss": 104718336,
+            "heapTotal": 26800128,
+            "heapUsed": 22307752,
+            "external": 4063241,
+            "arrayBuffers": 175140
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 333,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:10:28.788Z"
+        },
+        {
+          "elapsed": 255,
+          "memory": {
+            "rss": 107810816,
+            "heapTotal": 29159424,
+            "heapUsed": 19881600,
+            "external": 7009203,
+            "arrayBuffers": 3121102
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 348,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:10:43.789Z"
+        },
+        {
+          "elapsed": 270,
+          "memory": {
+            "rss": 107679744,
+            "heapTotal": 26013696,
+            "heapUsed": 21516344,
+            "external": 4063241,
+            "arrayBuffers": 175140
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 363,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:10:58.790Z"
+        },
+        {
+          "elapsed": 285,
+          "memory": {
+            "rss": 108355584,
+            "heapTotal": 26013696,
+            "heapUsed": 23874224,
+            "external": 7391158,
+            "arrayBuffers": 3503057
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 378,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:11:13.791Z"
+        },
+        {
+          "elapsed": 300,
+          "memory": {
+            "rss": 105181184,
+            "heapTotal": 27062272,
+            "heapUsed": 19893952,
+            "external": 4038665,
+            "arrayBuffers": 150564
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 393,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:11:28.791Z"
+        },
+        {
+          "elapsed": 315,
+          "memory": {
+            "rss": 105103360,
+            "heapTotal": 27062272,
+            "heapUsed": 22634408,
+            "external": 4110560,
+            "arrayBuffers": 222459
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 408,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:11:43.791Z"
+        },
+        {
+          "elapsed": 330,
+          "memory": {
+            "rss": 107192320,
+            "heapTotal": 28635136,
+            "heapUsed": 20192696,
+            "external": 4061408,
+            "arrayBuffers": 173307
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 423,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:11:58.792Z"
+        },
+        {
+          "elapsed": 345,
+          "memory": {
+            "rss": 108007424,
+            "heapTotal": 25489408,
+            "heapUsed": 22475408,
+            "external": 7019228,
+            "arrayBuffers": 3131127
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 438,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:12:13.792Z"
+        },
+        {
+          "elapsed": 360,
+          "memory": {
+            "rss": 109146112,
+            "heapTotal": 26800128,
+            "heapUsed": 19953848,
+            "external": 4030473,
+            "arrayBuffers": 142372
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 453,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:12:28.792Z"
+        },
+        {
+          "elapsed": 375,
+          "memory": {
+            "rss": 108896256,
+            "heapTotal": 26800128,
+            "heapUsed": 22608712,
+            "external": 6680066,
+            "arrayBuffers": 2791965
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 468,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:12:43.792Z"
+        },
+        {
+          "elapsed": 390,
+          "memory": {
+            "rss": 108404736,
+            "heapTotal": 29421568,
+            "heapUsed": 19086008,
+            "external": 6992819,
+            "arrayBuffers": 3104718
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 483,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:12:58.792Z"
+        },
+        {
+          "elapsed": 405,
+          "memory": {
+            "rss": 106070016,
+            "heapTotal": 29421568,
+            "heapUsed": 20950936,
+            "external": 4092343,
+            "arrayBuffers": 204242
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 498,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:13:13.794Z"
+        },
+        {
+          "elapsed": 420,
+          "memory": {
+            "rss": 108998656,
+            "heapTotal": 29421568,
+            "heapUsed": 24005520,
+            "external": 5426248,
+            "arrayBuffers": 1538147
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 513,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:13:28.795Z"
+        },
+        {
+          "elapsed": 435,
+          "memory": {
+            "rss": 107528192,
+            "heapTotal": 26275840,
+            "heapUsed": 20003600,
+            "external": 5423400,
+            "arrayBuffers": 1535299
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 528,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:13:43.796Z"
+        },
+        {
+          "elapsed": 450,
+          "memory": {
+            "rss": 106192896,
+            "heapTotal": 29421568,
+            "heapUsed": 22344792,
+            "external": 4100535,
+            "arrayBuffers": 212434
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 543,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:13:58.797Z"
+        },
+        {
+          "elapsed": 465,
+          "memory": {
+            "rss": 108486656,
+            "heapTotal": 29421568,
+            "heapUsed": 18978304,
+            "external": 6653657,
+            "arrayBuffers": 2765556
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 558,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:14:13.799Z"
+        },
+        {
+          "elapsed": 480,
+          "memory": {
+            "rss": 108134400,
+            "heapTotal": 27324416,
+            "heapUsed": 21245640,
+            "external": 6281440,
+            "arrayBuffers": 2393339
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 573,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:14:28.798Z"
+        },
+        {
+          "elapsed": 495,
+          "memory": {
+            "rss": 111128576,
+            "heapTotal": 27324416,
+            "heapUsed": 23815392,
+            "external": 8932866,
+            "arrayBuffers": 5044765
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 588,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:14:43.798Z"
+        },
+        {
+          "elapsed": 510,
+          "memory": {
+            "rss": 105644032,
+            "heapTotal": 27324416,
+            "heapUsed": 19495952,
+            "external": 4045024,
+            "arrayBuffers": 156923
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 603,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:14:58.798Z"
+        },
+        {
+          "elapsed": 525,
+          "memory": {
+            "rss": 108625920,
+            "heapTotal": 27324416,
+            "heapUsed": 21596472,
+            "external": 7033779,
+            "arrayBuffers": 3145678
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 618,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:15:13.798Z"
+        },
+        {
+          "elapsed": 540,
+          "memory": {
+            "rss": 109064192,
+            "heapTotal": 26275840,
+            "heapUsed": 23492552,
+            "external": 4113850,
+            "arrayBuffers": 225749
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 633,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:15:28.800Z"
+        },
+        {
+          "elapsed": 555,
+          "memory": {
+            "rss": 110067712,
+            "heapTotal": 27848704,
+            "heapUsed": 19603528,
+            "external": 6692784,
+            "arrayBuffers": 2804683
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 648,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:15:43.801Z"
+        },
+        {
+          "elapsed": 570,
+          "memory": {
+            "rss": 110358528,
+            "heapTotal": 29945856,
+            "heapUsed": 22590544,
+            "external": 8357659,
+            "arrayBuffers": 4469558
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 663,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:15:58.802Z"
+        },
+        {
+          "elapsed": 585,
+          "memory": {
+            "rss": 110067712,
+            "heapTotal": 27848704,
+            "heapUsed": 23631136,
+            "external": 6756487,
+            "arrayBuffers": 2800157
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 678,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:16:13.802Z"
+        },
+        {
+          "elapsed": 600,
+          "memory": {
+            "rss": 107880448,
+            "heapTotal": 27848704,
+            "heapUsed": 19268328,
+            "external": 4045024,
+            "arrayBuffers": 111437
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 693,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:16:28.802Z"
+        },
+        {
+          "elapsed": 615,
+          "memory": {
+            "rss": 108949504,
+            "heapTotal": 27848704,
+            "heapUsed": 21541976,
+            "external": 7011036,
+            "arrayBuffers": 3122935
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 708,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:16:43.801Z"
+        },
+        {
+          "elapsed": 630,
+          "memory": {
+            "rss": 108539904,
+            "heapTotal": 29945856,
+            "heapUsed": 24392504,
+            "external": 4156046,
+            "arrayBuffers": 267945
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 723,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:16:58.802Z"
+        },
+        {
+          "elapsed": 645,
+          "memory": {
+            "rss": 106315776,
+            "heapTotal": 26537984,
+            "heapUsed": 20247152,
+            "external": 7364749,
+            "arrayBuffers": 171916
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 738,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:17:13.802Z"
+        },
+        {
+          "elapsed": 660,
+          "memory": {
+            "rss": 109187072,
+            "heapTotal": 27586560,
+            "heapUsed": 22186000,
+            "external": 4071433,
+            "arrayBuffers": 183332
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 753,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:17:28.804Z"
+        },
+        {
+          "elapsed": 675,
+          "memory": {
+            "rss": 106684416,
+            "heapTotal": 27848704,
+            "heapUsed": 18949536,
+            "external": 4022281,
+            "arrayBuffers": 134180
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 768,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:17:43.804Z"
+        },
+        {
+          "elapsed": 690,
+          "memory": {
+            "rss": 108249088,
+            "heapTotal": 29945856,
+            "heapUsed": 20914968,
+            "external": 4040498,
+            "arrayBuffers": 152397
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 783,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:17:58.804Z"
+        },
+        {
+          "elapsed": 705,
+          "memory": {
+            "rss": 109670400,
+            "heapTotal": 26800128,
+            "heapUsed": 22992912,
+            "external": 4626943,
+            "arrayBuffers": 738842
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 798,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:18:13.805Z"
+        },
+        {
+          "elapsed": 720,
+          "memory": {
+            "rss": 108867584,
+            "heapTotal": 27324416,
+            "heapUsed": 19394176,
+            "external": 4014089,
+            "arrayBuffers": 125988
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 813,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:18:28.807Z"
+        },
+        {
+          "elapsed": 735,
+          "memory": {
+            "rss": 107286528,
+            "heapTotal": 30208000,
+            "heapUsed": 21716408,
+            "external": 4055049,
+            "arrayBuffers": 166948
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 828,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:18:43.808Z"
+        },
+        {
+          "elapsed": 750,
+          "memory": {
+            "rss": 106766336,
+            "heapTotal": 30208000,
+            "heapUsed": 23954464,
+            "external": 4102368,
+            "arrayBuffers": 168781
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 843,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:18:58.808Z"
+        },
+        {
+          "elapsed": 765,
+          "memory": {
+            "rss": 108752896,
+            "heapTotal": 28372992,
+            "heapUsed": 19786936,
+            "external": 8704947,
+            "arrayBuffers": 2146343
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 858,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:19:13.810Z"
+        },
+        {
+          "elapsed": 780,
+          "memory": {
+            "rss": 112365568,
+            "heapTotal": 28372992,
+            "heapUsed": 21763384,
+            "external": 6081763,
+            "arrayBuffers": 2193662
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 873,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:19:28.809Z"
+        },
+        {
+          "elapsed": 795,
+          "memory": {
+            "rss": 109199360,
+            "heapTotal": 30470144,
+            "heapUsed": 19288808,
+            "external": 6639106,
+            "arrayBuffers": 2751005
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 888,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:19:43.808Z"
+        },
+        {
+          "elapsed": 810,
+          "memory": {
+            "rss": 109555712,
+            "heapTotal": 30470144,
+            "heapUsed": 20377824,
+            "external": 4036832,
+            "arrayBuffers": 148731
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 903,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:19:58.808Z"
+        },
+        {
+          "elapsed": 825,
+          "memory": {
+            "rss": 110551040,
+            "heapTotal": 28372992,
+            "heapUsed": 22616688,
+            "external": 4055049,
+            "arrayBuffers": 166948
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 918,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:20:13.808Z"
+        },
+        {
+          "elapsed": 840,
+          "memory": {
+            "rss": 111190016,
+            "heapTotal": 26013696,
+            "heapUsed": 19936728,
+            "external": 6978268,
+            "arrayBuffers": 3090167
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 933,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:20:28.808Z"
+        },
+        {
+          "elapsed": 855,
+          "memory": {
+            "rss": 109961216,
+            "heapTotal": 27062272,
+            "heapUsed": 21823336,
+            "external": 6680066,
+            "arrayBuffers": 144205
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 948,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:20:43.809Z"
+        },
+        {
+          "elapsed": 870,
+          "memory": {
+            "rss": 109899776,
+            "heapTotal": 27062272,
+            "heapUsed": 23511832,
+            "external": 4071433,
+            "arrayBuffers": 183332
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 963,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:20:58.810Z"
+        },
+        {
+          "elapsed": 885,
+          "memory": {
+            "rss": 107036672,
+            "heapTotal": 27848704,
+            "heapUsed": 20605568,
+            "external": 4075959,
+            "arrayBuffers": 187858
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 978,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:21:13.810Z"
+        },
+        {
+          "elapsed": 900,
+          "memory": {
+            "rss": 107696128,
+            "heapTotal": 27848704,
+            "heapUsed": 22445648,
+            "external": 4094176,
+            "arrayBuffers": 206075
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 993,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:21:28.812Z"
+        },
+        {
+          "elapsed": 915,
+          "memory": {
+            "rss": 109596672,
+            "heapTotal": 27848704,
+            "heapUsed": 18516472,
+            "external": 4112393,
+            "arrayBuffers": 95053
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1008,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:21:43.811Z"
+        },
+        {
+          "elapsed": 930,
+          "memory": {
+            "rss": 108728320,
+            "heapTotal": 27848704,
+            "heapUsed": 21082416,
+            "external": 4038665,
+            "arrayBuffers": 150564
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1023,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:21:58.811Z"
+        },
+        {
+          "elapsed": 945,
+          "memory": {
+            "rss": 109600768,
+            "heapTotal": 26800128,
+            "heapUsed": 23476512,
+            "external": 6696450,
+            "arrayBuffers": 2808349
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1038,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:22:13.811Z"
+        },
+        {
+          "elapsed": 960,
+          "memory": {
+            "rss": 109731840,
+            "heapTotal": 26013696,
+            "heapUsed": 19870960,
+            "external": 6986460,
+            "arrayBuffers": 3098359
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1053,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:22:28.811Z"
+        },
+        {
+          "elapsed": 975,
+          "memory": {
+            "rss": 109379584,
+            "heapTotal": 26013696,
+            "heapUsed": 21558688,
+            "external": 6688258,
+            "arrayBuffers": 2800157
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1068,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:22:43.811Z"
+        },
+        {
+          "elapsed": 990,
+          "memory": {
+            "rss": 109068288,
+            "heapTotal": 29159424,
+            "heapUsed": 23723064,
+            "external": 4102368,
+            "arrayBuffers": 214267
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1083,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:22:58.810Z"
+        },
+        {
+          "elapsed": 1005,
+          "memory": {
+            "rss": 110080000,
+            "heapTotal": 30732288,
+            "heapUsed": 21076896,
+            "external": 7054689,
+            "arrayBuffers": 3166588
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1098,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:23:13.813Z"
+        },
+        {
+          "elapsed": 1020,
+          "memory": {
+            "rss": 110137344,
+            "heapTotal": 30732288,
+            "heapUsed": 23366312,
+            "external": 6740103,
+            "arrayBuffers": 2852002
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1113,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:23:28.816Z"
+        },
+        {
+          "elapsed": 1035,
+          "memory": {
+            "rss": 110301184,
+            "heapTotal": 28110848,
+            "heapUsed": 18913704,
+            "external": 4807388,
+            "arrayBuffers": 919287
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1128,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:23:43.815Z"
+        },
+        {
+          "elapsed": 1050,
+          "memory": {
+            "rss": 109645824,
+            "heapTotal": 30208000,
+            "heapUsed": 21838672,
+            "external": 6717360,
+            "arrayBuffers": 2829259
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1143,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:23:58.816Z"
+        },
+        {
+          "elapsed": 1065,
+          "memory": {
+            "rss": 108109824,
+            "heapTotal": 30208000,
+            "heapUsed": 23319936,
+            "external": 4108727,
+            "arrayBuffers": 220626
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1158,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:24:13.815Z"
+        },
+        {
+          "elapsed": 1080,
+          "memory": {
+            "rss": 107081728,
+            "heapTotal": 27062272,
+            "heapUsed": 20364192,
+            "external": 6415492,
+            "arrayBuffers": 111437
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1173,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:24:28.816Z"
+        },
+        {
+          "elapsed": 1095,
+          "memory": {
+            "rss": 109404160,
+            "heapTotal": 28110848,
+            "heapUsed": 22478080,
+            "external": 4046857,
+            "arrayBuffers": 158756
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1188,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:24:43.816Z"
+        },
+        {
+          "elapsed": 1110,
+          "memory": {
+            "rss": 109711360,
+            "heapTotal": 28110848,
+            "heapUsed": 18834608,
+            "external": 4036832,
+            "arrayBuffers": 103245
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1203,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:24:58.815Z"
+        },
+        {
+          "elapsed": 1125,
+          "memory": {
+            "rss": 109453312,
+            "heapTotal": 27062272,
+            "heapUsed": 21004232,
+            "external": 4250111,
+            "arrayBuffers": 362010
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1218,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:25:13.815Z"
+        },
+        {
+          "elapsed": 1140,
+          "memory": {
+            "rss": 110104576,
+            "heapTotal": 30208000,
+            "heapUsed": 23964544,
+            "external": 7087457,
+            "arrayBuffers": 3199356
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1233,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:25:28.816Z"
+        },
+        {
+          "elapsed": 1155,
+          "memory": {
+            "rss": 110940160,
+            "heapTotal": 30994432,
+            "heapUsed": 21350912,
+            "external": 7031946,
+            "arrayBuffers": 3143845
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1248,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:25:43.817Z"
+        },
+        {
+          "elapsed": 1170,
+          "memory": {
+            "rss": 111869952,
+            "heapTotal": 24440832,
+            "heapUsed": 20678760,
+            "external": 8175912,
+            "arrayBuffers": 4287811
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1263,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:25:58.817Z"
+        },
+        {
+          "elapsed": 1185,
+          "memory": {
+            "rss": 110387200,
+            "heapTotal": 27062272,
+            "heapUsed": 23057720,
+            "external": 8223231,
+            "arrayBuffers": 1995597
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1278,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:26:13.817Z"
+        },
+        {
+          "elapsed": 1200,
+          "memory": {
+            "rss": 112578560,
+            "heapTotal": 30994432,
+            "heapUsed": 26514728,
+            "external": 8626096,
+            "arrayBuffers": 4737995
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1293,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:26:28.818Z"
+        },
+        {
+          "elapsed": 1215,
+          "memory": {
+            "rss": 109047808,
+            "heapTotal": 26537984,
+            "heapUsed": 20996392,
+            "external": 5302132,
+            "arrayBuffers": 1414031
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1308,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:26:43.818Z"
+        },
+        {
+          "elapsed": 1230,
+          "memory": {
+            "rss": 110485504,
+            "heapTotal": 26537984,
+            "heapUsed": 22841064,
+            "external": 5998297,
+            "arrayBuffers": 2110196
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1323,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:26:58.818Z"
+        },
+        {
+          "elapsed": 1245,
+          "memory": {
+            "rss": 110112768,
+            "heapTotal": 28110848,
+            "heapUsed": 24970552,
+            "external": 4126944,
+            "arrayBuffers": 238843
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1338,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:27:13.819Z"
+        },
+        {
+          "elapsed": 1260,
+          "memory": {
+            "rss": 110166016,
+            "heapTotal": 28635136,
+            "heapUsed": 20932576,
+            "external": 4030473,
+            "arrayBuffers": 142372
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1353,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:27:28.820Z"
+        },
+        {
+          "elapsed": 1275,
+          "memory": {
+            "rss": 112914432,
+            "heapTotal": 28635136,
+            "heapUsed": 23440456,
+            "external": 4063241,
+            "arrayBuffers": 175140
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1368,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:27:43.820Z"
+        },
+        {
+          "elapsed": 1290,
+          "memory": {
+            "rss": 110628864,
+            "heapTotal": 30470144,
+            "heapUsed": 20611232,
+            "external": 7001011,
+            "arrayBuffers": 3112910
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1383,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:27:58.821Z"
+        },
+        {
+          "elapsed": 1305,
+          "memory": {
+            "rss": 110596096,
+            "heapTotal": 27324416,
+            "heapUsed": 22595904,
+            "external": 6711001,
+            "arrayBuffers": 2822900
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1398,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:28:13.822Z"
+        },
+        {
+          "elapsed": 1320,
+          "memory": {
+            "rss": 108654592,
+            "heapTotal": 28372992,
+            "heapUsed": 23944648,
+            "external": 4079625,
+            "arrayBuffers": 191524
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1413,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:28:28.823Z"
+        },
+        {
+          "elapsed": 1335,
+          "memory": {
+            "rss": 112422912,
+            "heapTotal": 30732288,
+            "heapUsed": 21710208,
+            "external": 7980164,
+            "arrayBuffers": 4092063
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1428,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:28:43.824Z"
+        },
+        {
+          "elapsed": 1350,
+          "memory": {
+            "rss": 112013312,
+            "heapTotal": 29683712,
+            "heapUsed": 23674112,
+            "external": 8282032,
+            "arrayBuffers": 4393931
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1443,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:28:58.823Z"
+        },
+        {
+          "elapsed": 1365,
+          "memory": {
+            "rss": 108937216,
+            "heapTotal": 30470144,
+            "heapUsed": 19000656,
+            "external": 6345430,
+            "arrayBuffers": 1143629
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1458,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:29:13.823Z"
+        },
+        {
+          "elapsed": 1380,
+          "memory": {
+            "rss": 111288320,
+            "heapTotal": 28372992,
+            "heapUsed": 21146288,
+            "external": 6878131,
+            "arrayBuffers": 2990030
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1473,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:29:28.823Z"
+        },
+        {
+          "elapsed": 1395,
+          "memory": {
+            "rss": 109223936,
+            "heapTotal": 28372992,
+            "heapUsed": 22665208,
+            "external": 5089074,
+            "arrayBuffers": 1200973
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1488,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:29:43.824Z"
+        },
+        {
+          "elapsed": 1410,
+          "memory": {
+            "rss": 107970560,
+            "heapTotal": 30732288,
+            "heapUsed": 18815656,
+            "external": 5167328,
+            "arrayBuffers": 140539
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1503,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:29:58.824Z"
+        },
+        {
+          "elapsed": 1425,
+          "memory": {
+            "rss": 111095808,
+            "heapTotal": 27586560,
+            "heapUsed": 21340200,
+            "external": 7040138,
+            "arrayBuffers": 3152037
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1518,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:30:13.825Z"
+        },
+        {
+          "elapsed": 1440,
+          "memory": {
+            "rss": 110567424,
+            "heapTotal": 30732288,
+            "heapUsed": 23842424,
+            "external": 6448260,
+            "arrayBuffers": 2560159
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1533,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:30:28.825Z"
+        },
+        {
+          "elapsed": 1455,
+          "memory": {
+            "rss": 107622400,
+            "heapTotal": 30470144,
+            "heapUsed": 18632680,
+            "external": 4125111,
+            "arrayBuffers": 117796
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1548,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:30:43.826Z"
+        },
+        {
+          "elapsed": 1470,
+          "memory": {
+            "rss": 108933120,
+            "heapTotal": 27324416,
+            "heapUsed": 20799376,
+            "external": 4731606,
+            "arrayBuffers": 843505
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1563,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:30:58.828Z"
+        },
+        {
+          "elapsed": 1485,
+          "memory": {
+            "rss": 110063616,
+            "heapTotal": 30470144,
+            "heapUsed": 23550528,
+            "external": 4123278,
+            "arrayBuffers": 235177
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1578,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:31:13.828Z"
+        },
+        {
+          "elapsed": 1500,
+          "memory": {
+            "rss": 107474944,
+            "heapTotal": 28635136,
+            "heapUsed": 19219992,
+            "external": 4028640,
+            "arrayBuffers": 140539
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1593,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:31:28.828Z"
+        },
+        {
+          "elapsed": 1515,
+          "memory": {
+            "rss": 111206400,
+            "heapTotal": 30732288,
+            "heapUsed": 22316008,
+            "external": 7333814,
+            "arrayBuffers": 3445713
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1608,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:31:43.828Z"
+        },
+        {
+          "elapsed": 1530,
+          "memory": {
+            "rss": 110133248,
+            "heapTotal": 26537984,
+            "heapUsed": 20713368,
+            "external": 6355455,
+            "arrayBuffers": 119629
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1623,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:31:58.829Z"
+        },
+        {
+          "elapsed": 1545,
+          "memory": {
+            "rss": 108773376,
+            "heapTotal": 27062272,
+            "heapUsed": 23335536,
+            "external": 4063241,
+            "arrayBuffers": 175140
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1638,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:32:13.831Z"
+        },
+        {
+          "elapsed": 1560,
+          "memory": {
+            "rss": 110366720,
+            "heapTotal": 26275840,
+            "heapUsed": 20105632,
+            "external": 4443429,
+            "arrayBuffers": 555328
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1653,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:32:28.833Z"
+        },
+        {
+          "elapsed": 1575,
+          "memory": {
+            "rss": 107679744,
+            "heapTotal": 26275840,
+            "heapUsed": 22688880,
+            "external": 4071433,
+            "arrayBuffers": 183332
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1668,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:32:43.833Z"
+        },
+        {
+          "elapsed": 1590,
+          "memory": {
+            "rss": 112947200,
+            "heapTotal": 27324416,
+            "heapUsed": 19391080,
+            "external": 4059575,
+            "arrayBuffers": 171474
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1683,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:32:58.834Z"
+        },
+        {
+          "elapsed": 1605,
+          "memory": {
+            "rss": 108630016,
+            "heapTotal": 27324416,
+            "heapUsed": 22397992,
+            "external": 4085984,
+            "arrayBuffers": 197883
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1698,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 9,
+            "available": 9,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:33:13.833Z"
+        },
+        {
+          "elapsed": 1620,
+          "memory": {
+            "rss": 107995136,
+            "heapTotal": 27324416,
+            "heapUsed": 19274152,
+            "external": 4036832,
+            "arrayBuffers": 148731
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1713,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 9,
+            "available": 9,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:33:28.834Z"
+        },
+        {
+          "elapsed": 1635,
+          "memory": {
+            "rss": 110526464,
+            "heapTotal": 26275840,
+            "heapUsed": 22142744,
+            "external": 6709168,
+            "arrayBuffers": 2821067
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1728,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 9,
+            "available": 9,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:33:43.833Z"
+        },
+        {
+          "elapsed": 1650,
+          "memory": {
+            "rss": 110829568,
+            "heapTotal": 27848704,
+            "heapUsed": 24421768,
+            "external": 4145698,
+            "arrayBuffers": 212111
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1743,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 9,
+            "available": 9,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:33:58.834Z"
+        },
+        {
+          "elapsed": 1665,
+          "memory": {
+            "rss": 113852416,
+            "heapTotal": 28635136,
+            "heapUsed": 20795600,
+            "external": 4084151,
+            "arrayBuffers": 196050
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1758,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:34:13.834Z"
+        },
+        {
+          "elapsed": 1680,
+          "memory": {
+            "rss": 108380160,
+            "heapTotal": 28635136,
+            "heapUsed": 22540784,
+            "external": 4085984,
+            "arrayBuffers": 197883
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1773,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:34:28.835Z"
+        },
+        {
+          "elapsed": 1695,
+          "memory": {
+            "rss": 108216320,
+            "heapTotal": 28635136,
+            "heapUsed": 19933472,
+            "external": 4045024,
+            "arrayBuffers": 156923
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1788,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:34:43.835Z"
+        },
+        {
+          "elapsed": 1710,
+          "memory": {
+            "rss": 110567424,
+            "heapTotal": 28635136,
+            "heapUsed": 21542304,
+            "external": 4024114,
+            "arrayBuffers": 136013
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1803,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:34:58.835Z"
+        },
+        {
+          "elapsed": 1725,
+          "memory": {
+            "rss": 110776320,
+            "heapTotal": 27586560,
+            "heapUsed": 23575104,
+            "external": 7041971,
+            "arrayBuffers": 3153870
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1818,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:35:13.836Z"
+        },
+        {
+          "elapsed": 1740,
+          "memory": {
+            "rss": 110436352,
+            "heapTotal": 27586560,
+            "heapUsed": 24755192,
+            "external": 6059086,
+            "arrayBuffers": 185165
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1833,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:35:28.835Z"
+        },
+        {
+          "elapsed": 1755,
+          "memory": {
+            "rss": 108515328,
+            "heapTotal": 28110848,
+            "heapUsed": 21267552,
+            "external": 4053216,
+            "arrayBuffers": 165115
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1848,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:35:43.835Z"
+        },
+        {
+          "elapsed": 1770,
+          "memory": {
+            "rss": 110608384,
+            "heapTotal": 29159424,
+            "heapUsed": 22804968,
+            "external": 5711732,
+            "arrayBuffers": 152397
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1863,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:35:58.838Z"
+        },
+        {
+          "elapsed": 1785,
+          "memory": {
+            "rss": 111005696,
+            "heapTotal": 30732288,
+            "heapUsed": 21015320,
+            "external": 6647298,
+            "arrayBuffers": 111437
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1878,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:36:13.837Z"
+        },
+        {
+          "elapsed": 1800,
+          "memory": {
+            "rss": 110989312,
+            "heapTotal": 28635136,
+            "heapUsed": 23393824,
+            "external": 6001742,
+            "arrayBuffers": 127821
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1893,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:36:28.837Z"
+        },
+        {
+          "elapsed": 1815,
+          "memory": {
+            "rss": 111546368,
+            "heapTotal": 30732288,
+            "heapUsed": 20284496,
+            "external": 5699874,
+            "arrayBuffers": 1811773
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1908,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:36:43.837Z"
+        },
+        {
+          "elapsed": 1830,
+          "memory": {
+            "rss": 108531712,
+            "heapTotal": 28635136,
+            "heapUsed": 21203960,
+            "external": 4061408,
+            "arrayBuffers": 173307
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1923,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:36:58.838Z"
+        },
+        {
+          "elapsed": 1845,
+          "memory": {
+            "rss": 110739456,
+            "heapTotal": 30732288,
+            "heapUsed": 24140184,
+            "external": 6758320,
+            "arrayBuffers": 2870219
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1938,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:37:13.840Z"
+        },
+        {
+          "elapsed": 1860,
+          "memory": {
+            "rss": 109010944,
+            "heapTotal": 27586560,
+            "heapUsed": 20362480,
+            "external": 4059575,
+            "arrayBuffers": 171474
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1953,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:37:28.841Z"
+        },
+        {
+          "elapsed": 1875,
+          "memory": {
+            "rss": 108740608,
+            "heapTotal": 27586560,
+            "heapUsed": 22937392,
+            "external": 4084151,
+            "arrayBuffers": 196050
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1968,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:37:43.840Z"
+        },
+        {
+          "elapsed": 1890,
+          "memory": {
+            "rss": 108228608,
+            "heapTotal": 28635136,
+            "heapUsed": 18451800,
+            "external": 4079625,
+            "arrayBuffers": 95053
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1983,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:37:58.842Z"
+        },
+        {
+          "elapsed": 1905,
+          "memory": {
+            "rss": 111517696,
+            "heapTotal": 25489408,
+            "heapUsed": 20469680,
+            "external": 4030473,
+            "arrayBuffers": 142372
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 1998,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:38:13.842Z"
+        },
+        {
+          "elapsed": 1920,
+          "memory": {
+            "rss": 113979392,
+            "heapTotal": 26537984,
+            "heapUsed": 22362072,
+            "external": 4063241,
+            "arrayBuffers": 175140
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2013,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:38:28.842Z"
+        },
+        {
+          "elapsed": 1935,
+          "memory": {
+            "rss": 111599616,
+            "heapTotal": 30470144,
+            "heapUsed": 25109384,
+            "external": 4156046,
+            "arrayBuffers": 267945
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2028,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:38:43.844Z"
+        },
+        {
+          "elapsed": 1950,
+          "memory": {
+            "rss": 114950144,
+            "heapTotal": 28372992,
+            "heapUsed": 21201904,
+            "external": 5693802,
+            "arrayBuffers": 1805701
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2043,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:38:58.845Z"
+        },
+        {
+          "elapsed": 1965,
+          "memory": {
+            "rss": 115486720,
+            "heapTotal": 27324416,
+            "heapUsed": 23909592,
+            "external": 7042258,
+            "arrayBuffers": 167235
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2058,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:39:13.847Z"
+        },
+        {
+          "elapsed": 1980,
+          "memory": {
+            "rss": 116404224,
+            "heapTotal": 28635136,
+            "heapUsed": 20019392,
+            "external": 7540137,
+            "arrayBuffers": 3652036
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2073,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:39:28.847Z"
+        },
+        {
+          "elapsed": 1995,
+          "memory": {
+            "rss": 118468608,
+            "heapTotal": 31780864,
+            "heapUsed": 21627408,
+            "external": 6694617,
+            "arrayBuffers": 2806516
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2088,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:39:43.848Z"
+        },
+        {
+          "elapsed": 2010,
+          "memory": {
+            "rss": 117051392,
+            "heapTotal": 29683712,
+            "heapUsed": 23099224,
+            "external": 6750128,
+            "arrayBuffers": 2862027
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2103,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:39:58.849Z"
+        },
+        {
+          "elapsed": 2025,
+          "memory": {
+            "rss": 113274880,
+            "heapTotal": 30994432,
+            "heapUsed": 19167736,
+            "external": 6768345,
+            "arrayBuffers": 117796
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2118,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 4,
+            "available": 4,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:40:13.851Z"
+        },
+        {
+          "elapsed": 2040,
+          "memory": {
+            "rss": 113594368,
+            "heapTotal": 28897280,
+            "heapUsed": 21515208,
+            "external": 4092343,
+            "arrayBuffers": 204242
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2133,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 4,
+            "available": 4,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:40:28.850Z"
+        },
+        {
+          "elapsed": 2055,
+          "memory": {
+            "rss": 115425280,
+            "heapTotal": 27848704,
+            "heapUsed": 23003184,
+            "external": 5821363,
+            "arrayBuffers": 1933262
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2148,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 4,
+            "available": 4,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:40:43.850Z"
+        },
+        {
+          "elapsed": 2070,
+          "memory": {
+            "rss": 114286592,
+            "heapTotal": 30994432,
+            "heapUsed": 19238120,
+            "external": 4143328,
+            "arrayBuffers": 117796
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2163,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:40:58.850Z"
+        },
+        {
+          "elapsed": 2085,
+          "memory": {
+            "rss": 116432896,
+            "heapTotal": 30994432,
+            "heapUsed": 21300936,
+            "external": 5059286,
+            "arrayBuffers": 1171185
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2178,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:41:13.850Z"
+        },
+        {
+          "elapsed": 2100,
+          "memory": {
+            "rss": 115240960,
+            "heapTotal": 28897280,
+            "heapUsed": 23307200,
+            "external": 4092343,
+            "arrayBuffers": 204242
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2193,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:41:28.849Z"
+        },
+        {
+          "elapsed": 2115,
+          "memory": {
+            "rss": 113549312,
+            "heapTotal": 28897280,
+            "heapUsed": 19222168,
+            "external": 4005897,
+            "arrayBuffers": 117796
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2208,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:41:43.849Z"
+        },
+        {
+          "elapsed": 2130,
+          "memory": {
+            "rss": 115331072,
+            "heapTotal": 28897280,
+            "heapUsed": 20163592,
+            "external": 5670772,
+            "arrayBuffers": 111437
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2223,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:41:58.849Z"
+        },
+        {
+          "elapsed": 2145,
+          "memory": {
+            "rss": 115867648,
+            "heapTotal": 28897280,
+            "heapUsed": 22592176,
+            "external": 4046857,
+            "arrayBuffers": 158756
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2238,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:42:13.849Z"
+        },
+        {
+          "elapsed": 2160,
+          "memory": {
+            "rss": 115597312,
+            "heapTotal": 31780864,
+            "heapUsed": 19659528,
+            "external": 4014089,
+            "arrayBuffers": 125988
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2253,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:42:28.851Z"
+        },
+        {
+          "elapsed": 2175,
+          "memory": {
+            "rss": 119627776,
+            "heapTotal": 26013696,
+            "heapUsed": 20461336,
+            "external": 4033829,
+            "arrayBuffers": 145728
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2268,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:42:43.850Z"
+        },
+        {
+          "elapsed": 2190,
+          "memory": {
+            "rss": 120090624,
+            "heapTotal": 28635136,
+            "heapUsed": 21980088,
+            "external": 4074568,
+            "arrayBuffers": 186467
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2283,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:42:58.850Z"
+        },
+        {
+          "elapsed": 2205,
+          "memory": {
+            "rss": 118386688,
+            "heapTotal": 30208000,
+            "heapUsed": 23695760,
+            "external": 4076401,
+            "arrayBuffers": 188300
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2298,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:43:13.850Z"
+        },
+        {
+          "elapsed": 2220,
+          "memory": {
+            "rss": 120295424,
+            "heapTotal": 29159424,
+            "heapUsed": 25071512,
+            "external": 4092785,
+            "arrayBuffers": 204684
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2313,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:43:28.850Z"
+        },
+        {
+          "elapsed": 2235,
+          "memory": {
+            "rss": 119681024,
+            "heapTotal": 30470144,
+            "heapUsed": 21746840,
+            "external": 6378198,
+            "arrayBuffers": 2490097
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2328,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:43:43.851Z"
+        },
+        {
+          "elapsed": 2250,
+          "memory": {
+            "rss": 120385536,
+            "heapTotal": 30470144,
+            "heapUsed": 22686488,
+            "external": 7372941,
+            "arrayBuffers": 3484840
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2343,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:43:58.850Z"
+        },
+        {
+          "elapsed": 2265,
+          "memory": {
+            "rss": 119455744,
+            "heapTotal": 30470144,
+            "heapUsed": 23376960,
+            "external": 4096009,
+            "arrayBuffers": 207908
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2358,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:44:13.851Z"
+        },
+        {
+          "elapsed": 2280,
+          "memory": {
+            "rss": 118116352,
+            "heapTotal": 30994432,
+            "heapUsed": 24708992,
+            "external": 4104201,
+            "arrayBuffers": 216100
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2373,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:44:28.852Z"
+        },
+        {
+          "elapsed": 2295,
+          "memory": {
+            "rss": 120569856,
+            "heapTotal": 27848704,
+            "heapUsed": 21394160,
+            "external": 6332712,
+            "arrayBuffers": 2444611
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2388,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:44:43.852Z"
+        },
+        {
+          "elapsed": 2310,
+          "memory": {
+            "rss": 120868864,
+            "heapTotal": 28897280,
+            "heapUsed": 22858208,
+            "external": 4079625,
+            "arrayBuffers": 191524
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2403,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:44:58.851Z"
+        },
+        {
+          "elapsed": 2325,
+          "memory": {
+            "rss": 121249792,
+            "heapTotal": 28897280,
+            "heapUsed": 25059744,
+            "external": 7060188,
+            "arrayBuffers": 3172087
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2418,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:45:13.851Z"
+        },
+        {
+          "elapsed": 2340,
+          "memory": {
+            "rss": 122482688,
+            "heapTotal": 30470144,
+            "heapUsed": 20579520,
+            "external": 4045024,
+            "arrayBuffers": 156923
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2433,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:45:28.851Z"
+        },
+        {
+          "elapsed": 2355,
+          "memory": {
+            "rss": 121405440,
+            "heapTotal": 26275840,
+            "heapUsed": 22306888,
+            "external": 7011036,
+            "arrayBuffers": 3122935
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2448,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:45:43.853Z"
+        },
+        {
+          "elapsed": 2370,
+          "memory": {
+            "rss": 121057280,
+            "heapTotal": 28372992,
+            "heapUsed": 23497456,
+            "external": 4733660,
+            "arrayBuffers": 845559
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2463,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:45:58.854Z"
+        },
+        {
+          "elapsed": 2385,
+          "memory": {
+            "rss": 120717312,
+            "heapTotal": 27586560,
+            "heapUsed": 24079696,
+            "external": 6398248,
+            "arrayBuffers": 185165
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2478,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:46:13.854Z"
+        },
+        {
+          "elapsed": 2400,
+          "memory": {
+            "rss": 122195968,
+            "heapTotal": 30208000,
+            "heapUsed": 21777640,
+            "external": 7017395,
+            "arrayBuffers": 3129294
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2493,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:46:28.855Z"
+        },
+        {
+          "elapsed": 2415,
+          "memory": {
+            "rss": 121720832,
+            "heapTotal": 27062272,
+            "heapUsed": 22685504,
+            "external": 6688258,
+            "arrayBuffers": 2800157
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2508,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:46:43.856Z"
+        },
+        {
+          "elapsed": 2430,
+          "memory": {
+            "rss": 123203584,
+            "heapTotal": 26013696,
+            "heapUsed": 19936720,
+            "external": 5999909,
+            "arrayBuffers": 103245
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2523,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:46:58.856Z"
+        },
+        {
+          "elapsed": 2445,
+          "memory": {
+            "rss": 122011648,
+            "heapTotal": 28897280,
+            "heapUsed": 22103464,
+            "external": 4077792,
+            "arrayBuffers": 189691
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2538,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:47:13.856Z"
+        },
+        {
+          "elapsed": 2460,
+          "memory": {
+            "rss": 122691584,
+            "heapTotal": 29421568,
+            "heapUsed": 23885136,
+            "external": 6750128,
+            "arrayBuffers": 2862027
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2553,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:47:28.856Z"
+        },
+        {
+          "elapsed": 2475,
+          "memory": {
+            "rss": 120606720,
+            "heapTotal": 28635136,
+            "heapUsed": 24188600,
+            "external": 4644939,
+            "arrayBuffers": 193357
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2568,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:47:43.855Z"
+        },
+        {
+          "elapsed": 2490,
+          "memory": {
+            "rss": 123031552,
+            "heapTotal": 28372992,
+            "heapUsed": 20207784,
+            "external": 5977166,
+            "arrayBuffers": 2089065
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2583,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:47:58.856Z"
+        },
+        {
+          "elapsed": 2505,
+          "memory": {
+            "rss": 121790464,
+            "heapTotal": 27324416,
+            "heapUsed": 21674952,
+            "external": 6142684,
+            "arrayBuffers": 2254583
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2598,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:48:13.856Z"
+        },
+        {
+          "elapsed": 2520,
+          "memory": {
+            "rss": 121884672,
+            "heapTotal": 28372992,
+            "heapUsed": 23600424,
+            "external": 6627624,
+            "arrayBuffers": 2739523
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2613,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:48:28.857Z"
+        },
+        {
+          "elapsed": 2535,
+          "memory": {
+            "rss": 126033920,
+            "heapTotal": 32567296,
+            "heapUsed": 21780008,
+            "external": 9363287,
+            "arrayBuffers": 5475186
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2628,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:48:43.859Z"
+        },
+        {
+          "elapsed": 2550,
+          "memory": {
+            "rss": 128249856,
+            "heapTotal": 25489408,
+            "heapUsed": 21688984,
+            "external": 10296160,
+            "arrayBuffers": 6408059
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2643,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:48:58.860Z"
+        },
+        {
+          "elapsed": 2565,
+          "memory": {
+            "rss": 124518400,
+            "heapTotal": 26537984,
+            "heapUsed": 23204800,
+            "external": 7033779,
+            "arrayBuffers": 3145678
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2658,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:49:13.860Z"
+        },
+        {
+          "elapsed": 2580,
+          "memory": {
+            "rss": 123265024,
+            "heapTotal": 30994432,
+            "heapUsed": 24767568,
+            "external": 7081098,
+            "arrayBuffers": 3192997
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2673,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:49:28.862Z"
+        },
+        {
+          "elapsed": 2595,
+          "memory": {
+            "rss": 125767680,
+            "heapTotal": 29683712,
+            "heapUsed": 25809744,
+            "external": 9385170,
+            "arrayBuffers": 3180279
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2688,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:49:43.863Z"
+        },
+        {
+          "elapsed": 2610,
+          "memory": {
+            "rss": 122494976,
+            "heapTotal": 28110848,
+            "heapUsed": 21291552,
+            "external": 6692784,
+            "arrayBuffers": 2804683
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2703,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:49:58.864Z"
+        },
+        {
+          "elapsed": 2625,
+          "memory": {
+            "rss": 122482688,
+            "heapTotal": 29159424,
+            "heapUsed": 23180824,
+            "external": 7056522,
+            "arrayBuffers": 3168421
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2718,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:50:13.865Z"
+        },
+        {
+          "elapsed": 2640,
+          "memory": {
+            "rss": 120614912,
+            "heapTotal": 29159424,
+            "heapUsed": 23903200,
+            "external": 4116919,
+            "arrayBuffers": 228818
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2733,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:50:28.864Z"
+        },
+        {
+          "elapsed": 2655,
+          "memory": {
+            "rss": 122241024,
+            "heapTotal": 29421568,
+            "heapUsed": 25494464,
+            "external": 4141495,
+            "arrayBuffers": 253394
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2748,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:50:43.864Z"
+        },
+        {
+          "elapsed": 2670,
+          "memory": {
+            "rss": 122236928,
+            "heapTotal": 29421568,
+            "heapUsed": 20474400,
+            "external": 4022281,
+            "arrayBuffers": 134180
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2763,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:50:58.865Z"
+        },
+        {
+          "elapsed": 2685,
+          "memory": {
+            "rss": 121585664,
+            "heapTotal": 29421568,
+            "heapUsed": 22821568,
+            "external": 4063241,
+            "arrayBuffers": 175140
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2778,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:51:13.865Z"
+        },
+        {
+          "elapsed": 2700,
+          "memory": {
+            "rss": 121139200,
+            "heapTotal": 29421568,
+            "heapUsed": 23885960,
+            "external": 4079625,
+            "arrayBuffers": 191524
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2793,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:51:28.866Z"
+        },
+        {
+          "elapsed": 2715,
+          "memory": {
+            "rss": 120205312,
+            "heapTotal": 29421568,
+            "heapUsed": 25877792,
+            "external": 4110560,
+            "arrayBuffers": 222459
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2808,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:51:43.866Z"
+        },
+        {
+          "elapsed": 2730,
+          "memory": {
+            "rss": 119406592,
+            "heapTotal": 28372992,
+            "heapUsed": 21390800,
+            "external": 4022281,
+            "arrayBuffers": 134180
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2823,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:51:58.866Z"
+        },
+        {
+          "elapsed": 2745,
+          "memory": {
+            "rss": 121794560,
+            "heapTotal": 28372992,
+            "heapUsed": 23380912,
+            "external": 6671874,
+            "arrayBuffers": 2783773
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2838,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:52:13.867Z"
+        },
+        {
+          "elapsed": 2760,
+          "memory": {
+            "rss": 125300736,
+            "heapTotal": 31518720,
+            "heapUsed": 24945880,
+            "external": 4078277,
+            "arrayBuffers": 183699
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2853,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 1,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:52:28.867Z"
+        },
+        {
+          "elapsed": 2775,
+          "memory": {
+            "rss": 123060224,
+            "heapTotal": 25227264,
+            "heapUsed": 20216016,
+            "external": 17668472,
+            "arrayBuffers": 1563165
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2868,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:52:43.868Z"
+        },
+        {
+          "elapsed": 2790,
+          "memory": {
+            "rss": 125198336,
+            "heapTotal": 28635136,
+            "heapUsed": 22099208,
+            "external": 8485507,
+            "arrayBuffers": 4597406
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2883,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:52:58.868Z"
+        },
+        {
+          "elapsed": 2805,
+          "memory": {
+            "rss": 123047936,
+            "heapTotal": 27062272,
+            "heapUsed": 22525472,
+            "external": 5529520,
+            "arrayBuffers": 1641419
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2898,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:53:13.870Z"
+        },
+        {
+          "elapsed": 2820,
+          "memory": {
+            "rss": 125018112,
+            "heapTotal": 28110848,
+            "heapUsed": 23616016,
+            "external": 5531353,
+            "arrayBuffers": 1643252
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2913,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:53:28.870Z"
+        },
+        {
+          "elapsed": 2835,
+          "memory": {
+            "rss": 125591552,
+            "heapTotal": 27848704,
+            "heapUsed": 25557960,
+            "external": 6111439,
+            "arrayBuffers": 2223338
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2928,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:53:43.870Z"
+        },
+        {
+          "elapsed": 2850,
+          "memory": {
+            "rss": 122822656,
+            "heapTotal": 28635136,
+            "heapUsed": 20639560,
+            "external": 6330879,
+            "arrayBuffers": 2442778
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2943,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:53:58.871Z"
+        },
+        {
+          "elapsed": 2865,
+          "memory": {
+            "rss": 122966016,
+            "heapTotal": 30732288,
+            "heapUsed": 21552856,
+            "external": 4022281,
+            "arrayBuffers": 134180
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2958,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:54:13.871Z"
+        },
+        {
+          "elapsed": 2880,
+          "memory": {
+            "rss": 123129856,
+            "heapTotal": 30732288,
+            "heapUsed": 23268152,
+            "external": 4032306,
+            "arrayBuffers": 144205
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2973,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:54:28.871Z"
+        },
+        {
+          "elapsed": 2895,
+          "memory": {
+            "rss": 120725504,
+            "heapTotal": 28635136,
+            "heapUsed": 20429736,
+            "external": 4105945,
+            "arrayBuffers": 217844
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 2988,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:54:43.871Z"
+        },
+        {
+          "elapsed": 2910,
+          "memory": {
+            "rss": 122957824,
+            "heapTotal": 30732288,
+            "heapUsed": 22650408,
+            "external": 6778281,
+            "arrayBuffers": 2890180
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3003,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:54:58.871Z"
+        },
+        {
+          "elapsed": 2925,
+          "memory": {
+            "rss": 122957824,
+            "heapTotal": 28635136,
+            "heapUsed": 24027416,
+            "external": 4146905,
+            "arrayBuffers": 258804
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3018,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:55:13.871Z"
+        },
+        {
+          "elapsed": 2940,
+          "memory": {
+            "rss": 122777600,
+            "heapTotal": 32043008,
+            "heapUsed": 20066056,
+            "external": 4179673,
+            "arrayBuffers": 117796
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3033,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:55:28.872Z"
+        },
+        {
+          "elapsed": 2955,
+          "memory": {
+            "rss": 121290752,
+            "heapTotal": 29945856,
+            "heapUsed": 22015560,
+            "external": 4084151,
+            "arrayBuffers": 196050
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3048,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:55:43.872Z"
+        },
+        {
+          "elapsed": 2970,
+          "memory": {
+            "rss": 120291328,
+            "heapTotal": 32043008,
+            "heapUsed": 23025688,
+            "external": 4077792,
+            "arrayBuffers": 189691
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3063,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:55:58.872Z"
+        },
+        {
+          "elapsed": 2985,
+          "memory": {
+            "rss": 123248640,
+            "heapTotal": 28635136,
+            "heapUsed": 21143616,
+            "external": 4022281,
+            "arrayBuffers": 134180
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3078,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:56:13.872Z"
+        },
+        {
+          "elapsed": 3000,
+          "memory": {
+            "rss": 123297792,
+            "heapTotal": 28635136,
+            "heapUsed": 23087352,
+            "external": 4069600,
+            "arrayBuffers": 181499
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3093,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:56:28.873Z"
+        },
+        {
+          "elapsed": 3015,
+          "memory": {
+            "rss": 122626048,
+            "heapTotal": 28635136,
+            "heapUsed": 24479632,
+            "external": 4079625,
+            "arrayBuffers": 191524
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3108,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:56:43.873Z"
+        },
+        {
+          "elapsed": 3030,
+          "memory": {
+            "rss": 123310080,
+            "heapTotal": 28372992,
+            "heapUsed": 20833128,
+            "external": 6670041,
+            "arrayBuffers": 2781940
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3123,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:56:58.874Z"
+        },
+        {
+          "elapsed": 3045,
+          "memory": {
+            "rss": 124579840,
+            "heapTotal": 29421568,
+            "heapUsed": 22051688,
+            "external": 5468886,
+            "arrayBuffers": 150564
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3138,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:57:13.877Z"
+        },
+        {
+          "elapsed": 3060,
+          "memory": {
+            "rss": 122957824,
+            "heapTotal": 31518720,
+            "heapUsed": 24203056,
+            "external": 6088188,
+            "arrayBuffers": 2200087
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3153,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:57:28.876Z"
+        },
+        {
+          "elapsed": 3075,
+          "memory": {
+            "rss": 120680448,
+            "heapTotal": 29683712,
+            "heapUsed": 25327936,
+            "external": 4156046,
+            "arrayBuffers": 267945
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3168,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:57:43.877Z"
+        },
+        {
+          "elapsed": 3090,
+          "memory": {
+            "rss": 122830848,
+            "heapTotal": 28635136,
+            "heapUsed": 21306248,
+            "external": 6678233,
+            "arrayBuffers": 2790132
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3183,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 4,
+            "available": 4,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:57:58.878Z"
+        },
+        {
+          "elapsed": 3105,
+          "memory": {
+            "rss": 131293184,
+            "heapTotal": 41185280,
+            "heapUsed": 28808136,
+            "external": 7247105,
+            "arrayBuffers": 3359004
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3198,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 19,
+            "available": 19,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:58:13.879Z"
+        },
+        {
+          "elapsed": 3120,
+          "memory": {
+            "rss": 128749568,
+            "heapTotal": 26537984,
+            "heapUsed": 21113136,
+            "external": 4067767,
+            "arrayBuffers": 111437
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3213,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 19,
+            "available": 19,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:58:28.878Z"
+        },
+        {
+          "elapsed": 3135,
+          "memory": {
+            "rss": 124461056,
+            "heapTotal": 57733120,
+            "heapUsed": 23544576,
+            "external": 6069971,
+            "arrayBuffers": 2181870
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3228,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:58:43.880Z"
+        },
+        {
+          "elapsed": 3150,
+          "memory": {
+            "rss": 122236928,
+            "heapTotal": 33091584,
+            "heapUsed": 21555144,
+            "external": 5356031,
+            "arrayBuffers": 1467930
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3243,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:58:58.880Z"
+        },
+        {
+          "elapsed": 3165,
+          "memory": {
+            "rss": 128319488,
+            "heapTotal": 42528768,
+            "heapUsed": 23702176,
+            "external": 10674449,
+            "arrayBuffers": 6786348
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3258,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:59:13.882Z"
+        },
+        {
+          "elapsed": 3180,
+          "memory": {
+            "rss": 128565248,
+            "heapTotal": 26800128,
+            "heapUsed": 22028248,
+            "external": 7774139,
+            "arrayBuffers": 3886038
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3273,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:59:28.883Z"
+        },
+        {
+          "elapsed": 3195,
+          "memory": {
+            "rss": 128507904,
+            "heapTotal": 29102080,
+            "heapUsed": 23979504,
+            "external": 6970076,
+            "arrayBuffers": 3081975
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3288,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:59:43.884Z"
+        },
+        {
+          "elapsed": 3210,
+          "memory": {
+            "rss": 127369216,
+            "heapTotal": 29888512,
+            "heapUsed": 25347576,
+            "external": 4069600,
+            "arrayBuffers": 181499
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3303,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T00:59:58.884Z"
+        },
+        {
+          "elapsed": 3225,
+          "memory": {
+            "rss": 126001152,
+            "heapTotal": 29421568,
+            "heapUsed": 20624536,
+            "external": 3999538,
+            "arrayBuffers": 111437
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3318,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:00:13.884Z"
+        },
+        {
+          "elapsed": 3240,
+          "memory": {
+            "rss": 126672896,
+            "heapTotal": 29421568,
+            "heapUsed": 21959088,
+            "external": 4046857,
+            "arrayBuffers": 158756
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3333,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 20,
+            "available": 20,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:00:28.884Z"
+        },
+        {
+          "elapsed": 3255,
+          "memory": {
+            "rss": 126750720,
+            "heapTotal": 29421568,
+            "heapUsed": 24453512,
+            "external": 7050163,
+            "arrayBuffers": 3162062
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3348,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:00:43.886Z"
+        },
+        {
+          "elapsed": 3270,
+          "memory": {
+            "rss": 124235776,
+            "heapTotal": 29683712,
+            "heapUsed": 25255880,
+            "external": 4118752,
+            "arrayBuffers": 230651
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3363,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:00:58.886Z"
+        },
+        {
+          "elapsed": 3285,
+          "memory": {
+            "rss": 127008768,
+            "heapTotal": 29421568,
+            "heapUsed": 21324136,
+            "external": 6339071,
+            "arrayBuffers": 2450970
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3378,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:01:13.889Z"
+        },
+        {
+          "elapsed": 3300,
+          "memory": {
+            "rss": 126636032,
+            "heapTotal": 29421568,
+            "heapUsed": 22941992,
+            "external": 6363647,
+            "arrayBuffers": 2475546
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3393,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:01:28.888Z"
+        },
+        {
+          "elapsed": 3315,
+          "memory": {
+            "rss": 127176704,
+            "heapTotal": 29421568,
+            "heapUsed": 24141776,
+            "external": 7050163,
+            "arrayBuffers": 3162062
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3408,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:01:43.888Z"
+        },
+        {
+          "elapsed": 3330,
+          "memory": {
+            "rss": 126328832,
+            "heapTotal": 30732288,
+            "heapUsed": 25177784,
+            "external": 4830131,
+            "arrayBuffers": 942030
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3423,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:01:58.889Z"
+        },
+        {
+          "elapsed": 3345,
+          "memory": {
+            "rss": 127143936,
+            "heapTotal": 28897280,
+            "heapUsed": 21871432,
+            "external": 6952146,
+            "arrayBuffers": 3064045
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3438,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:02:13.889Z"
+        },
+        {
+          "elapsed": 3360,
+          "memory": {
+            "rss": 125399040,
+            "heapTotal": 28897280,
+            "heapUsed": 22784128,
+            "external": 5808335,
+            "arrayBuffers": 424477
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3453,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 4,
+            "available": 4,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:02:28.891Z"
+        },
+        {
+          "elapsed": 3375,
+          "memory": {
+            "rss": 123998208,
+            "heapTotal": 32043008,
+            "heapUsed": 24557360,
+            "external": 6676687,
+            "arrayBuffers": 440861
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3468,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 4,
+            "available": 4,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:02:43.891Z"
+        },
+        {
+          "elapsed": 3390,
+          "memory": {
+            "rss": 125583360,
+            "heapTotal": 30732288,
+            "heapUsed": 26932712,
+            "external": 4399024,
+            "arrayBuffers": 510923
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3483,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:02:58.892Z"
+        },
+        {
+          "elapsed": 3405,
+          "memory": {
+            "rss": 128712704,
+            "heapTotal": 31256576,
+            "heapUsed": 21901472,
+            "external": 5495008,
+            "arrayBuffers": 1606907
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3498,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:03:13.892Z"
+        },
+        {
+          "elapsed": 3420,
+          "memory": {
+            "rss": 127459328,
+            "heapTotal": 31256576,
+            "heapUsed": 23158232,
+            "external": 5496841,
+            "arrayBuffers": 1608740
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3513,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:03:28.892Z"
+        },
+        {
+          "elapsed": 3435,
+          "memory": {
+            "rss": 127832064,
+            "heapTotal": 34402304,
+            "heapUsed": 26787400,
+            "external": 7914628,
+            "arrayBuffers": 4026527
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3528,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:03:43.893Z"
+        },
+        {
+          "elapsed": 3450,
+          "memory": {
+            "rss": 127557632,
+            "heapTotal": 29421568,
+            "heapUsed": 22601480,
+            "external": 5532490,
+            "arrayBuffers": 1644389
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3543,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 5,
+            "available": 5,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:03:58.894Z"
+        },
+        {
+          "elapsed": 3465,
+          "memory": {
+            "rss": 126648320,
+            "heapTotal": 30470144,
+            "heapUsed": 23837200,
+            "external": 4092244,
+            "arrayBuffers": 204143
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3558,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:04:13.896Z"
+        },
+        {
+          "elapsed": 3480,
+          "memory": {
+            "rss": 127180800,
+            "heapTotal": 30470144,
+            "heapUsed": 25124152,
+            "external": 4139563,
+            "arrayBuffers": 251462
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3573,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:04:28.898Z"
+        },
+        {
+          "elapsed": 3495,
+          "memory": {
+            "rss": 126828544,
+            "heapTotal": 30470144,
+            "heapUsed": 26222248,
+            "external": 4615207,
+            "arrayBuffers": 727106
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3588,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:04:43.898Z"
+        },
+        {
+          "elapsed": 3510,
+          "memory": {
+            "rss": 127205376,
+            "heapTotal": 30470144,
+            "heapUsed": 21256312,
+            "external": 6330879,
+            "arrayBuffers": 2442778
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3603,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:04:58.901Z"
+        },
+        {
+          "elapsed": 3525,
+          "memory": {
+            "rss": 126513152,
+            "heapTotal": 32567296,
+            "heapUsed": 23538400,
+            "external": 4092343,
+            "arrayBuffers": 204242
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3618,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:05:13.900Z"
+        },
+        {
+          "elapsed": 3540,
+          "memory": {
+            "rss": 124104704,
+            "heapTotal": 30470144,
+            "heapUsed": 25281240,
+            "external": 4102368,
+            "arrayBuffers": 214267
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3633,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:05:28.900Z"
+        },
+        {
+          "elapsed": 3555,
+          "memory": {
+            "rss": 126013440,
+            "heapTotal": 32305152,
+            "heapUsed": 20869640,
+            "external": 4014089,
+            "arrayBuffers": 125988
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3648,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:05:43.901Z"
+        },
+        {
+          "elapsed": 3570,
+          "memory": {
+            "rss": 125091840,
+            "heapTotal": 32305152,
+            "heapUsed": 23610440,
+            "external": 4113253,
+            "arrayBuffers": 225152
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3663,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:05:58.900Z"
+        },
+        {
+          "elapsed": 3585,
+          "memory": {
+            "rss": 126152704,
+            "heapTotal": 32305152,
+            "heapUsed": 25040840,
+            "external": 4108727,
+            "arrayBuffers": 220626
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3678,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 7,
+            "available": 7,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:06:13.900Z"
+        },
+        {
+          "elapsed": 3600,
+          "memory": {
+            "rss": 127254528,
+            "heapTotal": 30208000,
+            "heapUsed": 26132448,
+            "external": 4079625,
+            "arrayBuffers": 191524
+          },
+          "pool": {
+            "state": "Connected",
+            "generation": 2,
+            "totalReconnects": 2,
+            "lastReconnectTime": "2026-07-06T00:04:55.324Z",
+            "poolUptime": 3693,
+            "activeRequests": 0,
+            "totalRequestsServed": 0,
+            "size": 6,
+            "available": 6,
+            "pending": 0,
+            "borrowed": 0,
+            "max": 20,
+            "min": 2
+          },
+          "timestamp": "2026-07-06T01:06:28.900Z"
+        }
+      ],
+      "loadOk": 17990,
+      "loadErr": 0
+    }
+  },
+  "timestamp": "2026-07-06T01:06:31.904Z"
+}

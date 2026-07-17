@@ -1,0 +1,48 @@
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 class="page-title">الحد الائتماني للعملاء</h1>
+        <p class="page-subtitle">تحديد سقف المسحوبات الآجلة لكل عميل لتجنب تعثر المديونيات</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>كود العميل</th>
+                    <th>اسم العميل</th>
+                    <th>الحد الائتماني (السقف)</th>
+                    <th>المديونية الحالية</th>
+                    <th>المتاح للمسحوبات</th>
+                    <th>الحالة</th>
+                    <th>تحديث</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1001</td>
+                    <td>شركة العميل الافتراضي</td>
+                    <td><input type="number" value="50000" style="width: 100px;"> ج.م</td>
+                    <td class="text-danger">45,000 ج.م</td>
+                    <td class="text-warning">5,000 ج.م</td>
+                    <td><span class="badge" style="background: var(--warning-color);">اقترب من الحد</span></td>
+                    <td class="actions-cell">
+                        <button class="icon-btn btn-edit"><i class="fa-solid fa-floppy-disk"></i></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>1002</td>
+                    <td>مؤسسة السلام</td>
+                    <td><input type="number" value="20000" style="width: 100px;"> ج.م</td>
+                    <td class="text-danger">21,000 ج.م</td>
+                    <td class="text-danger">0 ج.م</td>
+                    <td><span class="badge" style="background: var(--danger-color);">متجاوز للحد</span></td>
+                    <td class="actions-cell">
+                        <button class="icon-btn btn-edit"><i class="fa-solid fa-floppy-disk"></i></button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

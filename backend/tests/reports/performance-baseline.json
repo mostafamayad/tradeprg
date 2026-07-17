@@ -1,0 +1,138 @@
+{
+  "timestamp": "2026-07-14T22:01:56.045Z",
+  "endpoints": [
+    {
+      "endpoint": "/reps",
+      "avgMs": 2,
+      "maxMs": 3,
+      "payloadBytes": 173,
+      "rowCount": 1
+    },
+    {
+      "endpoint": "/reps/manage",
+      "avgMs": 2,
+      "maxMs": 3,
+      "payloadBytes": 160,
+      "rowCount": 1
+    },
+    {
+      "endpoint": "/reps/1",
+      "avgMs": 2,
+      "maxMs": 3,
+      "payloadBytes": 171,
+      "rowCount": 0
+    },
+    {
+      "endpoint": "/reps/1/statement",
+      "avgMs": 3,
+      "maxMs": 4,
+      "payloadBytes": 719,
+      "rowCount": 0
+    },
+    {
+      "endpoint": "/reps/1/statement?from=2026-01-01&to=2026-12-31",
+      "avgMs": 4,
+      "maxMs": 5,
+      "payloadBytes": 719,
+      "rowCount": 0
+    },
+    {
+      "endpoint": "/customers",
+      "avgMs": 7,
+      "maxMs": 8,
+      "payloadBytes": 22743,
+      "rowCount": 12
+    },
+    {
+      "endpoint": "/customers/1",
+      "avgMs": 3,
+      "maxMs": 4,
+      "payloadBytes": 46,
+      "rowCount": 0
+    },
+    {
+      "endpoint": "/customers/1/statement",
+      "avgMs": 3,
+      "maxMs": 3,
+      "payloadBytes": 46,
+      "rowCount": 0
+    },
+    {
+      "endpoint": "/suppliers",
+      "avgMs": 4,
+      "maxMs": 4,
+      "payloadBytes": 3350,
+      "rowCount": 12
+    },
+    {
+      "endpoint": "/products",
+      "avgMs": 3,
+      "maxMs": 4,
+      "payloadBytes": 4173,
+      "rowCount": 12
+    },
+    {
+      "endpoint": "/sales",
+      "avgMs": 1,
+      "maxMs": 1,
+      "payloadBytes": 58,
+      "rowCount": 0
+    },
+    {
+      "endpoint": "/collections",
+      "avgMs": 3,
+      "maxMs": 3,
+      "payloadBytes": 381,
+      "rowCount": 1
+    },
+    {
+      "endpoint": "/payments",
+      "avgMs": 3,
+      "maxMs": 3,
+      "payloadBytes": 326,
+      "rowCount": 1
+    },
+    {
+      "endpoint": "/dashboard/stats",
+      "avgMs": 6,
+      "maxMs": 7,
+      "payloadBytes": 430,
+      "rowCount": 0
+    },
+    {
+      "endpoint": "/users",
+      "avgMs": 26,
+      "maxMs": 28,
+      "payloadBytes": 1570794,
+      "rowCount": 2
+    },
+    {
+      "endpoint": "/settings",
+      "avgMs": 29,
+      "maxMs": 31,
+      "payloadBytes": 2500934,
+      "rowCount": 0
+    },
+    {
+      "endpoint": "/logs",
+      "avgMs": 10,
+      "maxMs": 15,
+      "payloadBytes": 21371,
+      "rowCount": 50
+    },
+    {
+      "endpoint": "/inventory/balances",
+      "avgMs": 3,
+      "maxMs": 4,
+      "payloadBytes": 3615,
+      "rowCount": 15
+    },
+    {
+      "endpoint": "/accounting/accounts",
+      "avgMs": 4,
+      "maxMs": 4,
+      "payloadBytes": 10107,
+      "rowCount": 53
+    }
+  ]
+}
