@@ -7,6 +7,10 @@
  *   2. Validator — input validation
  *   3. Snapshot Builder — snapshot structure
  *   4. Calculator — calculation logic with mocked DB
+ *   5. Emitter — event-driven architecture
+ *   6. Settlement Engine — lock/unlock/approve/settle/voucher
+ *   7. Adjustment Engine — clawback + manual adjustments
+ *   8. Scenarios — full workflow integration tests
  *
  * Usage:
  *   node tests/commission/run.js
@@ -19,6 +23,10 @@ async function main() {
     suites.push(await require('./validator.test')());
     suites.push(await require('./snapshotBuilder.test')());
     suites.push(await require('./calculator.test')());
+    suites.push(await require('./emitter.test')());
+    suites.push(await require('./settlement.test')());
+    suites.push(await require('./adjustment.test')());
+    suites.push(await require('./scenarios.test')());
 
     console.log('\n' + '═'.repeat(60));
     console.log('  Commission System — Test Summary');
