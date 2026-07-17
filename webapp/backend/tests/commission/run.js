@@ -45,7 +45,8 @@ async function main() {
         console.log('\n  ❌ SOME TESTS FAILED\n');
         process.exit(1);
     } else {
-        console.log('\n  ✅ ALL TESTS PASSED\n');
+        console.log('\n  ✅ ALL TESTS PASSED');
+        console.log('  ℹ️  API route tests: node tests/commission/api.test.js');
     }
 }
 
