@@ -1,0 +1,131 @@
+{
+  "timestamp": "2026-07-17T04:45:23.526Z",
+  "tableCounts": {
+    "sales_reps": 0,
+    "customers": 0,
+    "suppliers": 0,
+    "products": 0,
+    "stores": 3,
+    "sales_invoices": 0,
+    "sales_invoice_items": 0,
+    "customer_collections": 0,
+    "collection_allocations": 0,
+    "sales_returns": 0,
+    "sales_return_items": 0,
+    "purchase_invoices": 0,
+    "purchase_invoice_items": 0,
+    "purchase_returns": 0,
+    "purchase_return_items": 0,
+    "users": 1,
+    "settings": 0,
+    "activity_logs": 0,
+    "company_info": 1,
+    "branches": 0,
+    "categories": 0,
+    "inventory_balances": 0,
+    "stock_movements": 0,
+    "stock_transfers": 0,
+    "stock_transfer_items": 0,
+    "damaged_stock": 0,
+    "stock_count": 0,
+    "stock_count_items": 0,
+    "stock_adjustments": 0,
+    "journal_entries": 0,
+    "journal_entry_lines": 0,
+    "chart_of_accounts": 45,
+    "treasury_accounts": 1,
+    "treasury_transactions": 0,
+    "expenses": 0,
+    "salary_slips": 0,
+    "emp_loans": 0,
+    "checks": 0,
+    "customer_notes": 0,
+    "customer_visits": 0,
+    "rep_targets": 0,
+    "rep_settlements": 0,
+    "invoice_counters": 24,
+    "customer_groups": 0,
+    "customer_activity_log": 0,
+    "customer_attachments": 0,
+    "return_reasons": 0,
+    "sales_return_audit": 0
+  },
+  "tableSums": {
+    "sales_invoices.grand_total": 0,
+    "customer_collections.amount": 0,
+    "sales_returns.grand_total": 0,
+    "purchase_invoices.grand_total": 0
+  },
+  "lastIds": {
+    "sales_invoices": 0,
+    "customer_collections": 0,
+    "sales_returns": 0,
+    "customers": 0,
+    "sales_reps": 0,
+    "products": 0
+  },
+  "indexes": {
+    "IX_sales_invoices_rep_id_status": false,
+    "IX_customer_collections_rep_id": false,
+    "IX_sales_returns_invoice_id": true,
+    "IX_customers_rep_id": true
+  },
+  "schemaVersion": [
+    {
+      "version": 1,
+      "name": "001_customers_schema",
+      "applied_at": "2026-07-01T06:56:01.890Z",
+      "duration_ms": 2,
+      "checksum": "2b2f1859f33509c18a870f10be9c3cbb"
+    },
+    {
+      "version": 2,
+      "name": "002_customer_tables",
+      "applied_at": "2026-07-01T06:56:01.907Z",
+      "duration_ms": 14,
+      "checksum": "ae48093598bbbd122ada8faf4cdbd494"
+    },
+    {
+      "version": 3,
+      "name": "003_sales_returns_index",
+      "applied_at": "2026-07-01T06:56:01.913Z",
+      "duration_ms": 7,
+      "checksum": "20bdf9ec33bd47f84a6676aa9be7b11c"
+    },
+    {
+      "version": 4,
+      "name": "004_sales_reps_notes",
+      "applied_at": "2026-07-02T20:47:38.340Z",
+      "duration_ms": 3,
+      "checksum": "2e42e7ee25a4e24fb5ef5b479d58d911"
+    },
+    {
+      "version": 5,
+      "name": "005_fiscal_periods",
+      "applied_at": "2026-07-07T08:21:13.620Z",
+      "duration_ms": 26,
+      "checksum": "5b6af011ee3d74b09cf319d06b613632"
+    },
+    {
+      "version": 6,
+      "name": "006_gl_indexes",
+      "applied_at": "2026-07-07T16:38:06.793Z",
+      "duration_ms": 16,
+      "checksum": "33fb2699349e3baaf776f997168c0d5a"
+    },
+    {
+      "version": 7,
+      "name": "007_hr_tables",
+      "applied_at": "2026-07-16T02:30:51.743Z",
+      "duration_ms": 0,
+      "checksum": "fb68a2ee31ccbc228af1af4f771c5d59"
+    },
+    {
+      "version": 8,
+      "name": "008_hr_attendance_vacations_penalties_rewards",
+      "applied_at": "2026-07-16T02:30:51.743Z",
+      "duration_ms": 0,
+      "checksum": "8726e277a99a190f99a2830fb5b0b215"
+    }
+  ]
+}

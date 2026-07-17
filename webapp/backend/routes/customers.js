@@ -145,22 +145,46 @@ router.get('/export/csv', asyncHandler(async (req, res) => {
             'language', 'currency', 'customer_group_name', 'rep_name',
             'customer_category', 'notes'
         ];
-        const esc = (v) => {
-            const s = (v != null ? String(v) : '');
-            return s.includes(',') || s.includes('"') || s.includes('\n') ? '"' + s.replace(/"/g, '""') + '"' : s;
-        };
-        let csv = headers.join(',') + '\r\n';
+        
+        const ExcelJS = require('exceljs');
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'TradePro ERP';
+        
+        const worksheet = workbook.addWorksheet('العملاء', {
+            views: [{ rightToLeft: true }]
+        });
+        
+        // Headers
+        const headerRow = worksheet.addRow(headers);
+        headerRow.eachCell(function(cell) {
+            cell.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } };
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+        
+        // Data
         for (const c of customers) {
-            const row = headers.map(h => {
-                if (h === 'customer_group_name') return esc(c.customer_group_name);
-                if (h === 'rep_name') return esc(c.rep_name);
-                return esc(c[h]);
+            const rowData = headers.map(h => {
+                if (h === 'customer_group_name') return c.customer_group_name || '';
+                if (h === 'rep_name') return c.rep_name || '';
+                return c[h] || '';
             });
-            csv += row.join(',') + '\r\n';
+            const row = worksheet.addRow(rowData);
+            row.eachCell((cell, colNum) => {
+                const headerName = headers[colNum - 1];
+                if (['credit_limit', 'opening_balance'].includes(headerName)) {
+                    cell.numFmt = '#,##0.00';
+                }
+            });
         }
-        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', 'attachment; filename="customers.csv"');
-        res.send('\ufeff' + csv);
+        
+        worksheet.columns.forEach(col => col.width = 20);
+        
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="customers.xlsx"');
+        
+        await workbook.xlsx.write(res);
+        res.end();
     } catch (err) {
         console.error('Customers CSV export error:', err);
         err.status = 500;
@@ -547,6 +571,9 @@ router.post('/', async (req, res) => {
         res.status(201).json({ success: true, message: 'تم إضافة العميل بنجاح', id: newId, code });
     } catch (err) {
         if (transaction) await transaction.rollback();
+        if (err.number === 2627) {
+            return res.status(400).json({ success: false, message: 'رقم الهاتف، الموبايل، أو كود العميل مسجل مسبقاً.' });
+        }
         logActivity(req, 'CREATE', 'customers', null, null, null, null, 'FAILED', err.message);
         console.error('Customers POST error:', err);
         res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات: ' + err.message });
@@ -723,6 +750,9 @@ router.put('/:id', async (req, res) => {
             throw txErr;
         }
     } catch (err) {
+        if (err.number === 2627) {
+            return res.status(400).json({ success: false, message: 'رقم الهاتف، الموبايل، أو كود العميل مسجل مسبقاً.' });
+        }
         logActivity(req, 'UPDATE', 'customers', null, null, null, null, 'FAILED', err.message);
         console.error('Customers PUT error:', err);
         res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات: ' + err.message });

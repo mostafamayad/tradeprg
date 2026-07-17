@@ -1,0 +1,56 @@
+{
+  "mode": "load",
+  "results": {
+    "load": {
+      "completed": 337782,
+      "errors": 183153,
+      "criticalErrors": 0,
+      "criticalDetails": [],
+      "errorTypes": {
+        "429:Too many requests": 183153
+      },
+      "finalHealth": {
+        "success": true,
+        "server": {
+          "uptime": 1092,
+          "version": "1.0.0",
+          "timestamp": "2026-07-06T00:01:33.503Z",
+          "memory": {
+            "rss": 356958208,
+            "heapTotal": 231419904,
+            "heapUsed": 95100944,
+            "external": 28985154,
+            "arrayBuffers": 25097053
+          },
+          "pid": 2904
+        },
+        "database": {
+          "status": "UP",
+          "lastError": null,
+          "retryCount": 0,
+          "degraded": false
+        },
+        "pool": {
+          "state": "Connected",
+          "generation": 1,
+          "totalReconnects": 1,
+          "lastReconnectTime": "2026-07-05T23:43:21.079Z",
+          "poolUptime": 1092,
+          "activeRequests": 0,
+          "totalRequestsServed": 0,
+          "size": 20,
+          "available": 20,
+          "pending": 0,
+          "borrowed": 0,
+          "max": 20,
+          "min": 2
+        },
+        "recentLog": [
+          "[2026-07-05T23:43:21.079Z] gen=0 reqs=0 Pool#1 created (Windows Auth, driver=ODBC Driver 17 for SQL Server, max=20)",
+          "[2026-07-05T23:43:21.079Z] gen=1 reqs=0 Pool established"
+        ]
+      }
+    }
+  },
+  "timestamp": "2026-07-06T00:01:33.504Z"
+}

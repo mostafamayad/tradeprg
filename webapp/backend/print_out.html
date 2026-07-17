@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>فاتورة مبيعات INV-0008</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap');
+    * { box-sizing: border-box; }
+    body {
+        font-family: 'Cairo', sans-serif;
+        color: #1f2937;
+        margin: 0; padding: 12px;
+        background: #f3f4f6;
+        font-size: 12px;
+        line-height: 1.4;
+    }
+    .page {
+        max-width: 850px;
+        margin: 0 auto;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    /* ====== HEADER (compact) ====== */
+    .header {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        padding: 14px 18px;
+        border-bottom: 1px solid #e5e7eb;
+        gap: 14px;
+        align-items: center;
+    }
+    .header-left { display: flex; gap: 10px; align-items: center; }
+    .logo-box {
+        width: 44px; height: 44px;
+        background: #1f2937;
+        border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        color: #fff;
+        font-size: 22px;
+        font-weight: 900;
+        flex-shrink: 0;
+    }
+    .company-name {
+        font-size: 18px;
+        font-weight: 900;
+        color: #1f2937;
+        margin-bottom: 2px;
+        line-height: 1.2;
+    }
+    .company-tag {
+        font-size: 11px;
+        color: #6b7280;
+        margin-bottom: 4px;
+    }
+    .contact-list { font-size: 11px; display: grid; grid-template-columns: 1fr 1fr; gap: 1px 10px; }
+    .contact-row {
+        display: flex; align-items: center; gap: 5px;
+        color: #4b5563;
+    }
+    .contact-row i { color: #9ca3af; width: 12px; font-size: 10px; }
+
+    .header-right { text-align: left; }
+    .invoice-title {
+        font-size: 18px;
+        font-weight: 900;
+        color: #1f2937;
+        line-height: 1.2;
+    }
+    .invoice-title-en {
+        font-size: 10px;
+        color: #9ca3af;
+        letter-spacing: 1px;
+        margin-bottom: 6px;
+    }
+    .invoice-number-box {
+        background: #1f2937;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 6px;
+        display: inline-block;
+        min-width: 160px;
+        text-align: center;
+    }
+    .invoice-number-label {
+        font-size: 10px;
+        opacity: 0.7;
+        margin-bottom: 2px;
+    }
+    .invoice-number-value {
+        font-size: 18px;
+        font-weight: 900;
+        letter-spacing: 1px;
+    }
+
+    /* ====== META BOXES (4 معلومات سريعة - compact) ====== */
+    .meta-boxes {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        padding: 10px 18px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #fafafa;
+    }
+    .meta-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 8px;
+    }
+    .meta-box .icon-wrap {
+        width: 26px; height: 26px;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        display: flex; align-items: center; justify-content: center;
+        color: #4b5563;
+        font-size: 11px;
+        flex-shrink: 0;
+    }
+    .meta-box .meta-text { text-align: right; flex: 1; min-width: 0; }
+    .meta-box .lbl {
+        font-size: 9px;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.2px;
+        line-height: 1.2;
+    }
+    .meta-box .val {
+        font-size: 12px;
+        font-weight: 800;
+        color: #1f2937;
+        line-height: 1.3;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* ====== INFO CARDS (2 cards - compact) ====== */
+    .info-cards {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 10px 18px;
+    }
+    .info-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 10px 12px;
+    }
+    .info-card-header {
+        display: flex; align-items: center; gap: 6px;
+        font-size: 11px;
+        font-weight: 800;
+        color: #1f2937;
+        margin-bottom: 6px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .info-card-header i { color: #9ca3af; font-size: 11px; }
+    .info-row {
+        display: flex; justify-content: space-between; align-items: center;
+        font-size: 11px;
+        padding: 2px 0;
+        gap: 8px;
+    }
+    .info-row .lbl { color: #6b7280; flex-shrink: 0; }
+    .info-row .val { color: #1f2937; font-weight: 600; text-align: left; overflow: hidden; text-overflow: ellipsis; }
+    .notes-text {
+        font-size: 11px;
+        color: #4b5563;
+        line-height: 1.5;
+        text-align: center;
+        padding: 4px 0;
+    }
+
+    /* ====== ITEMS TABLE (compact) ====== */
+    .items-section {
+        padding: 0 18px 10px;
+    }
+    .section-title {
+        display: flex; align-items: center; gap: 6px;
+        font-size: 11px;
+        font-weight: 800;
+        color: #fff;
+        margin: 0 0 6px 0;
+        padding: 5px 10px;
+        background: #1f2937;
+        border-radius: 4px;
+        width: fit-content;
+    }
+    .section-title i { font-size: 10px; }
+    .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        border: 1px solid #e5e7eb;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .items-table thead th {
+        background: #f3f4f6;
+        color: #374151;
+        padding: 6px 4px;
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.2px;
+        text-align: center;
+        border-bottom: 1px solid #d1d5db;
+    }
+    .items-table tbody td {
+        padding: 7px 4px;
+        font-size: 11px;
+        text-align: center;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .items-table tbody tr:last-child td { border-bottom: none; }
+    .item-name-cell { text-align: right; font-weight: 700; }
+
+    /* ====== TOTALS (compact) ====== */
+    .totals-section {
+        display: grid;
+        grid-template-columns: 1fr 1.4fr;
+        gap: 8px;
+        padding: 0 18px 10px;
+    }
+    .totals-side-col {
+        display: flex; flex-direction: column; gap: 6px;
+    }
+    .totals-side-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 6px 10px;
+        text-align: center;
+    }
+    .totals-side-card .ts-head {
+        font-size: 10px;
+        color: #6b7280;
+        margin-bottom: 2px;
+    }
+    .totals-side-card .ts-big {
+        font-size: 15px;
+        font-weight: 900;
+        color: #1f2937;
+    }
+    .totals-words-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 6px 10px;
+        text-align: center;
+    }
+    .totals-words-card .tw-head {
+        font-size: 10px;
+        color: #6b7280;
+        margin-bottom: 2px;
+    }
+    .totals-words-card .tw-words {
+        font-size: 11px;
+        color: #1f2937;
+        font-weight: 700;
+    }
+
+    .summary-table {
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    .summary-table table { width: 100%; border-collapse: collapse; }
+    .summary-table td {
+        padding: 5px 12px;
+        font-size: 11px;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .summary-table tr:last-child td { border-bottom: none; }
+    .summary-table td:first-child { color: #6b7280; }
+    .summary-table td:last-child { font-weight: 700; color: #1f2937; text-align: left; }
+    .summary-table tr.grand td {
+        background: #1f2937;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 900;
+        padding: 8px 12px;
+    }
+    .summary-table tr.grand td:first-child { color: #fff; }
+
+    /* ====== FOOTER (3 columns - compact) ====== */
+    .footer {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 8px;
+        padding: 10px 18px;
+        border-top: 1px solid #e5e7eb;
+    }
+    .footer-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 8px 10px;
+    }
+    .footer-card h4 {
+        margin: 0 0 5px 0;
+        font-size: 11px;
+        font-weight: 800;
+        display: flex; align-items: center; gap: 5px;
+        color: #1f2937;
+        padding-bottom: 4px;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .footer-card h4 i { color: #9ca3af; font-size: 10px; }
+    .footer-card ul {
+        margin: 0; padding-right: 14px;
+        font-size: 10px;
+        color: #4b5563;
+        line-height: 1.6;
+    }
+    .payment-info { font-size: 10px; }
+    .payment-info .pi-row { margin: 2px 0; }
+    .payment-info .pi-label { color: #6b7280; }
+    .payment-info .pi-val { font-weight: 700; color: #1f2937; }
+    .signature-line {
+        border-bottom: 1px dotted #9ca3af;
+        height: 22px;
+        margin: 10px 0 4px;
+    }
+    .signature-text {
+        font-size: 10px;
+        color: #6b7280;
+        text-align: center;
+    }
+
+    /* QR Card - أصغر */
+    .qr-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 6px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    .qr-card img { width: 70px; height: 70px; display: block; }
+    .qr-card .qr-label {
+        font-size: 9px;
+        color: #6b7280;
+        margin-top: 4px;
+        font-weight: 600;
+    }
+
+    /* ====== BOTTOM BAR (مدمج) ====== */
+    .bottom-bar {
+        background: #1f2937;
+        color: #fff;
+        padding: 8px 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .bottom-bar > div {
+        display: flex; align-items: center; gap: 5px;
+    }
+    .bottom-bar i { color: #9ca3af; font-size: 11px; }
+    .bottom-bar span { opacity: 0.95; }
+
+    /* ====== PRINT BUTTON ====== */
+    .no-print {
+        max-width: 850px;
+        margin: 0 auto 8px;
+        text-align: center;
+    }
+    .no-print button {
+        padding: 8px 24px;
+        background: #1f2937;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 700;
+        font-family: 'Cairo', sans-serif;
+    }
+
+    /* ====== PRINT ====== */
+    @page { size: A4; margin: 6mm; }
+    @media print {
+        body { padding: 0; background: #fff !important; font-size: 11px; }
+        .page { box-shadow: none; border: none; max-width: 100%; }
+        .no-print { display: none !important; }
+        .summary-table tr.grand td { background: #1f2937 !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .invoice-number-box, .section-title, .bottom-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .header, .meta-boxes, .info-cards, .items-section, .totals-section, .footer { padding-left: 14px; padding-right: 14px; }
+    }
+
+    /* ====== TAX-AWARE LAYOUT (Dynamic) ====== */
+    /* الفاتورة غير الضريبية: إخفاء كل العناصر الضريبية */
+    body.non-tax .tax-only { display: none !important; }
+    /* الفاتورة الضريبية: إخفاء العناصر الخاصة بغير الضريبية (نادرة) */
+    body.is-tax .non-tax-only { display: none !important; }
+
+    /* Badge ضريبي صغير */
+    .tax-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: #1f2937;
+        color: #fff;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        margin-right: 6px;
+    }
+    .tax-badge i { font-size: 9px; }
+
+    /* ====== PAYMENT-AWARE LAYOUT (Dynamic) ====== */
+    /* إظهار العنصر فقط لو السيناريو يطابق */
+    .show-paid    { display: none; }
+    .show-cash    { display: none; }
+    .show-bank    { display: none; }
+    .show-check   { display: none; }
+    .show-credit  { display: none; }
+    body.is-pay-paid   .show-paid   { display: block; }
+    body.is-pay-cash   .show-cash   { display: block; }
+    body.is-pay-bank   .show-bank   { display: flex; }
+    body.is-pay-check  .show-check  { display: block; }
+    body.is-pay-credit .show-credit { display: block; }
+
+    /* PAID Stamp كبير وأنيق */
+    .paid-stamp-wrap {
+        text-align: center;
+        padding: 18px 14px;
+        margin: 14px 18px;
+        border: 3px double #059669;
+        border-radius: 8px;
+        background: #f0fdf4;
+        position: relative;
+    }
+    .paid-stamp-wrap::before {
+        content: '';
+        position: absolute;
+        inset: 4px;
+        border: 1px dashed #059669;
+        border-radius: 4px;
+        pointer-events: none;
+    }
+    .paid-stamp-text {
+        font-size: 28px;
+        font-weight: 900;
+        color: #059669;
+        letter-spacing: 4px;
+        line-height: 1;
+    }
+    .paid-stamp-sub {
+        font-size: 12px;
+        color: #059669;
+        margin-top: 6px;
+        font-weight: 700;
+    }
+    .paid-stamp-meta {
+        font-size: 10px;
+        color: #047857;
+        margin-top: 4px;
+    }
+
+    /* شريط معلومات الدفع المدمج (يظهر في السيناريوهات cash/bank/check/credit) */
+    .payment-bar {
+        margin: 10px 18px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 11px;
+        flex-wrap: wrap;
+    }
+    .payment-bar .pb-item { display: flex; align-items: center; gap: 5px; }
+    .payment-bar .pb-label { color: #6b7280; }
+    .payment-bar .pb-value { font-weight: 700; color: #1f2937; }
+    .payment-bar .pb-divider {
+        width: 1px; height: 16px; background: #e5e7eb;
+    }
+
+    /* صندوق بيانات التحويل البنكي (صغير) */
+    .bank-transfer-card {
+        margin: 10px 18px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 10px 14px;
+        background: #fafafa;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+    }
+    .bank-transfer-info { flex: 1; font-size: 11px; }
+    .bank-transfer-info .bt-row { margin: 2px 0; }
+    .bank-transfer-info .bt-label { color: #6b7280; }
+    .bank-transfer-info .bt-val { font-weight: 700; color: #1f2937; }
+    .bank-transfer-info .bt-title {
+        font-size: 12px;
+        font-weight: 800;
+        margin-bottom: 6px;
+        color: #1f2937;
+        display: flex; align-items: center; gap: 5px;
+    }
+
+    /* صندوق بيانات الشيك */
+    .check-card {
+        margin: 10px 18px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 10px 14px;
+        background: #fffbeb;
+    }
+    .check-card .ck-title {
+        font-size: 12px;
+        font-weight: 800;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        color: #92400e;
+    }
+    .check-card .ck-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 4px 14px;
+        font-size: 11px;
+    }
+    .check-card .ck-row { display: flex; justify-content: space-between; padding: 2px 0; }
+    .check-card .ck-label { color: #6b7280; }
+    .check-card .ck-val { font-weight: 700; color: #1f2937; }
+    .check-card .ck-status {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: 700;
+        font-size: 10px;
+        background: #fff;
+    }
+
+    /* صندوق شروط الدفع (آجل) */
+    .credit-card {
+        margin: 10px 18px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 10px 14px;
+        background: #eff6ff;
+    }
+    .credit-card .cr-title {
+        font-size: 12px;
+        font-weight: 800;
+        margin-bottom: 8px;
+        color: #1e40af;
+        display: flex; align-items: center; gap: 5px;
+    }
+    .credit-card .cr-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+    .credit-card .cr-item {
+        background: #fff;
+        padding: 6px 10px;
+        border-radius: 4px;
+        text-align: center;
+        border: 1px solid #dbeafe;
+    }
+    .credit-card .cr-item-label {
+        font-size: 9px;
+        color: #6b7280;
+        margin-bottom: 2px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    .credit-card .cr-item-val {
+        font-size: 13px;
+        font-weight: 800;
+        color: #1e40af;
+    }
+
+    /* في حالة PAID: إخفاء كل الأقسام الأخرى */
+    body.is-pay-paid .show-only-when-unpaid { display: none !important; }
+
+    /* في حالة إلغاء: إخفاء كل شيء */
+    body.is-pay-cancelled .payment-section { display: none !important; }
+</style>
+</head>
+<body class="is-tax is-pay-cash">
+<div class="no-print"><button onclick="window.print()"><i class="fa-solid fa-print"></i> طباعة الفاتورة</button></div>
+
+<div class="page">
+    <!-- ====== HEADER (شعار + بيانات الشركة + رقم الفاتورة) ====== -->
+    <div class="header">
+        <div class="header-left">
+            <div class="logo-box">T</div>
+            <div>
+                <div class="company-name">
+                    TradePro ERP
+                    <span class="tax-badge tax-only"><i class="fa-solid fa-receipt"></i> فاتورة ضريبية</span>
+                </div>
+                <div class="company-tag">حلول متكاملة لإدارة الأعمال</div>
+                <div class="contact-list">
+                    <div class="contact-row"><i class="fa-solid fa-location-dot"></i><span>القاهرة، مصر</span></div>
+                    <div class="contact-row"><i class="fa-solid fa-phone"></i><span dir="ltr">+20 100 123 4567</span></div>
+                    <div class="contact-row"><i class="fa-regular fa-envelope"></i><span>info@tradepro.com</span></div>
+                    <div class="contact-row"><i class="fa-solid fa-globe"></i><span>www.tradepro.com</span></div>
+                    
+                </div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="invoice-title">فاتورة مبيعات</div>
+            <div class="invoice-title-en">TAX INVOICE</div>
+            <div class="invoice-number-box">
+                <div class="invoice-number-label">رقم الفاتورة</div>
+                <div class="invoice-number-value">INV-0008</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== META BOXES (4 معلومات سريعة) ====== -->
+    <div class="meta-boxes">
+        <div class="meta-box">
+            <div class="icon-wrap"><i class="fa-regular fa-calendar"></i></div>
+            <div class="lbl">تاريخ الفاتورة</div>
+            <div class="val">2026-06-28</div>
+        </div>
+        <div class="meta-box">
+            <div class="icon-wrap"><i class="fa-regular fa-calendar-check"></i></div>
+            <div class="lbl">تاريخ الاستحقاق</div>
+            <div class="val">2026-06-28</div>
+        </div>
+        <div class="meta-box">
+            <div class="icon-wrap"><i class="fa-solid fa-money-bill"></i></div>
+            <div class="lbl">المبلغ المدفوع</div>
+            <div class="val">0.00 ج.م</div>
+        </div>
+        <div class="meta-box">
+            <div class="icon-wrap"><i class="fa-solid fa-circle-info"></i></div>
+            <div class="lbl">حالة الفاتورة</div>
+            <div class="val">غير مدفوعة</div>
+        </div>
+    </div>
+
+    <!-- ====== INFO CARDS (العميل + الملاحظات) ====== -->
+    <div class="info-cards">
+        <div class="info-card">
+            <div class="info-card-header"><i class="fa-regular fa-user"></i> بيانات العميل</div>
+            <div class="info-row"><span class="lbl">الاسم</span><span class="val">خخخ</span></div>
+            <div class="info-row"><span class="lbl">كود العميل</span><span class="val">C-0031</span></div>
+            
+            
+            <div class="info-row"><span class="lbl">المندوب</span><span class="val">مندوب 1</span></div>
+            <div class="info-row"><span class="lbl">المخزن</span><span class="val">المخزن الرئيسي</span></div>
+            
+            <div class="info-row tax-only"><span class="lbl">الرقم الضريبي</span><span class="val" dir="ltr">987654</span></div>
+        </div>
+
+        <div class="info-card">
+            <div class="info-card-header"><i class="fa-regular fa-note-sticky"></i> ملاحظات</div>
+            <div class="notes-text">شكراً لتعاملكم معنا<br>نسعد بخدمتكم دائماً</div>
+        </div>
+    </div>
+
+    <!-- ====== ITEMS TABLE ====== -->
+    <div class="items-section">
+        <div class="section-title"><i class="fa-solid fa-boxes-stacked"></i> أصناف الفاتورة (4 صنف)</div>
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width:40px">#</th>
+                    <th style="text-align:right">الصنف</th>
+                    <th style="width:80px">الكود</th>
+                    <th style="width:60px">الكمية</th>
+                    <th style="width:70px">الوحدة</th>
+                    <th style="width:90px">سعر الوحدة</th>
+                    <th style="width:70px">الخصم</th>
+                    <th style="width:90px" class="tax-only">ضريبة القيمة المضافة</th>
+                    <th style="width:100px">الإجمالي</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>1</td>
+                    <td class="item-name-cell">نيمو</td>
+                    <td>32</td>
+                    <td>1</td>
+                    <td>سم</td>
+                    <td>450.00</td>
+                    <td>0%</td>
+                    <td class="tax-only">14%</td>
+                    <td><strong>450.00</strong></td>
+                </tr>
+                
+                <tr>
+                    <td>2</td>
+                    <td class="item-name-cell">نيمو</td>
+                    <td>32</td>
+                    <td>1</td>
+                    <td>سم</td>
+                    <td>450.00</td>
+                    <td>0%</td>
+                    <td class="tax-only">14%</td>
+                    <td><strong>450.00</strong></td>
+                </tr>
+                
+                <tr>
+                    <td>3</td>
+                    <td class="item-name-cell">نيمو</td>
+                    <td>32</td>
+                    <td>1</td>
+                    <td>سم</td>
+                    <td>450.00</td>
+                    <td>0%</td>
+                    <td class="tax-only">14%</td>
+                    <td><strong>450.00</strong></td>
+                </tr>
+                
+                <tr>
+                    <td>4</td>
+                    <td class="item-name-cell">نيمو</td>
+                    <td>32</td>
+                    <td>1</td>
+                    <td>سم</td>
+                    <td>450.00</td>
+                    <td>0%</td>
+                    <td class="tax-only">14%</td>
+                    <td><strong>450.00</strong></td>
+                </tr>
+                
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ====== TOTALS (عدد الأصناف + الإجمالي الفرعي + الملخص) ====== -->
+    <div class="totals-section">
+        <div class="totals-side-col">
+            <div class="totals-side-card">
+                <div class="ts-head">عدد الأصناف</div>
+                <div class="ts-big">4</div>
+            </div>
+            <div class="totals-words-card">
+                <div class="tw-head">المبلغ الإجمالي بالكتابة</div>
+                <div class="tw-words">ألفان واثنان وخمسون جنيه مصري فقط لا غير</div>
+            </div>
+        </div>
+
+        <div class="summary-table">
+            <table>
+                <tr><td>الإجمالي قبل الضريبة</td><td>1,800.00 ج.م</td></tr>
+                
+                <tr class="tax-only"><td>ضريبة القيمة المضافة (14%)</td><td>252.00 ج.م</td></tr>
+                <tr class="grand"><td>الإجمالي شامل الضريبة</td><td>2,052.00 ج.م</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- ====== PAYMENT SECTION (ديناميكي - 5 سيناريوهات) ====== -->
+    <div class="payment-section">
+
+        <!-- الحالة 1: مدفوعة بالكامل → PAID Stamp -->
+        <div class="show-paid">
+            <div class="paid-stamp-wrap">
+                <div class="paid-stamp-text">PAID</div>
+                <div class="paid-stamp-sub">تم السداد بالكامل</div>
+                <div class="paid-stamp-meta">
+                    0.00 ج.م
+                    
+                </div>
+            </div>
+        </div>
+
+        <!-- الحالة 2: نقدي غير مدفوع → شريط معلومات صغير -->
+        <div class="show-cash show-only-when-unpaid">
+            <div class="payment-bar">
+                <div class="pb-item">
+                    <i class="fa-solid fa-money-bill-wave" style="color:#059669"></i>
+                    <span class="pb-label">طريقة الدفع:</span>
+                    <span class="pb-value">نقدي</span>
+                </div>
+                <div class="pb-divider"></div>
+                <div class="pb-item">
+                    <span class="pb-label">المبلغ المتبقي:</span>
+                    <span class="pb-value" style="color:#dc2626">2,052.00 ج.م</span>
+                </div>
+                
+            </div>
+        </div>
+
+        <!-- الحالة 3: تحويل بنكي → صندوق صغير ببيانات البنك + QR -->
+        <div class="show-bank show-only-when-unpaid">
+            <div class="bank-transfer-card">
+                <div class="bank-transfer-info">
+                    <div class="bt-title"><i class="fa-solid fa-building-columns"></i> بيانات التحويل البنكي</div>
+                    <div class="bt-row"><span class="bt-label">البنك: </span><span class="bt-val">البنك الأهلي المصري</span></div>
+                    <div class="bt-row"><span class="bt-label">صاحب الحساب: </span><span class="bt-val">TradePro ERP Solutions</span></div>
+                    <div class="bt-row"><span class="bt-label">IBAN: </span><span class="bt-val" dir="ltr">EG80000201234567890123456</span></div>
+                </div>
+                
+                <div style="text-align:center">
+                    <img src="data:image/png;base64,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" alt="QR" style="width:60px;height:60px;border:1px solid #e5e7eb;padding:3px;background:#fff">
+                    <div style="font-size:8px;color:#6b7280;margin-top:2px">امسح للدفع</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- الحالة 4: شيك → بيانات الشيك -->
+        <div class="show-check show-only-when-unpaid">
+            <div class="check-card">
+                <div class="ck-title"><i class="fa-solid fa-money-check"></i> بيانات الشيك</div>
+                <div class="ck-grid">
+                    <div class="ck-row"><span class="ck-label">رقم الشيك:</span><span class="ck-val" dir="ltr">-</span></div>
+                    <div class="ck-row"><span class="ck-label">البنك:</span><span class="ck-val">-</span></div>
+                    <div class="ck-row"><span class="ck-label">تاريخ الاستحقاق:</span><span class="ck-val">-</span></div>
+                    <div class="ck-row">
+                        <span class="ck-label">حالة الشيك:</span>
+                        <span class="ck-val"><span class="ck-status" style="background:#d9770615;color:#d97706;border:1px solid #d97706">⏳ معلق</span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- الحالة 5: آجل → شروط الدفع -->
+        <div class="show-credit show-only-when-unpaid">
+            <div class="credit-card">
+                <div class="cr-title"><i class="fa-regular fa-clock"></i> شروط الدفع</div>
+                <div class="cr-grid">
+                    <div class="cr-item">
+                        <div class="cr-item-label">تاريخ الاستحقاق</div>
+                        <div class="cr-item-val">-</div>
+                    </div>
+                    <div class="cr-item">
+                        <div class="cr-item-label">أيام الائتمان</div>
+                        <div class="cr-item-val">-</div>
+                    </div>
+                    <div class="cr-item">
+                        <div class="cr-item-label">شروط الدفع</div>
+                        <div class="cr-item-val" style="font-size:11px">صافي</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- قسم التوقيع المشترك في كل الحالات -->
+        <div class="footer">
+            <div class="footer-card">
+                <h4><i class="fa-solid fa-file-signature"></i> اعتماد الفاتورة</h4>
+                <div class="info-row"><span class="lbl">المستلم:</span><span class="val">خخخ</span></div>
+                <div class="info-row"><span class="lbl">المندوب:</span><span class="val">مندوب 1</span></div>
+                <div class="signature-line"></div>
+                <div class="signature-text">التوقيع / الختم</div>
+            </div>
+
+            <!-- QR يظهر فقط مع التحويل البنكي أو الفواتير الضريبية -->
+            
+            <div class="qr-card">
+                <img src="data:image/png;base64,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" alt="QR Code">
+                <div class="qr-label">امسح للتحقق الضريبي</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ====== BOTTOM BAR (شكراً + بيانات التواصل) ====== -->
+    <div class="bottom-bar">
+        <div><i class="fa-solid fa-face-smile"></i><span style="font-weight:700">شكراً لتعاملكم معنا</span></div>
+        <div><i class="fa-solid fa-headset"></i><span dir="ltr">+20 100 123 4567</span></div>
+        <div><i class="fa-regular fa-envelope"></i><span>info@tradepro.com</span></div>
+        <div><i class="fa-solid fa-globe"></i><span>www.tradepro.com</span></div>
+    </div>
+</div>
+</body>
+</html>

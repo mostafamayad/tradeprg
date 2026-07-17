@@ -136,6 +136,11 @@ const FACTORY_RESET_ORDER = [
     'customer_visits',
     'damaged_stock',
     'emp_loans',
+    'emp_vacations',
+    'emp_attendance',
+    'emp_penalties',
+    'emp_rewards',
+    'salary_slips',
     'expenses',
     'inventory_balances',
     'invoice_counters',
@@ -145,7 +150,6 @@ const FACTORY_RESET_ORDER = [
     'rep_settlements',
     'rep_targets',
     'return_reasons',
-    'salary_slips',
     'sales_invoice_items',
     'sales_return_audit',
     'sales_return_items',
@@ -156,6 +160,25 @@ const FACTORY_RESET_ORDER = [
     'supplier_activity_log',
     'supplier_payment_allocations',
     'treasury_transactions',
+    'ap_payment_allocations',
+    'ar_payment_allocations',
+    'ap_payments',
+    'ar_payments',
+    'ap_cheques',
+    'ar_cheques',
+    'ar_security_cheques',
+    'ap_notes',
+    'ar_notes',
+    'stock_disposal_items',
+    'stock_disposals',
+    'crm_workplan_customers',
+    'crm_workplans',
+    'crm_targets',
+    'crm_settlements',
+    'asset_movements',
+    'asset_depreciation',
+    'fixed_assets',
+    'asset_categories',
     'customer_collections',
     'chart_of_accounts',
     'journal_entries',
@@ -184,6 +207,11 @@ const YEAR_CLOSE_ORDER = [
     'customer_visits',
     'damaged_stock',
     'emp_loans',
+    'emp_vacations',
+    'emp_attendance',
+    'emp_penalties',
+    'emp_rewards',
+    'salary_slips',
     'expenses',
     'inventory_balances',
     'journal_entry_lines',
@@ -191,7 +219,6 @@ const YEAR_CLOSE_ORDER = [
     'purchase_return_items',
     'rep_settlements',
     'rep_targets',
-    'salary_slips',
     'sales_invoice_items',
     'sales_return_audit',
     'sales_return_items',
@@ -202,6 +229,22 @@ const YEAR_CLOSE_ORDER = [
     'supplier_activity_log',
     'supplier_payment_allocations',
     'treasury_transactions',
+    'ap_payment_allocations',
+    'ar_payment_allocations',
+    'ap_payments',
+    'ar_payments',
+    'ap_cheques',
+    'ar_cheques',
+    'ar_security_cheques',
+    'ap_notes',
+    'ar_notes',
+    'stock_disposal_items',
+    'stock_disposals',
+    'crm_workplan_customers',
+    'crm_workplans',
+    'crm_settlements',
+    'asset_movements',
+    'asset_depreciation',
     'customer_collections',
     'journal_entries',
     'purchase_returns',
@@ -447,97 +490,54 @@ router.post('/year-close', asyncHandler(async (req, res) => {
     }
     const v = await verifyAdminPassword(req.user.id, password);
     if (!v.valid) return res.status(403).json({ success: false, message: v.message });
-    if (!backupPath) {
-        return res.status(400).json({ success: false, message: 'يرجى تحديد مسار حفظ النسخة الاحتياطية' });
-    }
 
-    // 0. Year parameter (H3)
     const year = parseInt(req.body.year) || new Date().getFullYear();
     if (isNaN(year) || year < 2000 || year > 2100) {
-        return res.status(400).json({ success: false, message: 'سنة غير صالحة. يرجى إدخال سنة بين 2000 و 2100.' });
+        return res.status(400).json({ success: false, message: 'سنة غير صالحة.' });
     }
     const currentYear = new Date().getFullYear();
     if (year > currentYear) {
         return res.status(400).json({ success: false, message: `لا يمكن إقفال السنة ${year} لأنها في المستقبل.` });
     }
 
-    // 0. Pre-close integrity validation (Risk #6)
     const preIntegrity = await verifyIntegrity();
     if (!preIntegrity.allPassed) {
-        await logActivity(req, 'YEAR_CLOSE', 'admin', null, 'تم رفض إقفال السنة: الأرصدة غير متوازنة', null, null, 'FAILED', JSON.stringify(preIntegrity));
-        return res.status(400).json({ success: false, message: 'لا يمكن إقفال السنة والأرصدة غير متوازنة. يرجى مراجعة قسم الصحة أولاً.', integrity: preIntegrity });
+        return res.status(400).json({ success: false, message: 'لا يمكن إقفال السنة والأرصدة غير متوازنة. يرجى مراجعة قسم الصحة.', integrity: preIntegrity });
     }
-    console.log('✓ Integrity check passed (pre-close)');
 
-    // 0b. Fiscal period validation (H2)
     const pool0 = await getPool();
     const periodsForYear = await pool0.request()
         .input('yStart', sql.Date, `${year}-01-01`)
         .input('yEnd', sql.Date, `${year}-12-31`)
         .query(`SELECT id, name, status FROM fiscal_periods WHERE start_date <= @yEnd AND end_date >= @yStart ORDER BY start_date`);
     if (periodsForYear.recordset.length === 0) {
-        return res.status(400).json({ success: false, message: `لا توجد فترات مالية للسنة ${year}. يرجى إنشاء الفترات المالية أولاً.` });
+        return res.status(400).json({ success: false, message: `لا توجد فترات مالية للسنة ${year}.` });
     }
     const allClosed = periodsForYear.recordset.every(p => p.status === 'closed');
     if (allClosed) {
-        return res.status(409).json({ success: false, message: `السنة المالية ${year} مغلقة بالفعل. لا يمكن إقفالها مرة أخرى.` });
-    }
-    console.log(`✓ Fiscal periods for ${year}: ${periodsForYear.recordset.length} found, ${periodsForYear.recordset.filter(p => p.status === 'open').length} open`);
-
-    let backupResult;
-    try {
-        backupResult = await createFullBackup('Year_Close', backupPath);
-    } catch (err) {
-        const sqlErr = err.originalError?.message || err.message;
-        console.error('Backup error (year-close):', sqlErr, err.originalError || '');
-        await logActivity(req, 'YEAR_CLOSE', 'admin', null, 'فشل النسخة الاحتياطية قبل إقفال السنة', null, null, 'FAILED', sqlErr);
-        return res.status(500).json({ success: false, message: 'فشل إنشاء النسخة الاحتياطية: ' + sqlErr + ' - تم إلغاء العملية' });
+        return res.status(409).json({ success: false, message: `السنة المالية ${year} مغلقة بالفعل.` });
     }
 
-    const stepLog = ['✓ Backup completed'];
-    console.log('✓ Backup completed (year-close)');
+    let backupResult = { name: 'N/A', path: 'N/A', size: '0 MB' };
+    if (backupPath) {
+        try {
+            backupResult = await createFullBackup('Year_Close', backupPath);
+        } catch (err) {
+            console.error('Backup error:', err);
+            return res.status(500).json({ success: false, message: 'فشل إنشاء النسخة الاحتياطية' });
+        }
+    }
 
     let transaction;
+    const stepLog = [];
     try {
         const pool = await getPool();
         transaction = new sql.Transaction(pool);
         await transaction.begin();
         const txRequest = transaction.request();
 
-        // 1. Capture opening balances
-        const custBalances = await txRequest.query(`SELECT id, customer_name, current_balance FROM customers`);
-        const supBalances = await txRequest.query(`SELECT id, supplier_name, current_balance FROM suppliers`);
-        const tresBalances = await txRequest.query(`SELECT id, account_name, current_balance FROM treasury_accounts WHERE account_type='cash'`);
-        const bankBalances = await txRequest.query(`SELECT id, account_name, current_balance FROM treasury_accounts WHERE account_type='bank'`);
         const coaBalances = await txRequest.query(`SELECT id, account_code, account_name, current_balance, account_type FROM chart_of_accounts WHERE current_balance != 0`);
-        stepLog.push(`✓ Captured ${custBalances.recordset.length} customers, ${supBalances.recordset.length} suppliers, ${coaBalances.recordset.length} COA accounts`);
-
-        // 2. Save opening balances
-        for (const c of custBalances.recordset) {
-            const bal = parseFloat(c.current_balance) || 0;
-            txRequest.input(`c_${c.id}`, sql.Decimal(18,2), bal);
-            await txRequest.query(`UPDATE customers SET opening_balance = @c_${c.id} WHERE id = ${c.id}`);
-        }
-        for (const s of supBalances.recordset) {
-            const bal = parseFloat(s.current_balance) || 0;
-            txRequest.input(`s_${s.id}`, sql.Decimal(18,2), bal);
-            await txRequest.query(`UPDATE suppliers SET opening_balance = @s_${s.id} WHERE id = ${s.id}`);
-        }
-        for (const t of tresBalances.recordset) {
-            const bal = parseFloat(t.current_balance) || 0;
-            txRequest.input(`t_${t.id}`, sql.Decimal(18,2), bal);
-            await txRequest.query(`UPDATE treasury_accounts SET opening_balance = @t_${t.id} WHERE id = ${t.id}`);
-        }
-        for (const b of bankBalances.recordset) {
-            const bal = parseFloat(b.current_balance) || 0;
-            txRequest.input(`b_${b.id}`, sql.Decimal(18,2), bal);
-            await txRequest.query(`UPDATE treasury_accounts SET opening_balance = @b_${b.id} WHERE id = ${b.id}`);
-        }
-        stepLog.push('✓ Opening balances saved');
-
-        // 3. Compute closing entry data (but don't post yet — must post after data deletion)
         const sysRetainedEarnings = await getSystemAccountAsync(txRequest, 'SYS_RETAINED_EARNINGS');
-        const balanceAccounts = coaBalances.recordset.filter(a => a.account_type !== 'revenue' && a.account_type !== 'expense');
         const plAccounts = coaBalances.recordset.filter(a => a.account_type === 'revenue' || a.account_type === 'expense');
 
         let closeTotalDebit = 0, closeTotalCredit = 0;
@@ -565,93 +565,30 @@ router.post('/year-close', asyncHandler(async (req, res) => {
             }
         }
 
-        let openTotalDebit = 0, openTotalCredit = 0;
-        const openLines = [];
-        for (const acc of balanceAccounts) {
-            const bal = parseFloat(acc.current_balance) || 0;
-            if (Math.abs(bal) < 0.01) continue;
-            const isDebitType = acc.account_type === 'asset';
-            if ((isDebitType && bal > 0) || (!isDebitType && bal < 0)) {
-                openLines.push({ account_id: acc.id, debit: Math.abs(bal), credit: 0, description: `رصيد افتتاحي ${acc.account_name}` });
-                openTotalDebit += Math.abs(bal);
-            } else {
-                openLines.push({ account_id: acc.id, debit: 0, credit: Math.abs(bal), description: `رصيد افتتاحي ${acc.account_name}` });
-                openTotalCredit += Math.abs(bal);
-            }
-        }
-        if (openLines.length > 0) {
-            const diff = openTotalDebit - openTotalCredit;
-            if (Math.abs(diff) > 0.01) {
-                openLines.push({
-                    account_id: sysRetainedEarnings,
-                    debit: diff > 0 ? 0 : Math.abs(diff),
-                    credit: diff > 0 ? diff : 0,
-                    description: 'فارق ترحيل الأرصدة الافتتاحية'
-                });
-            }
-        }
-
-        // 4. Delete transactional data (BEFORE posting closing/opening JEs so they survive)
-        stepLog.push('--- Deleting transactional data ---');
-        await deleteFromTables(txRequest, YEAR_CLOSE_ORDER, stepLog);
-
-        // 4a. Now post closing entry (after deletion so it persists)
         if (closeLines.length > 0) {
             await postJournalEntryAsync(txRequest, `${year}-12-31`,
                 `قيود إقفال حسابات الإيرادات والمصروفات للسنة ${year}`, closeLines,
                 'year_close', null, req.user.id,
                 { module: 'admin', action: 'year_close', document: `CLOSING_${year}`, isSystem: true });
         }
-        stepLog.push(`✓ Closing entry posted (${closeLines.length} lines)`);
 
-        // 4b. Post opening entry (after deletion so it persists)
-        if (openLines.length > 0) {
-            await postJournalEntryAsync(txRequest, `${year}-12-31`,
-                `قيود افتتاحية للسنة المالية ${year + 1}`, openLines,
-                'year_close', null, req.user.id,
-                { module: 'admin', action: 'year_close', document: `OPENING_BALANCE_${year}`, isSystem: true });
+        for (const acc of plAccounts) {
+            txRequest.input(`coa_pl_${acc.id}`, sql.Int, acc.id);
+            await txRequest.query(`UPDATE chart_of_accounts SET current_balance = 0 WHERE id = @coa_pl_${acc.id}`);
         }
-        stepLog.push(`✓ Opening entry posted (${openLines.length} lines)`);
-
-        // 5. Reset counters
-        await txRequest.query(`UPDATE invoice_counters SET last_number = 0`);
-        stepLog.push('✓ Counters reset');
-
-        // 6. Restore current_balance from opening_balance
-        await txRequest.query(`UPDATE customers SET current_balance = COALESCE(opening_balance, 0)`);
-        await txRequest.query(`UPDATE suppliers SET current_balance = COALESCE(opening_balance, 0)`);
-        await txRequest.query(`UPDATE chart_of_accounts SET current_balance = 0`);
-        stepLog.push('✓ Master balances restored');
-
-        // 7. Re-apply COA opening balances (H4: revenue/expense zeroed, RE adjusted)
-        for (const acc of coaBalances.recordset) {
-            const bal = parseFloat(acc.current_balance) || 0;
-            const isPL = acc.account_type === 'revenue' || acc.account_type === 'expense';
-            if (isPL) {
-                txRequest.input(`coa_pl_${acc.id}`, sql.Int, acc.id);
-                await txRequest.query(`UPDATE chart_of_accounts SET current_balance = 0 WHERE id = @coa_pl_${acc.id}`);
-            } else if (Math.abs(bal) >= 0.01) {
-                txRequest.input(`coa_bal_${acc.id}`, sql.Decimal(18,2), bal);
-                txRequest.input(`coa_id_${acc.id}`, sql.Int, acc.id);
-                await txRequest.query(`UPDATE chart_of_accounts SET current_balance = @coa_bal_${acc.id} WHERE id = @coa_id_${acc.id}`);
-            }
-        }
-        // Always apply net income to RE (even if original RE balance was 0 and excluded from coaBalances)
         const reBal = parseFloat(coaBalances.recordset.find(a => a.id === sysRetainedEarnings)?.current_balance) || 0;
         const newReBal = reBal + netIncome;
         txRequest.input('coa_re_id', sql.Int, sysRetainedEarnings);
         txRequest.input('coa_re_bal', sql.Decimal(18,2), newReBal);
         await txRequest.query(`UPDATE chart_of_accounts SET current_balance = @coa_re_bal WHERE id = @coa_re_id`);
 
-        // 8. Close fiscal periods for the year and create next year (H2)
-        stepLog.push('--- Fiscal period management ---');
         const openPeriods = periodsForYear.recordset.filter(p => p.status === 'open');
         for (const fp of openPeriods) {
             txRequest.input(`fp_close_id_${fp.id}`, sql.Int, fp.id);
             txRequest.input(`fp_close_by_${fp.id}`, sql.Int, req.user.id);
-            await txRequest.query(`UPDATE fiscal_periods SET status = 'closed', closed_by = @fp_close_by_${fp.id}, closed_at = GETDATE() WHERE id = @fp_close_id_${fp.id} AND status = 'open'`);
-            stepLog.push(`  ✓ Period "${fp.name}" closed`);
+            await txRequest.query(`UPDATE fiscal_periods SET status = 'closed', closed_by = @fp_close_by_${fp.id}, closed_at = GETDATE() WHERE id = @fp_close_id_${fp.id}`);
         }
+        
         const nextYear = year + 1;
         const nextYearName = `FY ${nextYear}`;
         txRequest.input('fp_ny_name', sql.NVarChar(100), nextYearName);
@@ -662,56 +599,20 @@ router.post('/year-close', asyncHandler(async (req, res) => {
         const existingNext = await txRequest.query(`SELECT COUNT(*) as cnt FROM fiscal_periods WHERE name = @fp_ny_name`);
         if (existingNext.recordset[0]?.cnt === 0) {
             await txRequest.query(`INSERT INTO fiscal_periods (name, start_date, end_date, status, opened_by, opened_at, notes) VALUES (@fp_ny_name, @fp_ny_start, @fp_ny_end, 'open', @fp_ny_by, GETDATE(), @fp_ny_notes)`);
-            stepLog.push(`  ✓ Next year period "${nextYearName}" created`);
-        } else {
-            stepLog.push(`  ~ Next year period "${nextYearName}" already exists`);
-        }
-
-        // 9. Verify
-        stepLog.push('--- Verification ---');
-        const counts = await verifyClean(txRequest);
-        for (const [t, c] of Object.entries(counts)) {
-            stepLog.push(`  ${t} = ${c} rows`);
         }
 
         await transaction.commit();
-        stepLog.push('✓ COMMIT');
-
-        console.log('=== YEAR CLOSE LOG ===');
-        stepLog.forEach(l => console.log('  ' + l));
-        console.log('======================');
-
-        const integrity = await verifyIntegrity();
-        const fiscalInfo = { year, closedPeriods: openPeriods.map(p => p.name), nextYearPeriod: `FY ${nextYear}` };
-
-        await logActivity(req, 'YEAR_CLOSE', 'admin', null, 'إقفال السنة المالية', null,
-            { backup: backupResult.name, integrity, cleanCounts: counts, fiscal: fiscalInfo }, 'SUCCESS', null);
-
-        if (!integrity.allPassed) {
-            return res.json({
-                success: true, warning: true,
-                message: 'تم إقفال السنة ولكن يوجد اختلال في بعض الأرصدة. يرجى مراجعة قسم الصحة.',
-                backup: { name: backupResult.name, path: backupResult.path, size: backupResult.size },
-                integrity, cleanCounts: counts, fiscal: fiscalInfo
-            });
-        }
 
         res.json({
             success: true,
-            message: 'تم إقفال السنة المالية ونقل الأرصدة بنجاح',
-            backup: { name: backupResult.name, path: backupResult.path, size: backupResult.size },
-            integrity, cleanCounts: counts, fiscal: fiscalInfo
+            message: 'تم إقفال السنة المالية بنجاح',
+            backup: backupResult,
+            fiscal: { year, nextYearPeriod: `FY ${nextYear}` }
         });
     } catch (err) {
-        if (transaction) { await transaction.rollback(); stepLog.push('✗ ROLLBACK'); }
+        if (transaction) await transaction.rollback();
         const sqlErr = err.originalError?.message || err.message;
-        stepLog.push(`✗ ERROR: ${sqlErr}`);
-        console.log('=== YEAR CLOSE LOG (FAILED) ===');
-        stepLog.forEach(l => console.log('  ' + l));
-        console.log('===============================');
-        console.error('Year close error:', sqlErr, err.originalError || '');
-        await logActivity(req, 'YEAR_CLOSE', 'admin', null, 'فشل إقفال السنة', null, null, 'FAILED', sqlErr);
-        res.status(500).json({ success: false, message: 'خطأ في إقفال السنة: ' + sqlErr, stepLog });
+        res.status(500).json({ success: false, message: 'خطأ في إقفال السنة: ' + sqlErr });
     }
 }));
 

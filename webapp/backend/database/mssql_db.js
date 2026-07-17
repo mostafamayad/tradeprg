@@ -20,11 +20,16 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 let pool;
 
-async function createPool() {
+// ─── Tenant Pools (Cloud/Multi-Tenant support) ────────────────
+// Only used when BUILD_PROFILE=cloud
+const tenantPools = {};
+
+async function createPool(dbOverride) {
+    const dbToUse = dbOverride || database;
     if (!useWindowsAuth) {
         const config = {
             server: server,
-            database: database,
+            database: dbToUse,
             user: process.env.MSSQL_USER,
             password: process.env.MSSQL_PASSWORD,
             options: {
@@ -57,7 +62,7 @@ async function createPool() {
             fs.appendFileSync(logFile, msg1 + '\n');
             
             const localServer = server.replace(/^localhost/i, '.');
-            const connStr = `Driver={${driver}};Server=${localServer};Database=${database};Trusted_Connection=yes;Encrypt=no;TrustServerCertificate=yes;Connection Timeout=3;`;
+            const connStr = `Driver={${driver}};Server=${localServer};Database=${dbToUse};Trusted_Connection=yes;Encrypt=no;TrustServerCertificate=yes;Connection Timeout=3;`;
             const testPool = new sql.ConnectionPool({
                 connectionString: connStr
             });
@@ -89,7 +94,39 @@ async function initializeDatabase() {
             await sleep(backoff[attempt]);
         }
         try {
-            pool = await createPool();
+            // ─── Auto-Create Database if missing (first run for new client) ──
+            try {
+                pool = await createPool();
+            } catch (connErr) {
+                const isDbMissing = connErr.message && (
+                    connErr.message.includes('Cannot open database') ||
+                    connErr.message.includes('Login failed') ||
+                    connErr.message.includes('database') && connErr.message.includes('does not exist')
+                );
+                if (isDbMissing) {
+                    console.log(`[MSSQL] Database "${database}" not found. Auto-creating for first-time setup...`);
+                    // Connect to master DB to create the new database
+                    const masterPool = await createPool('master');
+                    await masterPool.request().query(`
+                        IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = '${database}')
+                        CREATE DATABASE [${database}]
+                    `);
+                    masterPool.close();
+                    console.log(`[MSSQL] Database "${database}" created successfully.`);
+
+                    // Run schema on the new database
+                    const schemaPath = require('path').join(__dirname, '../schema_fixed.sql');
+                    const schemaSql = require('fs').readFileSync(schemaPath, 'utf8');
+                    pool = await createPool();
+                    const statements = schemaSql.split(/\bGO\b/i).map(s => s.trim()).filter(s => s.length > 0);
+                    for (const stmt of statements) {
+                        try { await pool.request().query(stmt); } catch(e) { /* ignore minor schema errors */ }
+                    }
+                    console.log('[MSSQL] Schema applied to new database successfully.');
+                } else {
+                    throw connErr;
+                }
+            }
             console.log('[MSSQL] Database connection pool established.');
 
             const schemaCheck = await pool.request().query(`
@@ -431,6 +468,25 @@ function getHealth() {
     };
 }
 
+// ─── Tenant Pool API (Cloud/Multi-Tenant) ─────────────────────
+async function getTenantPool(dbName) {
+    if (!dbName) throw new Error('getTenantPool requires a dbName');
+    if (tenantPools[dbName]) return tenantPools[dbName];
+
+    console.log(`[MSSQL] Creating tenant pool for database: ${dbName}`);
+    const newPool = await createPool(dbName);
+    tenantPools[dbName] = newPool;
+    return newPool;
+}
+
+function closeTenantPool(dbName) {
+    if (tenantPools[dbName]) {
+        tenantPools[dbName].close();
+        delete tenantPools[dbName];
+        console.log(`[MSSQL] Closed tenant pool: ${dbName}`);
+    }
+}
+
 // Start async initialization, but don't block exports
 const initPromise = initializeDatabase();
 
@@ -443,5 +499,7 @@ module.exports = {
         }
         return pool;
     },
+    getTenantPool,
+    closeTenantPool,
     getHealth
 };

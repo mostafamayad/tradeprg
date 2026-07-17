@@ -376,6 +376,11 @@ router.post('/adjust', async (req, res) => {
         return res.status(400).json({ success: false, message: 'بيانات ناقصة' });
     }
 
+    if (!req.user || req.user.role !== 'admin') {
+        logActivity(req, 'UPDATE', 'inventory', null, null, null, null, 'FAILED', 'محاولة تعديل مخزون بدون صلاحية أدمن');
+        return res.status(403).json({ success: false, message: 'تعديل المخزون مسموح للإدارة فقط' });
+    }
+
     let transaction;
     try {
         const pool = await getPool();
@@ -501,6 +506,85 @@ router.post('/count/start', async (req, res) => {
         logActivity(req, 'UPDATE', 'inventory', null, null, null, null, 'FAILED', err.message);
         console.error('Inventory count start POST error:', err);
         res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات' });
+    }
+});
+
+
+// GET count details
+router.get('/count/:id', asyncHandler(async (req, res) => {
+    const pool = await getPool();
+    const countRes = await pool.request()
+        .input('id', sql.Int, req.params.id)
+        .query(`
+            SELECT c.*, s.store_name
+            FROM stock_count c
+            LEFT JOIN stores s ON c.store_id = s.id
+            WHERE c.id = @id
+        `);
+    
+    if (countRes.recordset.length === 0) {
+        return res.status(404).json({ success: false, message: 'الجرد غير موجود' });
+    }
+    const count = countRes.recordset[0];
+    
+    const itemsRes = await pool.request()
+        .input('cid', sql.Int, req.params.id)
+        .query(`
+            SELECT i.*, p.product_code, p.product_name 
+            FROM stock_count_items i
+            LEFT JOIN products p ON i.product_id = p.id
+            WHERE i.count_id = @cid
+            ORDER BY p.product_name
+        `);
+    
+    res.json({ success: true, count, items: itemsRes.recordset });
+}));
+
+// PUT save count draft
+router.put('/count/:id/items', async (req, res) => {
+    const { items } = req.body;
+    if (!Array.isArray(items)) {
+        return res.status(400).json({ success: false, message: 'بيانات الأصناف غير صحيحة' });
+    }
+    
+    let transaction;
+    try {
+        const pool = await getPool();
+        transaction = new sql.Transaction(pool);
+        await transaction.begin();
+        const txRequest = transaction.request();
+        
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            await txRequest
+                .input(`pid_${i}`, sql.Int, item.product_id)
+                .input(`cid_${i}`, sql.Int, req.params.id)
+                .input(`cqty_${i}`, sql.Decimal(18,4), item.counted_qty)
+                .input(`diff_${i}`, sql.Decimal(18,4), item.diff)
+                .query(`
+                    UPDATE stock_count_items 
+                    SET counted_qty = @cqty_${i}, diff = @diff_${i}
+                    WHERE count_id = @cid_${i} AND product_id = @pid_${i}
+                `);
+        }
+        
+        // Also update the total_difference on the header
+        const totalDiffRes = await txRequest
+            .input('sum_cid', sql.Int, req.params.id)
+            .query('SELECT SUM(ABS(diff)) as tot FROM stock_count_items WHERE count_id = @sum_cid');
+        const totDiff = totalDiffRes.recordset[0].tot || 0;
+        
+        await txRequest
+            .input('hd_cid', sql.Int, req.params.id)
+            .input('totDiff', sql.Decimal(18,2), totDiff)
+            .query('UPDATE stock_count SET total_difference = @totDiff WHERE id = @hd_cid');
+            
+        await transaction.commit();
+        res.json({ success: true, message: 'تم حفظ المسودة بنجاح' });
+    } catch (err) {
+        if (transaction) await transaction.rollback();
+        console.error('Save count draft error:', err);
+        res.status(500).json({ success: false, message: 'خطأ أثناء حفظ الجرد' });
     }
 });
 

@@ -9,6 +9,15 @@ const repo = require('../../repositories/commissionRepository');
 
 async function processCollectionCreated(collection) {
     try {
+        // IDEMPOTENCY: Skip if commission already exists for this collection
+        if (collection.id) {
+            const exists = await repo.hasTransactionForCollection(collection.id);
+            if (exists) {
+                console.log(`[Commission] Collection ${collection.id} already processed — skipping (idempotency)`);
+                return [];
+            }
+        }
+
         const results = await calculator.calculateForCollection(collection);
         for (const txData of results) {
             const txId = await repo.createTransaction(txData);

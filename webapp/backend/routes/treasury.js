@@ -101,6 +101,7 @@ router.get('/transactions', asyncHandler(async (req, res) => {
 router.post('/transactions', asyncHandler(async (req, res) => {
     const { account_id, trans_date, trans_type, amount, related_type, related_id, document_no, description } = req.body;
     if (!account_id || !amount || !trans_type) return res.status(400).json({ success: false, message: 'بيانات ناقصة' });
+    if (parseFloat(amount) <= 0) return res.status(400).json({ success: false, message: 'القيمة يجب أن تكون أكبر من صفر' });
 
     let transaction;
     try {

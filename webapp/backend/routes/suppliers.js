@@ -146,6 +146,9 @@ router.post('/', asyncHandler(async (req, res) => {
         res.status(201).json({ success: true, id: result.recordset[0].id });
     } catch (err) {
         if (transaction) await transaction.rollback();
+        if (err.number === 2627) {
+            return res.status(400).json({ success: false, message: 'كود المورد أو الهاتف مسجل مسبقاً.' });
+        }
         logActivity(req, 'CREATE', 'suppliers', null, null, null, null, 'FAILED', err.message);
         console.error('Suppliers POST error:', err);
         res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات' });
@@ -194,6 +197,9 @@ router.put('/:id', asyncHandler(async (req, res) => {
         res.json({ success: true, message: 'تم تحديث المورد' });
     } catch (err) {
         if (transaction) await transaction.rollback();
+        if (err.number === 2627) {
+            return res.status(400).json({ success: false, message: 'كود المورد أو الهاتف مسجل مسبقاً.' });
+        }
         logActivity(req, 'UPDATE', 'suppliers', null, null, null, null, 'FAILED', err.message);
         console.error('Suppliers PUT error:', err);
         res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات' });

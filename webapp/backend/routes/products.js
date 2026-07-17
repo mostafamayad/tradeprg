@@ -106,6 +106,9 @@ router.post('/', asyncHandler(async (req, res) => {
         res.status(201).json({ success: true, message: 'تم إضافة الصنف', id: result.recordset[0].id, code });
     } catch (err) {
         if (transaction) await transaction.rollback();
+        if (err.number === 2627) {
+            return res.status(400).json({ success: false, message: 'كود الصنف أو الباركود مستخدم مسبقاً، الرجاء تغييره' });
+        }
         logActivity(req, 'CREATE', 'products', null, null, null, null, 'FAILED', err.message);
         console.error('Products POST error:', err);
         res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات' });
@@ -147,6 +150,9 @@ router.put('/:id', asyncHandler(async (req, res) => {
         logActivity(req, 'UPDATE', 'products', null, `تم تحديث الصنف ${product_name}`, null, { product_name, category_id, unit_name, cost_price, sell_price }, 'SUCCESS', null);
         res.json({ success: true, message: 'تم تحديث الصنف' });
     } catch (err) {
+        if (err.number === 2627) {
+            return res.status(400).json({ success: false, message: 'كود الصنف أو الباركود مستخدم مسبقاً، الرجاء تغييره' });
+        }
         logActivity(req, 'UPDATE', 'products', null, null, null, null, 'FAILED', err.message);
         console.error('Products PUT error:', err);
         res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات' });

@@ -1,0 +1,186 @@
+[
+  {
+    "name": "company_info",
+    "sql": "CREATE TABLE company_info (\n    id INTEGER PRIMARY KEY DEFAULT 1,\n    company_name TEXT NOT NULL DEFAULT 'شركتي',\n    company_address TEXT,\n    company_phone TEXT,\n    company_email TEXT,\n    tax_number TEXT,\n    currency TEXT DEFAULT 'ج.م',\n    fiscal_year_start TEXT DEFAULT '01-01',\n    updated_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "branches",
+    "sql": "CREATE TABLE branches (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    branch_code TEXT NOT NULL UNIQUE,\n    branch_name TEXT NOT NULL,\n    manager_name TEXT,\n    phone TEXT,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "sqlite_sequence",
+    "sql": "CREATE TABLE sqlite_sequence(name,seq)"
+  },
+  {
+    "name": "users",
+    "sql": "CREATE TABLE users (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    username TEXT NOT NULL UNIQUE,\n    password_hash TEXT NOT NULL,\n    full_name TEXT NOT NULL,\n    role TEXT DEFAULT 'user',  -- admin, manager, user, sales\n    branch_id INTEGER,\n    is_active INTEGER DEFAULT 1,\n    created_at TEXT DEFAULT (datetime('now'))\n, permissions TEXT DEFAULT \"[]\")"
+  },
+  {
+    "name": "stores",
+    "sql": "CREATE TABLE stores (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    store_code TEXT NOT NULL UNIQUE,\n    store_name TEXT NOT NULL,\n    store_type TEXT DEFAULT 'main',\n    branch_id INTEGER,\n    notes TEXT\n)"
+  },
+  {
+    "name": "sales_reps",
+    "sql": "CREATE TABLE sales_reps (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    rep_code TEXT UNIQUE,\n    rep_name TEXT NOT NULL,\n    phone TEXT,\n    region TEXT,\n    target_amount REAL DEFAULT 0,\n    commission_rate REAL DEFAULT 0,\n    is_active INTEGER DEFAULT 1\n)"
+  },
+  {
+    "name": "customers",
+    "sql": "CREATE TABLE customers (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    customer_code TEXT NOT NULL UNIQUE,\n    customer_name TEXT NOT NULL,\n    customer_type TEXT DEFAULT 'retail',   -- retail, wholesale, vip\n    phone TEXT,\n    phone2 TEXT,\n    address TEXT,\n    region TEXT,\n    credit_limit REAL DEFAULT 0,\n    opening_balance REAL DEFAULT 0,        -- الرصيد الافتتاحي\n    current_balance REAL DEFAULT 0,        -- يُحسب تلقائياً\n    rep_id INTEGER REFERENCES sales_reps(id),\n    notes TEXT,\n    is_active INTEGER DEFAULT 1,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "suppliers",
+    "sql": "CREATE TABLE suppliers (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    supplier_code TEXT NOT NULL UNIQUE,\n    supplier_name TEXT NOT NULL,\n    phone TEXT,\n    phone2 TEXT,\n    address TEXT,\n    opening_balance REAL DEFAULT 0,\n    current_balance REAL DEFAULT 0,\n    notes TEXT,\n    is_active INTEGER DEFAULT 1,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "categories",
+    "sql": "CREATE TABLE categories (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    category_name TEXT NOT NULL,\n    parent_id INTEGER\n)"
+  },
+  {
+    "name": "products",
+    "sql": "CREATE TABLE products (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    product_code TEXT NOT NULL UNIQUE,\n    product_name TEXT NOT NULL,\n    category_id INTEGER REFERENCES categories(id),\n    unit_name TEXT DEFAULT 'قطعة',\n    alt_unit TEXT,\n    unit_factor REAL DEFAULT 1,\n    cost_price REAL DEFAULT 0,\n    sell_price REAL DEFAULT 0,\n    sell_price2 REAL DEFAULT 0,\n    sell_price3 REAL DEFAULT 0,\n    min_stock REAL DEFAULT 0,\n    max_stock REAL DEFAULT 0,\n    barcode TEXT,\n    shelf_no TEXT,\n    tax_rate REAL DEFAULT 0,\n    notes TEXT,\n    is_active INTEGER DEFAULT 1\n)"
+  },
+  {
+    "name": "inventory_balances",
+    "sql": "CREATE TABLE inventory_balances (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    store_id INTEGER NOT NULL REFERENCES stores(id),\n    product_id INTEGER NOT NULL REFERENCES products(id),\n    quantity REAL DEFAULT 0,\n    UNIQUE(store_id, product_id)\n)"
+  },
+  {
+    "name": "stock_movements",
+    "sql": "CREATE TABLE stock_movements (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    move_date TEXT NOT NULL,\n    move_type TEXT NOT NULL,   -- in, out, transfer, adjust, damaged\n    document_no TEXT,\n    store_id INTEGER NOT NULL,\n    product_id INTEGER NOT NULL,\n    qty_in REAL DEFAULT 0,\n    qty_out REAL DEFAULT 0,\n    cost_price REAL DEFAULT 0,\n    sell_price REAL DEFAULT 0,\n    balance_after REAL DEFAULT 0,\n    reference_id INTEGER,      -- invoice_id or transfer_id\n    notes TEXT,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "sales_invoices",
+    "sql": "CREATE TABLE sales_invoices (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    invoice_no TEXT NOT NULL UNIQUE,\n    invoice_date TEXT NOT NULL,\n    customer_id INTEGER NOT NULL REFERENCES customers(id),\n    rep_id INTEGER REFERENCES sales_reps(id),\n    store_id INTEGER NOT NULL,\n    payment_type TEXT DEFAULT 'cash',   -- cash, credit\n    subtotal REAL DEFAULT 0,\n    discount_amount REAL DEFAULT 0,\n    discount_pct REAL DEFAULT 0,\n    tax_amount REAL DEFAULT 0,\n    grand_total REAL DEFAULT 0,\n    amount_paid REAL DEFAULT 0,\n    remaining REAL DEFAULT 0,\n    notes TEXT,\n    status TEXT DEFAULT 'posted',       -- draft, posted, cancelled\n    created_by INTEGER,\n    created_at TEXT DEFAULT (datetime('now'))\n, invoice_type TEXT DEFAULT 'normal')"
+  },
+  {
+    "name": "sales_invoice_items",
+    "sql": "CREATE TABLE sales_invoice_items (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    invoice_id INTEGER NOT NULL REFERENCES sales_invoices(id) ON DELETE CASCADE,\n    product_id INTEGER NOT NULL REFERENCES products(id),\n    quantity REAL NOT NULL,\n    unit_price REAL NOT NULL,\n    cost_price REAL DEFAULT 0,\n    discount_pct REAL DEFAULT 0,\n    discount_amount REAL DEFAULT 0,\n    line_total REAL NOT NULL\n)"
+  },
+  {
+    "name": "sales_returns",
+    "sql": "CREATE TABLE sales_returns (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    return_no TEXT NOT NULL UNIQUE,\n    return_date TEXT NOT NULL,\n    invoice_id INTEGER REFERENCES sales_invoices(id),\n    customer_id INTEGER NOT NULL REFERENCES customers(id),\n    store_id INTEGER NOT NULL,\n    grand_total REAL DEFAULT 0,\n    return_reason TEXT,\n    notes TEXT,\n    status TEXT DEFAULT 'posted',\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "sales_return_items",
+    "sql": "CREATE TABLE sales_return_items (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    return_id INTEGER NOT NULL REFERENCES sales_returns(id) ON DELETE CASCADE,\n    product_id INTEGER NOT NULL,\n    quantity REAL NOT NULL,\n    unit_price REAL NOT NULL,\n    line_total REAL NOT NULL\n)"
+  },
+  {
+    "name": "customer_collections",
+    "sql": "CREATE TABLE customer_collections (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    collection_no TEXT NOT NULL UNIQUE,\n    collection_date TEXT NOT NULL,\n    customer_id INTEGER NOT NULL REFERENCES customers(id),\n    amount REAL NOT NULL,\n    payment_method TEXT DEFAULT 'cash',  -- cash, check, transfer\n    check_no TEXT,\n    check_date TEXT,\n    bank_name TEXT,\n    notes TEXT,\n    created_by INTEGER,\n    created_at TEXT DEFAULT (datetime('now'))\n, rep_id INTEGER REFERENCES sales_reps(id))"
+  },
+  {
+    "name": "purchase_invoices",
+    "sql": "CREATE TABLE purchase_invoices (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    invoice_no TEXT NOT NULL UNIQUE,\n    supplier_invoice_no TEXT,\n    invoice_date TEXT NOT NULL,\n    supplier_id INTEGER NOT NULL REFERENCES suppliers(id),\n    store_id INTEGER NOT NULL,\n    payment_type TEXT DEFAULT 'cash',\n    subtotal REAL DEFAULT 0,\n    discount_amount REAL DEFAULT 0,\n    tax_amount REAL DEFAULT 0,\n    grand_total REAL DEFAULT 0,\n    amount_paid REAL DEFAULT 0,\n    remaining REAL DEFAULT 0,\n    notes TEXT,\n    status TEXT DEFAULT 'posted',\n    created_by INTEGER,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "purchase_invoice_items",
+    "sql": "CREATE TABLE purchase_invoice_items (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    invoice_id INTEGER NOT NULL REFERENCES purchase_invoices(id) ON DELETE CASCADE,\n    product_id INTEGER NOT NULL REFERENCES products(id),\n    quantity REAL NOT NULL,\n    cost_price REAL NOT NULL,\n    sell_price REAL DEFAULT 0,\n    line_total REAL NOT NULL\n)"
+  },
+  {
+    "name": "purchase_returns",
+    "sql": "CREATE TABLE purchase_returns (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    return_no TEXT NOT NULL UNIQUE,\n    return_date TEXT NOT NULL,\n    invoice_id INTEGER REFERENCES purchase_invoices(id),\n    supplier_id INTEGER NOT NULL REFERENCES suppliers(id),\n    store_id INTEGER NOT NULL,\n    grand_total REAL DEFAULT 0,\n    return_reason TEXT,\n    notes TEXT,\n    status TEXT DEFAULT 'posted',\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "purchase_return_items",
+    "sql": "CREATE TABLE purchase_return_items (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    return_id INTEGER NOT NULL REFERENCES purchase_returns(id) ON DELETE CASCADE,\n    product_id INTEGER NOT NULL,\n    quantity REAL NOT NULL,\n    cost_price REAL NOT NULL,\n    line_total REAL NOT NULL\n)"
+  },
+  {
+    "name": "supplier_payments",
+    "sql": "CREATE TABLE supplier_payments (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    payment_no TEXT NOT NULL UNIQUE,\n    payment_date TEXT NOT NULL,\n    supplier_id INTEGER NOT NULL REFERENCES suppliers(id),\n    amount REAL NOT NULL,\n    payment_method TEXT DEFAULT 'cash',\n    check_no TEXT,\n    check_date TEXT,\n    bank_name TEXT,\n    notes TEXT,\n    created_by INTEGER,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "checks",
+    "sql": "CREATE TABLE checks (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    check_no TEXT NOT NULL,\n    check_date TEXT NOT NULL,\n    due_date TEXT,\n    amount REAL NOT NULL,\n    direction TEXT DEFAULT 'inward',  -- inward (from customer) | outward (to supplier)\n    status TEXT DEFAULT 'pending',     -- pending, collected, returned, deposited, endorsed, bounced, cancelled\n    customer_id INTEGER REFERENCES customers(id),\n    supplier_id INTEGER REFERENCES suppliers(id),\n    bank_name TEXT,\n    account_no TEXT,\n    collection_id INTEGER REFERENCES customer_collections(id),\n    payment_id INTEGER REFERENCES supplier_payments(id),\n    notes TEXT,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "stock_transfers",
+    "sql": "CREATE TABLE stock_transfers (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    transfer_no TEXT NOT NULL UNIQUE,\n    transfer_date TEXT NOT NULL,\n    from_store_id INTEGER NOT NULL,\n    to_store_id INTEGER NOT NULL,\n    notes TEXT,\n    status TEXT DEFAULT 'posted',\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "stock_transfer_items",
+    "sql": "CREATE TABLE stock_transfer_items (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    transfer_id INTEGER NOT NULL REFERENCES stock_transfers(id) ON DELETE CASCADE,\n    product_id INTEGER NOT NULL,\n    quantity REAL NOT NULL\n)"
+  },
+  {
+    "name": "damaged_stock",
+    "sql": "CREATE TABLE damaged_stock (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    doc_no TEXT NOT NULL UNIQUE,\n    doc_date TEXT NOT NULL,\n    store_id INTEGER NOT NULL,\n    product_id INTEGER NOT NULL,\n    quantity REAL NOT NULL,\n    reason TEXT,\n    notes TEXT,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "stock_count",
+    "sql": "CREATE TABLE stock_count (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    count_no TEXT NOT NULL UNIQUE,\n    count_date TEXT NOT NULL,\n    store_id INTEGER NOT NULL,\n    status TEXT DEFAULT 'in_progress',  -- in_progress, completed, cancelled\n    notes TEXT,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "stock_count_items",
+    "sql": "CREATE TABLE stock_count_items (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    count_id INTEGER NOT NULL REFERENCES stock_count(id) ON DELETE CASCADE,\n    product_id INTEGER NOT NULL,\n    system_qty REAL DEFAULT 0,\n    counted_qty REAL DEFAULT 0,\n    diff REAL DEFAULT 0\n)"
+  },
+  {
+    "name": "stock_adjustments",
+    "sql": "CREATE TABLE stock_adjustments (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    adj_no TEXT NOT NULL UNIQUE,\n    adj_date TEXT NOT NULL,\n    store_id INTEGER NOT NULL,\n    product_id INTEGER NOT NULL,\n    quantity REAL NOT NULL,           -- signed (+/-)\n    reason TEXT,\n    notes TEXT,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "customer_notes",
+    "sql": "CREATE TABLE customer_notes (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    customer_id INTEGER NOT NULL REFERENCES customers(id),\n    note_date TEXT NOT NULL,\n    note_text TEXT,\n    created_by INTEGER,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "customer_visits",
+    "sql": "CREATE TABLE customer_visits (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    customer_id INTEGER NOT NULL REFERENCES customers(id),\n    rep_id INTEGER REFERENCES sales_reps(id),\n    visit_date TEXT NOT NULL,\n    purpose TEXT,\n    notes TEXT,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "rep_targets",
+    "sql": "CREATE TABLE rep_targets (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    rep_id INTEGER NOT NULL REFERENCES sales_reps(id),\n    period TEXT NOT NULL,         -- e.g. '2026-06'\n    target_amount REAL DEFAULT 0,\n    notes TEXT,\n    UNIQUE(rep_id, period)\n)"
+  },
+  {
+    "name": "rep_settlements",
+    "sql": "CREATE TABLE rep_settlements (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    rep_id INTEGER NOT NULL REFERENCES sales_reps(id),\n    period TEXT NOT NULL,\n    sales_amount REAL DEFAULT 0,\n    collections_amount REAL DEFAULT 0,\n    commission REAL DEFAULT 0,\n    notes TEXT,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "chart_of_accounts",
+    "sql": "CREATE TABLE chart_of_accounts (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    account_code TEXT NOT NULL UNIQUE,\n    account_name TEXT NOT NULL,\n    parent_id INTEGER,\n    account_type TEXT NOT NULL,   -- asset, liability, equity, revenue, expense\n    current_balance REAL DEFAULT 0,\n    is_active INTEGER DEFAULT 1\n)"
+  },
+  {
+    "name": "journal_entries",
+    "sql": "CREATE TABLE journal_entries (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    entry_no TEXT NOT NULL UNIQUE,\n    entry_date TEXT NOT NULL,\n    description TEXT,\n    reference_type TEXT,         -- sales, purchase, collection, payment, manual\n    reference_id INTEGER,\n    total_debit REAL DEFAULT 0,\n    total_credit REAL DEFAULT 0,\n    created_by INTEGER,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "journal_entry_lines",
+    "sql": "CREATE TABLE journal_entry_lines (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    entry_id INTEGER NOT NULL REFERENCES journal_entries(id) ON DELETE CASCADE,\n    account_id INTEGER NOT NULL REFERENCES chart_of_accounts(id),\n    debit REAL DEFAULT 0,\n    credit REAL DEFAULT 0,\n    description TEXT\n)"
+  },
+  {
+    "name": "expenses",
+    "sql": "CREATE TABLE expenses (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    expense_no TEXT NOT NULL UNIQUE,\n    expense_date TEXT NOT NULL,\n    expense_type TEXT DEFAULT 'general',  -- general, salary, rent, utility\n    account_id INTEGER REFERENCES chart_of_accounts(id),\n    treasury_id INTEGER REFERENCES treasury_accounts(id),\n    amount REAL NOT NULL,\n    description TEXT,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "salary_slips",
+    "sql": "CREATE TABLE salary_slips (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    slip_no TEXT NOT NULL UNIQUE,\n    period TEXT NOT NULL,            -- e.g. '2026-06'\n    emp_id INTEGER NOT NULL REFERENCES employees(id),\n    basic_salary REAL DEFAULT 0,\n    allowances REAL DEFAULT 0,\n    deductions REAL DEFAULT 0,\n    loans REAL DEFAULT 0,\n    net_salary REAL DEFAULT 0,\n    status TEXT DEFAULT 'draft',     -- draft, posted, paid\n    notes TEXT,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "emp_loans",
+    "sql": "CREATE TABLE emp_loans (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    emp_id INTEGER NOT NULL REFERENCES employees(id),\n    loan_date TEXT NOT NULL,\n    amount REAL NOT NULL,\n    paid_amount REAL DEFAULT 0,\n    reason TEXT,\n    status TEXT DEFAULT 'active',    -- active, settled\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "settings",
+    "sql": "CREATE TABLE settings (\n    key TEXT PRIMARY KEY,\n    value TEXT,\n    updated_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "treasury_accounts",
+    "sql": "CREATE TABLE treasury_accounts (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    account_name TEXT NOT NULL,\n    account_type TEXT DEFAULT 'cash',   -- cash, bank\n    bank_name TEXT,\n    account_no TEXT,\n    opening_balance REAL DEFAULT 0,\n    current_balance REAL DEFAULT 0\n)"
+  },
+  {
+    "name": "treasury_transactions",
+    "sql": "CREATE TABLE treasury_transactions (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    trans_no TEXT UNIQUE,\n    trans_date TEXT NOT NULL,\n    trans_type TEXT NOT NULL,           -- in, out\n    amount REAL NOT NULL,\n    account_id INTEGER NOT NULL REFERENCES treasury_accounts(id),\n    related_type TEXT,                  -- customer, supplier, expense\n    related_id INTEGER,\n    document_no TEXT,\n    description TEXT,\n    created_by INTEGER,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "employees",
+    "sql": "CREATE TABLE employees (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    emp_code TEXT NOT NULL UNIQUE,\n    emp_name TEXT NOT NULL,\n    department TEXT,\n    job_title TEXT,\n    basic_salary REAL DEFAULT 0,\n    hire_date TEXT,\n    phone TEXT,\n    national_id TEXT,\n    status TEXT DEFAULT 'active',\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "invoice_counters",
+    "sql": "CREATE TABLE invoice_counters (\n    id INTEGER PRIMARY KEY,\n    counter_name TEXT NOT NULL UNIQUE,  -- sales, purchases, collections, payments, returns\n    prefix TEXT DEFAULT '',\n    last_number INTEGER DEFAULT 0\n)"
+  },
+  {
+    "name": "collection_allocations",
+    "sql": "CREATE TABLE collection_allocations (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    collection_id INTEGER NOT NULL REFERENCES customer_collections(id) ON DELETE CASCADE,\n    invoice_id INTEGER NOT NULL REFERENCES sales_invoices(id),\n    amount REAL NOT NULL,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+  },
+  {
+    "name": "activity_logs",
+    "sql": "CREATE TABLE activity_logs (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    user_id INTEGER,\n    username TEXT,\n    action_type TEXT,\n    entity_type TEXT,\n    entity_id TEXT,\n    details TEXT,\n    created_at TEXT DEFAULT (datetime('now', 'localtime'))\n)"
+  }
+]

@@ -561,7 +561,7 @@ class CommissionRepository {
                     FROM sales_invoices si
                     LEFT JOIN sales_returns sr ON sr.invoice_id = si.id AND sr.status = 'posted'
                     WHERE si.rep_id = @repId
-                    AND FORMAT(si.invoice_date, 'yyyy-MM') = @period
+                    AND LEFT(si.invoice_date, 7) = @period
                     AND si.status = 'confirmed'`);
         const row = r.recordset[0];
         return row;
@@ -590,7 +590,7 @@ class CommissionRepository {
                     WHERE customer_id = @customerId
                     AND status = 'confirmed'
                     AND remaining > 0
-                    AND DATEDIFF(DAY, invoice_date, GETDATE()) > @maxDays`);
+                    AND DATEDIFF(DAY, CAST(invoice_date AS DATE), GETDATE()) > @maxDays`);
         return r.recordset[0].overdue_count > 0;
     }
 
@@ -644,7 +644,7 @@ class CommissionRepository {
             .query(`SELECT ISNULL(SUM(grand_total), 0) AS mtd_sales
                     FROM sales_invoices
                     WHERE rep_id = @repId
-                    AND FORMAT(invoice_date, 'yyyy-MM') = @period
+                    AND LEFT(invoice_date, 7) = @period
                     AND status = 'confirmed'`);
         return r.recordset[0].mtd_sales;
     }
@@ -657,7 +657,7 @@ class CommissionRepository {
             .query(`SELECT ISNULL(SUM(amount), 0) AS mtd_collections
                     FROM customer_collections
                     WHERE rep_id = @repId
-                    AND FORMAT(collection_date, 'yyyy-MM') = @period`);
+                    AND LEFT(collection_date, 7) = @period`);
         return r.recordset[0].mtd_collections;
     }
 
@@ -669,6 +669,15 @@ class CommissionRepository {
                     FROM commission_payment_vouchers`);
         const no = r.recordset[0].next_no;
         return `CPV-${String(no).padStart(6, '0')}`;
+    }
+
+    // ─── Idempotency check ──────────────────────────────────
+    async hasTransactionForCollection(collectionId) {
+        const pool = await getPool();
+        const r = await pool.request()
+            .input('collectionId', sql.Int, collectionId)
+            .query(`SELECT 1 FROM commission_transactions WHERE collection_id = @collectionId AND workflow_status != 5`);
+        return r.recordset.length > 0;
     }
 }
 
