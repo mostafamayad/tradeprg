@@ -1463,7 +1463,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Set today's date on date fields
     document.querySelectorAll('input[type="date"]').forEach(d => {
-        if (!d.value) d.value = new Date().toISOString().split('T')[0];
+        if (!d.value) {
+            if (d.id && (d.id.includes('from') || d.id.includes('start'))) {
+                d.value = new Date().getFullYear() + '-01-01';
+            } else {
+                d.value = new Date().toISOString().split('T')[0];
+            }
+        }
         });
 
 
@@ -6547,8 +6553,11 @@ async function loadCurrentAvatar() {
 
 async function apiFetch(url, method, body) {
   const token = localStorage.getItem('auth_token');
-  const opts = { method, headers: { 'Authorization': token ? 'Bearer ' + token : '' } };
-  if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  const tenant = new URLSearchParams(window.location.search).get('tenant');
+  const headers = { 'Authorization': token ? 'Bearer ' + token : '' };
+  if (tenant) headers['x-tenant-id'] = tenant;
+  const opts = { method, headers };
+  if (body) { headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
   const res = await fetch(url, opts);
   let data;
   try { data = await res.json(); } catch (e) { data = { success: false, message: 'استجابة غير صالحة' }; }
@@ -8053,3 +8062,4 @@ document.addEventListener('DOMContentLoaded', function() {
         nav.addEventListener('click', function() { setTimeout(loadLicenseView, 100); });
     }
 });
+
