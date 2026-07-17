@@ -1,6 +1,6 @@
 function validateCollectionForCommission(collection) {
     const errors = [];
-    if (!collection) errors.push('Collection not found');
+    if (!collection) { errors.push('Collection not found'); return errors; }
     if (!collection.id) errors.push('Collection ID is required');
     if (!collection.customer_id) errors.push('Customer ID is required');
     if (!collection.rep_id) errors.push('Rep ID is required — collection must be linked to a rep');
