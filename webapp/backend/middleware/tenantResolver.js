@@ -3,19 +3,19 @@ const { getMasterPool, sql } = require('../database/master_db');
 async function tenantResolver(req, res, next) {
     try {
         let tenantDbName = 'TradePro';
-        
-        const parts = req.hostname.split('.');
-        if (parts.length >= 3) { 
-            const sub = parts[0].toLowerCase();
-            if (sub !== 'www' && sub !== 'app') {
-                tenantDbName = sub;
-            }
-        }
-        
-        if (req.query.tenant) {
-            tenantDbName = req.query.tenant;
-        } else if (req.headers['x-tenant-id']) {
+
+        if (req.headers['x-tenant-id']) {
             tenantDbName = req.headers['x-tenant-id'];
+        } else if (req.query.tenant) {
+            tenantDbName = req.query.tenant;
+        } else {
+            const parts = req.hostname.split('.');
+            if (parts.length >= 3) { 
+                const sub = parts[0].toLowerCase();
+                if (sub !== 'www' && sub !== 'app') {
+                    tenantDbName = sub;
+                }
+            }
         }
 
         const masterPool = await getMasterPool();
