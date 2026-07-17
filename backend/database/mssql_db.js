@@ -20,6 +20,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 let pool;
 
+// ─── Tenant Pools (Cloud/Multi-Tenant support) ────────────────
+// Only used when BUILD_PROFILE=cloud
+const tenantPools = {};
+
 async function createPool(dbOverride) {
     const dbToUse = dbOverride || database;
     if (!useWindowsAuth) {
@@ -464,6 +468,25 @@ function getHealth() {
     };
 }
 
+// ─── Tenant Pool API (Cloud/Multi-Tenant) ─────────────────────
+async function getTenantPool(dbName) {
+    if (!dbName) throw new Error('getTenantPool requires a dbName');
+    if (tenantPools[dbName]) return tenantPools[dbName];
+
+    console.log(`[MSSQL] Creating tenant pool for database: ${dbName}`);
+    const newPool = await createPool(dbName);
+    tenantPools[dbName] = newPool;
+    return newPool;
+}
+
+function closeTenantPool(dbName) {
+    if (tenantPools[dbName]) {
+        tenantPools[dbName].close();
+        delete tenantPools[dbName];
+        console.log(`[MSSQL] Closed tenant pool: ${dbName}`);
+    }
+}
+
 // Start async initialization, but don't block exports
 const initPromise = initializeDatabase();
 
@@ -476,5 +499,7 @@ module.exports = {
         }
         return pool;
     },
+    getTenantPool,
+    closeTenantPool,
     getHealth
 };
