@@ -135,9 +135,9 @@
             <div class="login-footer">
                 <div class="login-footer-item"><i class="fa-solid fa-shield-halved"></i> <span data-i18n="security_title">بياناتك محمية بالكامل</span></div>
                 <div class="login-footer-divider"></div>
-                <div class="login-footer-item"><i class="fa-solid fa-phone"></i> <span dir="ltr" style="unicode-bidi:isolate" id="login-footer-phone">---</span></div>
+                <div class="login-footer-item"><i class="fa-solid fa-phone"></i> <span dir="ltr" style="unicode-bidi:isolate" id="login-footer-phone">01060958097</span></div>
                 <div class="login-footer-divider"></div>
-                <div class="login-footer-item"><i class="fa-solid fa-envelope"></i> <span id="login-footer-email">---</span></div>
+                <div class="login-footer-item"><i class="fa-solid fa-envelope"></i> <span id="login-footer-email">3smcompany.official@gmail.com</span></div>
             </div>
 
             <!-- Copyright -->
@@ -513,7 +513,8 @@
 
                     <div class="nav-popup-section-header">تقارير المبيعات</div>
                     <a href="#" class="popup-item" data-target="reports-sales"><i class="fa-solid fa-chart-line"></i> تقارير المبيعات</a>
-                    <a href="#" class="popup-item" data-target="crm-targets"><i class="fa-solid fa-bullseye"></i> تارجت ومستهدفات</a>
+            <a href="#" class="popup-item" data-target="crm-targets"><i class="fa-solid fa-bullseye"></i> تارجت ومستهدفات</a>
+            <a href="#" class="popup-item" data-target="commissions"><i class="fa-solid fa-coins"></i> العمولات</a>
                     <a href="#" class="popup-item" data-target="sales-serials"><i class="fa-solid fa-qrcode"></i> تتبع السيريالات</a>
 
                     <div class="nav-popup-section-header">تقارير المشتريات</div>
@@ -1068,7 +1069,7 @@
                         <div><h1 class="page-title">فاتورة مبيعات جديدة</h1><p class="page-subtitle">إدخال بيانات فاتورة بيع جديدة</p></div>
                         <div class="page-actions">
                             <button class="btn btn-primary" id="btn-save-invoice"><i class="fa-solid fa-floppy-disk"></i> حفظ وترحيل</button>
-                            <button class="btn btn-primary btn-save-print" id="btn-save-print-invoice"><i class="fa-solid fa-print"></i> حفظ وطباعة</button>
+                            <button class="btn btn-outline btn-save-print" id="btn-save-print-invoice"><i class="fa-solid fa-print"></i> حفظ وطباعة</button>
                         </div>
                     </div>
 
@@ -1110,13 +1111,49 @@
                                 </table>
                             </div>
                             <div class="page-summary">
-                                <div class="page-grid-summary">
-                                    <span>الإجمالي قبل الخصم:</span><span id="subtotal">0.00 ج.م</span>
-                                    <span>خصم إجمالي %:</span><span><input type="number" id="global-discount" value="0" min="0" max="100"> %</span>
-                                    <span>الضريبة (14%):</span><span id="tax-amount">0.00 ج.م</span>
-                                    <strong>الإجمالي النهائي:</strong><strong id="grand-total" class="grand-total-val">0.00 ج.م</strong>
-                                    <span>المدفوع:</span><span><input type="number" id="amount-paid" value="0" min="0"> ج.م</span>
-                                    <span>المتبقي:</span><span id="remaining" class="text-danger">0.00 ج.م</span>
+                                <div class="invoice-summary-cards">
+                                    <div class="inv-summary-card inv-summary-card--subtotal">
+                                        <div class="card-icon"><i class="fa-solid fa-file-invoice"></i></div>
+                                        <div class="card-body">
+                                            <span class="card-label">الإجمالي قبل الخصم</span>
+                                            <span class="card-value" id="subtotal">0.00 ج.م</span>
+                                        </div>
+                                    </div>
+                                    <div class="inv-summary-card inv-summary-card--discount">
+                                        <div class="card-icon"><i class="fa-solid fa-tag"></i></div>
+                                        <div class="card-body">
+                                            <span class="card-label">خصم إجمالي (%)</span>
+                                            <span class="card-value"><input type="number" id="global-discount" value="0" min="0" max="100"> <span class="card-unit">%</span></span>
+                                        </div>
+                                    </div>
+                                    <div class="inv-summary-card inv-summary-card--tax">
+                                        <div class="card-icon"><i class="fa-solid fa-percent"></i></div>
+                                        <div class="card-body">
+                                            <span class="card-label">الضريبة (14%)</span>
+                                            <span class="card-value" id="tax-amount">0.00 ج.م</span>
+                                        </div>
+                                    </div>
+                                    <div class="inv-summary-card inv-summary-card--paid">
+                                        <div class="card-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
+                                        <div class="card-body">
+                                            <span class="card-label">المدفوع</span>
+                                            <span class="card-value"><input type="number" id="amount-paid" value="0" min="0"> <span class="card-unit">ج.م</span></span>
+                                        </div>
+                                    </div>
+                                    <div class="inv-summary-card inv-summary-card--grand">
+                                        <div class="card-icon"><i class="fa-solid fa-coins"></i></div>
+                                        <div class="card-body">
+                                            <span class="card-label">الإجمالي النهائي</span>
+                                            <span class="card-value" id="grand-total" style="font-size:1.3rem">0.00 ج.م</span>
+                                        </div>
+                                    </div>
+                                    <div class="inv-summary-card inv-summary-card--remaining">
+                                        <div class="card-icon"><i class="fa-solid fa-wallet"></i></div>
+                                        <div class="card-body">
+                                            <span class="card-label">المتبقي</span>
+                                            <span class="card-value" id="remaining">0.00 ج.م</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1608,10 +1645,28 @@
                                 </table>
                             </div>
                             <div class="page-summary">
-                                <div class="page-grid-summary">
-                                    <strong>إجمالي الفاتورة:</strong><strong id="p-grand-total" class="grand-total-val">0.00 ج.م</strong>
-                                    <span>المدفوع نقداً:</span><span><input type="number" id="p-amount-paid" value="0" class="pcalc"> ج.م</span>
-                                    <span>المتبقي الأجل:</span><span id="p-remaining" class="text-danger">0.00 ج.م</span>
+                                <div class="invoice-summary-cards">
+                                    <div class="inv-summary-card inv-summary-card--grand">
+                                        <div class="card-icon"><i class="fa-solid fa-coins"></i></div>
+                                        <div class="card-body">
+                                            <span class="card-label">إجمالي الفاتورة</span>
+                                            <span class="card-value" id="p-grand-total">0.00 ج.م</span>
+                                        </div>
+                                    </div>
+                                    <div class="inv-summary-card inv-summary-card--paid">
+                                        <div class="card-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
+                                        <div class="card-body">
+                                            <span class="card-label">المدفوع نقداً</span>
+                                            <span class="card-value"><input type="number" id="p-amount-paid" value="0" class="pcalc"> <span class="card-unit">ج.م</span></span>
+                                        </div>
+                                    </div>
+                                    <div class="inv-summary-card inv-summary-card--remaining">
+                                        <div class="card-icon"><i class="fa-solid fa-wallet"></i></div>
+                                        <div class="card-body">
+                                            <span class="card-label">المتبقي الأجل</span>
+                                            <span class="card-value" id="p-remaining">0.00 ج.م</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -4516,6 +4571,57 @@
                 </div>
                     </div>
                 </div>
+                <!-- ======================================================== -->
+                <!--  VIEW: COMMISSIONS                                       -->
+                <!-- ======================================================== -->
+                <div class="view" id="view-commissions">
+                    <div class="page-header">
+                        <h1 class="page-title"><i class="fa-solid fa-coins" style="color:var(--primary-color);margin-left:8px"></i> العمولات</h1>
+                        <p class="page-subtitle">مراجعة واعتماد وصرف عمولات المندوبين</p>
+                    </div>
+
+                    <div class="card" style="margin-bottom:20px">
+                        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:16px">
+                            <label style="font-weight:600">الفترة:</label>
+                            <input type="month" id="comm-period" class="form-control" style="width:160px">
+                            <label style="font-weight:600">المندوب:</label>
+                            <select id="comm-rep" class="form-control" style="width:200px"><option value="">الكل</option></select>
+                            <button class="btn btn-primary" id="comm-load-btn"><i class="fa-solid fa-search"></i> تحميل</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+                            <h3>عمولات الفترة <span id="comm-period-label" style="color:var(--primary-color)"></span></h3>
+                            <div style="display:flex;gap:8px">
+                                <button class="btn btn-success btn-sm" id="comm-approve-btn" disabled><i class="fa-solid fa-check"></i> اعتماد المحدد</button>
+                                <button class="btn btn-warning btn-sm" id="comm-settle-btn" disabled><i class="fa-solid fa-lock"></i> تجميد المحدد</button>
+                            </div>
+                        </div>
+                        <div style="overflow-x:auto">
+                            <table class="table" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th><input type="checkbox" id="comm-select-all"></th>
+                                        <th>المندوب</th>
+                                        <th>العميل</th>
+                                        <th>رقم التحصيل</th>
+                                        <th>مبلغ التحصيل</th>
+                                        <th>نسبة التحقيق</th>
+                                        <th>نسبة العمولة</th>
+                                        <th>مبلغ العمولة</th>
+                                        <th>الحالة</th>
+                                        <th>القيد</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="comm-tbody">
+                                    <tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted)">اختر الفترة ثم اضغط تحميل</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="comm-summary" style="padding:12px 16px;border-top:1px solid var(--border-color);display:flex;gap:24px;font-size:0.85rem;color:var(--text-muted)"></div>
+                    </div>
+                </div>
             </div><!-- end #view-container -->
 
     <!-- Treasury modal save handler (global fallback) -->
@@ -4582,9 +4688,25 @@
     <script src="js/api/api.js?v=2.0.7"></script>
     <script src="js/utils/time.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="js/utils/excelExport.js"></script>
     <script src="js/app.js?v=2.0.7"></script>
     <script src="js/accounting.js?v=2.0.7"></script>
     <script src="js/services/reportPrintEngine.js"></script>
+    <script src="js/views/viewReportsSales.js"></script>
+    <script src="js/views/viewReportsPurchases.js"></script>
+    <script src="js/views/viewReportsInventory.js"></script>
+    <script src="js/views/viewTreasury.js"></script>
+    <script src="js/views/viewSettings.js"></script>
+    <script src="js/views/viewDashboards.js"></script>
+    <script src="js/views/viewFinance.js"></script>
+    <script src="js/views/viewInventoryManagement.js"></script>
+    <script src="js/views/viewSupplierFinance.js"></script>
+    <script src="js/views/viewSalesSettings.js"></script>
+    <script src="js/views/viewNewYear.js"></script>
+    <script src="js/views/viewCRM.js"></script>
+    <script src="js/views/viewCommissions.js"></script>
     <script src="js/views/views.js"></script>
     <script src="js/reports/reportUtils.js"></script>
     <script src="js/reports/reportLayout.js"></script>
