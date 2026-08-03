@@ -31,8 +31,8 @@ const OPENING_DOC = 'CI-OPENING-STOCK';
 const OPENING_ENTRY = 'JE-CI-OPENING';
 
 const PRODUCTS = [
-  { code: 'نيمو', name: 'نيمو', cost: 190.00, sell: 230, qty: 31 },   // prodA (id 1)
-  { code: 'اوكسي', name: 'اوكسي', cost: 187.94, sell: 220, qty: 10 }  // prodB (id 2)
+  { id: 1, code: 'نيمو', name: 'نيمو', cost: 190.00, sell: 230, qty: 31 },   // prodA (id 1)
+  { id: 2, code: 'اوكسي', name: 'اوكسي', cost: 187.94, sell: 220, qty: 10 }  // prodB (id 2)
 ];
 
 const EXTRA_TABLES = {
@@ -115,6 +115,84 @@ const EXTRA_TABLES = {
             payment_id INT NOT NULL,
             invoice_id INT NOT NULL,
             allocated_amount DECIMAL(18,4) NOT NULL
+        );
+    END`,
+  ar_cheques: `
+    IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ar_cheques')
+    BEGIN
+        CREATE TABLE ar_cheques (
+            id INT IDENTITY(1,1) PRIMARY KEY,
+            cheque_no NVARCHAR(100) NOT NULL,
+            cheque_date DATE NOT NULL,
+            due_date DATE NULL,
+            amount DECIMAL(18,4) NOT NULL,
+            bank_name NVARCHAR(255) NULL,
+            customer_id INT NULL,
+            payment_id INT NULL,
+            status NVARCHAR(20) NULL,
+            status_date DATE NULL,
+            notes NVARCHAR(500) NULL,
+            created_by INT NULL,
+            created_at DATETIME DEFAULT GETDATE(),
+            account_no NVARCHAR(100) NULL,
+            updated_at NVARCHAR(100) NULL
+        );
+    END`,
+  ar_notes: `
+    IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ar_notes')
+    BEGIN
+        CREATE TABLE ar_notes (
+            id INT IDENTITY(1,1) PRIMARY KEY,
+            note_no NVARCHAR(50) NOT NULL,
+            note_date DATE NOT NULL,
+            customer_id INT NOT NULL,
+            note_type NVARCHAR(10) NOT NULL,
+            amount DECIMAL(18,4) NOT NULL,
+            reason NVARCHAR(500) NULL,
+            notes NVARCHAR(500) NULL,
+            status NVARCHAR(20) DEFAULT 'active',
+            created_by INT NULL,
+            created_at DATETIME DEFAULT GETDATE(),
+            reversed_at DATETIME NULL,
+            reversed_by INT NULL
+        );
+    END`,
+  ap_cheques: `
+    IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ap_cheques')
+    BEGIN
+        CREATE TABLE ap_cheques (
+            id INT IDENTITY(1,1) PRIMARY KEY,
+            cheque_no NVARCHAR(100) NOT NULL,
+            cheque_date DATE NOT NULL,
+            due_date DATE NULL,
+            amount DECIMAL(18,4) NOT NULL,
+            bank_name NVARCHAR(255) NULL,
+            supplier_id INT NULL,
+            payment_id INT NULL,
+            status NVARCHAR(20) NULL,
+            status_date DATE NULL,
+            notes NVARCHAR(500) NULL,
+            created_by INT NULL,
+            created_at DATETIME DEFAULT GETDATE()
+        );
+    END`,
+  ap_notes: `
+    IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ap_notes')
+    BEGIN
+        CREATE TABLE ap_notes (
+            id INT IDENTITY(1,1) PRIMARY KEY,
+            note_no NVARCHAR(50) NOT NULL,
+            note_date DATE NOT NULL,
+            supplier_id INT NOT NULL,
+            note_type NVARCHAR(10) NOT NULL,
+            amount DECIMAL(18,4) NOT NULL,
+            reason NVARCHAR(500) NULL,
+            notes NVARCHAR(500) NULL,
+            status NVARCHAR(20) DEFAULT 'active',
+            created_by INT NULL,
+            created_at DATETIME DEFAULT GETDATE(),
+            reversed_at DATETIME NULL,
+            reversed_by INT NULL
         );
     END`
 };
