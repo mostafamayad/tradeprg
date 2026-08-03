@@ -28,7 +28,7 @@ on:
       - 'webapp/backend/scripts/integrity_audit.js'
       - '.github/workflows/phase1-regression.yml'
   push:
-    branches: [main, develop, phase1-stable]
+    branches: [main, develop, phase1-stable, nav-restructure]
   workflow_dispatch:
 
 permissions:
