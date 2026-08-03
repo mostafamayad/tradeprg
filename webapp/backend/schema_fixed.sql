@@ -79,7 +79,7 @@ CREATE TABLE [dbo].[sales_reps] (
 END
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[customers]') AND type in (N'U'))
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[suppliers]') AND type in (N'U'))
 BEGIN
     
 CREATE TABLE [dbo].[suppliers] (
@@ -112,7 +112,7 @@ CREATE TABLE [dbo].[categories] (
 END
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[products]') AND type in (N'U'))
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[stock_movements]') AND type in (N'U'))
 BEGIN
     
 CREATE TABLE [dbo].[stock_movements] (
@@ -134,7 +134,7 @@ CREATE TABLE [dbo].[stock_movements] (
 END
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[sales_invoices]') AND type in (N'U'))
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[stock_transfers]') AND type in (N'U'))
 BEGIN
     
 CREATE TABLE [dbo].[stock_transfers] (
@@ -150,7 +150,7 @@ CREATE TABLE [dbo].[stock_transfers] (
 END
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[stock_transfer_items]') AND type in (N'U'))
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[damaged_stock]') AND type in (N'U'))
 BEGIN
     
 CREATE TABLE [dbo].[damaged_stock] (
@@ -183,7 +183,7 @@ CREATE TABLE [dbo].[stock_count] (
 END
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[stock_count_items]') AND type in (N'U'))
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[stock_adjustments]') AND type in (N'U'))
 BEGIN
     
 CREATE TABLE [dbo].[stock_adjustments] (
@@ -200,7 +200,7 @@ CREATE TABLE [dbo].[stock_adjustments] (
 END
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[customer_notes]') AND type in (N'U'))
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[chart_of_accounts]') AND type in (N'U'))
 BEGIN
     
 CREATE TABLE [dbo].[chart_of_accounts] (
@@ -233,7 +233,7 @@ CREATE TABLE [dbo].[journal_entries] (
 END
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[journal_entry_lines]') AND type in (N'U'))
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[settings]') AND type in (N'U'))
 BEGIN
     
 CREATE TABLE [dbo].[settings] (
@@ -259,7 +259,7 @@ CREATE TABLE [dbo].[treasury_accounts] (
 END
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[treasury_transactions]') AND type in (N'U'))
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[employees]') AND type in (N'U'))
 BEGIN
     
 CREATE TABLE [dbo].[employees] (
@@ -290,7 +290,7 @@ CREATE TABLE [dbo].[invoice_counters] (
 END
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[collection_allocations]') AND type in (N'U'))
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[customers]') AND type in (N'U'))
 BEGIN
     
 CREATE TABLE [dbo].[customers] (
@@ -318,7 +318,7 @@ CREATE TABLE [dbo].[customers] (
 END
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[suppliers]') AND type in (N'U'))
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[products]') AND type in (N'U'))
 BEGIN
     
 CREATE TABLE [dbo].[products] (
@@ -360,7 +360,7 @@ CREATE TABLE [dbo].[inventory_balances] (
 END
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[stock_movements]') AND type in (N'U'))
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[sales_invoices]') AND type in (N'U'))
 BEGIN
     
 CREATE TABLE [dbo].[sales_invoices] (
@@ -595,7 +595,7 @@ CREATE TABLE [dbo].[checks] (
 END
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[stock_transfers]') AND type in (N'U'))
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[stock_transfer_items]') AND type in (N'U'))
 BEGIN
     
 CREATE TABLE [dbo].[stock_transfer_items] (
@@ -608,7 +608,7 @@ CREATE TABLE [dbo].[stock_transfer_items] (
 END
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[damaged_stock]') AND type in (N'U'))
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[stock_count_items]') AND type in (N'U'))
 BEGIN
     
 CREATE TABLE [dbo].[stock_count_items] (
@@ -623,7 +623,7 @@ CREATE TABLE [dbo].[stock_count_items] (
 END
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[stock_adjustments]') AND type in (N'U'))
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[customer_notes]') AND type in (N'U'))
 BEGIN
     
 CREATE TABLE [dbo].[customer_notes] (
@@ -686,7 +686,7 @@ CREATE TABLE [dbo].[rep_settlements] (
 END
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[chart_of_accounts]') AND type in (N'U'))
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[journal_entry_lines]') AND type in (N'U'))
 BEGIN
     
 CREATE TABLE [dbo].[journal_entry_lines] (
@@ -759,7 +759,7 @@ CREATE TABLE [dbo].[emp_loans] (
 END
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[settings]') AND type in (N'U'))
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[treasury_transactions]') AND type in (N'U'))
 BEGIN
     
 CREATE TABLE [dbo].[treasury_transactions] (
@@ -780,7 +780,7 @@ CREATE TABLE [dbo].[treasury_transactions] (
 END
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[employees]') AND type in (N'U'))
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[collection_allocations]') AND type in (N'U'))
 BEGIN
     
 CREATE TABLE [dbo].[collection_allocations] (
