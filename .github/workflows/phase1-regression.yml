@@ -72,7 +72,7 @@ jobs:
 
       - name: Configure backend for CI database
         run: |
-          printf 'MSSQL_USE_WINDOWS_AUTH=false\nMSSQL_SERVER=localhost\nMSSQL_DATABASE=TradePro\nMSSQL_USER=sa\nMSSQL_PASSWORD=TradePro_CI_2026!\nPORT=3000\n' > .env
+          printf 'MSSQL_USE_WINDOWS_AUTH=false\nMSSQL_SERVER=localhost\nMSSQL_DATABASE=TradePro\nMSSQL_USER=sa\nMSSQL_PASSWORD=TradePro_CI_2026!\nPORT=3000\nJWT_SECRET=ci-phase1-regression-secret-not-used-in-prod\n' > .env
           cat .env
         shell: bash
 
