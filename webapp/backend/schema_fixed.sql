@@ -44,7 +44,14 @@ CREATE TABLE [dbo].[users] (
         [branch_id] INT,
         [is_active] INT DEFAULT 1,
         [created_at] NVARCHAR(255) DEFAULT CONVERT(VARCHAR(19), GETDATE(), 120),
-        [permissions] NVARCHAR(MAX) DEFAULT '[]'
+        [permissions] NVARCHAR(MAX) DEFAULT '[]',
+        [avatar] NVARCHAR(MAX),
+        [is_super_admin] BIT DEFAULT 0,
+        [permissions_version] INT DEFAULT 1,
+        [last_login_at] DATETIME,
+        [last_login_ip] NVARCHAR(100),
+        [scope_type] NVARCHAR(100),
+        [scope_value] NVARCHAR(255)
     );
 END
 GO
@@ -162,6 +169,7 @@ CREATE TABLE [dbo].[damaged_stock] (
         [quantity] DECIMAL(18,4) NOT NULL,
         [reason] NVARCHAR(MAX),
         [notes] NVARCHAR(MAX),
+        [status] NVARCHAR(40) NULL,
         [created_at] NVARCHAR(255) DEFAULT CONVERT(VARCHAR(19), GETDATE(), 120)
     );
 END
@@ -195,6 +203,7 @@ CREATE TABLE [dbo].[stock_adjustments] (
         [quantity] DECIMAL(18,4) NOT NULL,
         [reason] NVARCHAR(MAX),
         [notes] NVARCHAR(MAX),
+        [status] NVARCHAR(40) NULL,
         [created_at] NVARCHAR(255) DEFAULT CONVERT(VARCHAR(19), GETDATE(), 120)
     );
 END
@@ -384,6 +393,8 @@ CREATE TABLE [dbo].[sales_invoices] (
         [created_by] INT,
         [created_at] NVARCHAR(255) DEFAULT CONVERT(VARCHAR(19), GETDATE(), 120),
         [invoice_type] NVARCHAR(255) DEFAULT 'normal',
+        [tax_pct] DECIMAL(18,4) DEFAULT 0,
+        [return_status] NVARCHAR(50) DEFAULT 'Normal',
         CONSTRAINT [FK_sales_invoices_sales_reps_rep_id] FOREIGN KEY ([rep_id]) REFERENCES [dbo].[sales_reps] ([id]),
         CONSTRAINT [FK_sales_invoices_customers_customer_id] FOREIGN KEY ([customer_id]) REFERENCES [dbo].[customers] ([id])
     );
@@ -403,6 +414,8 @@ CREATE TABLE [dbo].[sales_invoice_items] (
         [discount_pct] DECIMAL(18,4) DEFAULT 0,
         [discount_amount] DECIMAL(18,4) DEFAULT 0,
         [line_total] DECIMAL(18,4) NOT NULL,
+        [tax_pct] DECIMAL(18,4) DEFAULT 0,
+        [returned_qty] DECIMAL(18,4) DEFAULT 0,
         CONSTRAINT [FK_sales_invoice_items_products_product_id] FOREIGN KEY ([product_id]) REFERENCES [dbo].[products] ([id]),
         CONSTRAINT [FK_sales_invoice_items_sales_invoices_invoice_id] FOREIGN KEY ([invoice_id]) REFERENCES [dbo].[sales_invoices] ([id]) ON DELETE CASCADE
     );
@@ -424,6 +437,20 @@ CREATE TABLE [dbo].[sales_returns] (
         [notes] NVARCHAR(MAX),
         [status] NVARCHAR(255) DEFAULT 'posted',
         [created_at] NVARCHAR(255) DEFAULT CONVERT(VARCHAR(19), GETDATE(), 120),
+        [workflow_status] NVARCHAR(50) DEFAULT 'approved',
+        [created_by] INT NULL,
+        [approved_by] INT NULL,
+        [approved_at] NVARCHAR(50) NULL,
+        [reversed_by] INT NULL,
+        [reversed_at] NVARCHAR(50) NULL,
+        [reversal_of_id] INT NULL,
+        [reason_code] NVARCHAR(50) NULL,
+        [client_ip] NVARCHAR(100) NULL,
+        [device_info] NVARCHAR(255) NULL,
+        [is_free_return] BIT DEFAULT 0,
+        [tax_amount] DECIMAL(18,4) DEFAULT 0,
+        [discount_amount] DECIMAL(18,4) DEFAULT 0,
+        [subtotal] DECIMAL(18,4) DEFAULT 0,
         CONSTRAINT [FK_sales_returns_customers_customer_id] FOREIGN KEY ([customer_id]) REFERENCES [dbo].[customers] ([id]),
         CONSTRAINT [FK_sales_returns_sales_invoices_invoice_id] FOREIGN KEY ([invoice_id]) REFERENCES [dbo].[sales_invoices] ([id])
     );
@@ -440,6 +467,19 @@ CREATE TABLE [dbo].[sales_return_items] (
         [quantity] DECIMAL(18,4) NOT NULL,
         [unit_price] DECIMAL(18,4) NOT NULL,
         [line_total] DECIMAL(18,4) NOT NULL,
+        [original_invoice_item_id] INT NULL,
+        [cost_price_snapshot] DECIMAL(18,4) DEFAULT 0,
+        [discount_pct_snapshot] DECIMAL(18,4) DEFAULT 0,
+        [discount_amount_snapshot] DECIMAL(18,4) DEFAULT 0,
+        [tax_pct_snapshot] DECIMAL(18,4) DEFAULT 0,
+        [tax_amount_snapshot] DECIMAL(18,4) DEFAULT 0,
+        [product_condition] NVARCHAR(50) DEFAULT 'saleable',
+        [destination_store_id] INT NULL,
+        [reason_code] NVARCHAR(50) NULL,
+        [reason_notes] NVARCHAR(500) NULL,
+        [batch_no] NVARCHAR(100) NULL,
+        [expiry_date] DATE NULL,
+        [serial_no] NVARCHAR(100) NULL,
         CONSTRAINT [FK_sales_return_items_sales_returns_return_id] FOREIGN KEY ([return_id]) REFERENCES [dbo].[sales_returns] ([id]) ON DELETE CASCADE
     );
 END
@@ -808,6 +848,234 @@ CREATE TABLE [dbo].[activity_logs] (
         [details] NVARCHAR(MAX),
         [created_at] NVARCHAR(255) DEFAULT CONVERT(VARCHAR(19), GETDATE(), 120)
     );
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[audit_log]') AND type in (N'U'))
+BEGIN
+    
+CREATE TABLE [dbo].[audit_log] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [user_id] INT,
+        [user_name] NVARCHAR(255),
+        [role] NVARCHAR(50),
+        [module] NVARCHAR(100),
+        [operation] NVARCHAR(50),
+        [ref_no] NVARCHAR(255),
+        [affected_record] NVARCHAR(MAX),
+        [old_values] NVARCHAR(MAX),
+        [new_values] NVARCHAR(MAX),
+        [ip_address] NVARCHAR(50),
+        [device] NVARCHAR(500),
+        [status] NVARCHAR(20) DEFAULT 'SUCCESS',
+        [reason] NVARCHAR(MAX),
+        [created_at] DATETIME DEFAULT GETDATE(),
+        [browser] NVARCHAR(50),
+        [os] NVARCHAR(50),
+        [device_type] NVARCHAR(50),
+        [session_id] NVARCHAR(255),
+        [machine_name] NVARCHAR(255)
+    );
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[roles]') AND type in (N'U'))
+BEGIN
+    
+CREATE TABLE [dbo].[roles] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [name] NVARCHAR(100) NOT NULL UNIQUE,
+        [display_name] NVARCHAR(255) NOT NULL,
+        [description] NVARCHAR(500) NULL,
+        [is_system] BIT DEFAULT 0,
+        [created_at] DATETIME DEFAULT GETDATE()
+    );
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[permissions]') AND type in (N'U'))
+BEGIN
+    
+CREATE TABLE [dbo].[permissions] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [code] NVARCHAR(100) NOT NULL UNIQUE,
+        [display_name] NVARCHAR(255) NOT NULL,
+        [module] NVARCHAR(100) NOT NULL,
+        [description] NVARCHAR(500) NULL,
+        [created_at] DATETIME DEFAULT GETDATE()
+    );
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[role_permissions]') AND type in (N'U'))
+BEGIN
+    
+CREATE TABLE [dbo].[role_permissions] (
+        [role_id] INT NOT NULL,
+        [permission_id] INT NOT NULL,
+        PRIMARY KEY (role_id, permission_id),
+        FOREIGN KEY (role_id) REFERENCES [dbo].[roles] ([id]) ON DELETE CASCADE,
+        FOREIGN KEY (permission_id) REFERENCES [dbo].[permissions] ([id]) ON DELETE CASCADE
+    );
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[user_roles]') AND type in (N'U'))
+BEGIN
+    
+CREATE TABLE [dbo].[user_roles] (
+        [user_id] INT NOT NULL,
+        [role_id] INT NOT NULL,
+        PRIMARY KEY (user_id, role_id),
+        FOREIGN KEY (user_id) REFERENCES [dbo].[users] ([id]) ON DELETE CASCADE,
+        FOREIGN KEY (role_id) REFERENCES [dbo].[roles] ([id]) ON DELETE CASCADE
+    );
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[role_templates]') AND type in (N'U'))
+BEGIN
+    
+CREATE TABLE [dbo].[role_templates] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [name] NVARCHAR(100) NOT NULL UNIQUE,
+        [display_name] NVARCHAR(255) NOT NULL,
+        [description] NVARCHAR(500) NULL,
+        [permissions_json] NVARCHAR(MAX) NULL,
+        [is_system] BIT DEFAULT 0,
+        [created_at] DATETIME DEFAULT GETDATE()
+    );
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[user_audit_log]') AND type in (N'U'))
+BEGIN
+    
+CREATE TABLE [dbo].[user_audit_log] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [actor_id] INT NULL,
+        [actor_name] NVARCHAR(255) NULL,
+        [action] NVARCHAR(100) NOT NULL,
+        [target_type] NVARCHAR(100) NULL,
+        [target_id] INT NULL,
+        [target_name] NVARCHAR(255) NULL,
+        [old_value] NVARCHAR(MAX) NULL,
+        [new_value] NVARCHAR(MAX) NULL,
+        [details] NVARCHAR(MAX) NULL,
+        [ip_address] NVARCHAR(100) NULL,
+        [browser] NVARCHAR(255) NULL,
+        [session_id] NVARCHAR(255) NULL,
+        [machine_name] NVARCHAR(255) NULL,
+        [created_at] DATETIME DEFAULT GETDATE()
+    );
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[user_data_scopes]') AND type in (N'U'))
+BEGIN
+    
+CREATE TABLE [dbo].[user_data_scopes] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [user_id] INT NOT NULL,
+        [scope_type] NVARCHAR(50) NOT NULL,
+        [scope_value] NVARCHAR(255) NULL,
+        [created_at] DATETIME DEFAULT GETDATE(),
+        FOREIGN KEY ([user_id]) REFERENCES [dbo].[users] ([id]) ON DELETE CASCADE
+    );
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[sales_return_audit]') AND type in (N'U'))
+BEGIN
+    
+CREATE TABLE [dbo].[sales_return_audit] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [return_id] INT NOT NULL,
+        [action] NVARCHAR(50) NOT NULL,
+        [actor_user_id] INT NULL,
+        [actor_username] NVARCHAR(100) NULL,
+        [action_at] NVARCHAR(50) NOT NULL,
+        [reason] NVARCHAR(500) NULL,
+        [from_status] NVARCHAR(50) NULL,
+        [to_status] NVARCHAR(50) NULL,
+        [metadata] NVARCHAR(MAX) NULL,
+        [client_ip] NVARCHAR(100) NULL,
+        [device_info] NVARCHAR(255) NULL
+    );
+    CREATE INDEX IX_sales_return_audit_return_id ON [dbo].[sales_return_audit](return_id);
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[return_reasons]') AND type in (N'U'))
+BEGIN
+    
+CREATE TABLE [dbo].[return_reasons] (
+        [code] NVARCHAR(50) PRIMARY KEY,
+        [label_ar] NVARCHAR(255) NOT NULL,
+        [is_active] BIT DEFAULT 1
+    );
+    INSERT INTO [dbo].[return_reasons] (code, label_ar) VALUES
+        (N'DAMAGED', N'المنتج تالف'),
+        (N'WRONG_ITEM', N'خطأ في الشحن'),
+        (N'CUSTOMER_REFUSED', N'العميل رفض المنتج'),
+        (N'EXPIRED', N'انتهاء صلاحية'),
+        (N'INVOICE_ERR', N'خطأ في الفاتورة'),
+        (N'OTHER', N'أخرى');
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[customer_groups]') AND type in (N'U'))
+BEGIN
+    
+CREATE TABLE [dbo].[customer_groups] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [group_name] NVARCHAR(255) NOT NULL,
+        [group_name_en] NVARCHAR(255) NULL,
+        [is_active] INT DEFAULT 1,
+        [created_at] NVARCHAR(50) DEFAULT CONVERT(VARCHAR(19), GETDATE(), 120)
+    );
+    INSERT INTO [dbo].[customer_groups] (group_name, group_name_en) VALUES
+        (N'عامة', 'General'),
+        (N'موزعين', 'Distributors'),
+        (N'تجار', 'Retailers'),
+        (N'شركات', 'Corporate');
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[customer_activity_log]') AND type in (N'U'))
+BEGIN
+    
+CREATE TABLE [dbo].[customer_activity_log] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [customer_id] INT NOT NULL,
+        [activity_type] NVARCHAR(50) NOT NULL,
+        [reference_type] NVARCHAR(50) NULL,
+        [reference_id] INT NULL,
+        [reference_no] NVARCHAR(255) NULL,
+        [amount] DECIMAL(18,4) DEFAULT 0,
+        [description] NVARCHAR(MAX) NULL,
+        [created_by] INT NULL,
+        [created_at] NVARCHAR(50) DEFAULT CONVERT(VARCHAR(19), GETDATE(), 120),
+        [metadata] NVARCHAR(MAX) NULL
+    );
+    CREATE INDEX IX_cust_activity_customer_id ON [dbo].[customer_activity_log](customer_id);
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[customer_attachments]') AND type in (N'U'))
+BEGIN
+    
+CREATE TABLE [dbo].[customer_attachments] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [customer_id] INT NOT NULL,
+        [file_name] NVARCHAR(255) NOT NULL,
+        [file_type] NVARCHAR(50) NULL,
+        [file_path] NVARCHAR(500) NULL,
+        [description] NVARCHAR(500) NULL,
+        [uploaded_by] INT NULL,
+        [uploaded_at] NVARCHAR(50) DEFAULT CONVERT(VARCHAR(19), GETDATE(), 120)
+    );
+    CREATE INDEX IX_cust_attach_customer_id ON [dbo].[customer_attachments](customer_id);
 END
 GO
 
