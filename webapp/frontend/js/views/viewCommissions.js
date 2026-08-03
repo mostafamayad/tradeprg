@@ -26,6 +26,7 @@
         const periodLabel = document.getElementById('comm-period-label');
         const approveBtn = document.getElementById('comm-approve-btn');
         const settleBtn = document.getElementById('comm-settle-btn');
+        const postGlBtn = document.getElementById('comm-postgl-btn');
         const selectAll = document.getElementById('comm-select-all');
 
         if (!periodInput) return;
@@ -56,6 +57,7 @@
             tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--text-muted)"><i class="fa-solid fa-spinner fa-spin"></i> جاري التحميل...</td></tr>';
             approveBtn.disabled = true;
             settleBtn.disabled = true;
+            if (postGlBtn) postGlBtn.disabled = true;
 
             let url = '/commissions/transactions?period=' + period;
             if (repId) url = '/commissions/transactions?rep_id=' + repId + '&period=' + period;
@@ -92,7 +94,7 @@
 
                 const canCheck = st === 0 || st === 1 || st === 2;
                 const tr = document.createElement('tr');
-                tr.innerHTML = '<td><input type="checkbox" class="comm-check" data-id="' + t.id + '" data-status="' + st + '" ' + (canCheck ? '' : 'disabled') + '></td>' +
+                tr.innerHTML = '<td><input type="checkbox" class="comm-check" data-id="' + t.id + '" data-status="' + st + '" data-posted="' + (t.is_posted_to_gl ? '1' : '0') + '" ' + (canCheck ? '' : 'disabled') + '></td>' +
                     '<td><strong>' + esc(t.rep_name || t.rep_code || '') + '</strong></td>' +
                     '<td>' + esc(t.customer_name || '') + '</td>' +
                     '<td>' + esc(t.collection_no || '') + '</td>' +
@@ -113,6 +115,7 @@
 
             approveBtn.disabled = false;
             settleBtn.disabled = false;
+            if (postGlBtn) postGlBtn.disabled = false;
         }
 
         function getSelectedIds(minStatus, maxStatus) {
@@ -126,16 +129,38 @@
 
         approveBtn.onclick = async function() {
             const ids = getSelectedIds(0, 1);
-            if (ids.length === 0) { alert('اختر عمولات قيد المراجعة أو المراجعة'; return; }
-            if (!confirm('اعتماد ' + ids.length + ' عمولة؟ سيتم إنشاء قيد محاسبي.')) return;
+            if (ids.length === 0) { alert('اختر عمولات قيد المراجعة أو المراجعة'); return; }
+            if (!confirm('اعتماد ' + ids.length + ' عمولة؟ (لن يتم إنشاء قيد محاسبي — الترحيل خطوة منفصلة)')) return;
             const r = await req('/commissions/transactions/approve', 'POST', { ids });
             if (r.success) {
-                alert('تم الاعتماد بنجاح' + (r.data && r.data.jeId ? ' (قيد رقم ' + r.data.jeId + ')' : ''));
+                alert('تم الاعتماد بنجاح');
                 loadData();
             } else {
                 alert('خطأ: ' + r.message);
             }
         };
+
+        const postGlBtn = document.getElementById('comm-postgl-btn');
+        if (postGlBtn) {
+            postGlBtn.onclick = async function() {
+                const ids = getSelectedIds(2, 2);
+                const unposted = [];
+                document.querySelectorAll('.comm-check:checked').forEach(cb => {
+                    const st = parseInt(cb.dataset.status);
+                    if (st === 2 && !cb.dataset.posted) unposted.push(parseInt(cb.dataset.id));
+                });
+                const finalIds = unposted.length > 0 ? unposted : ids;
+                if (finalIds.length === 0) { alert('اختر عمولات معتمدة غير مرحّلة'); return; }
+                if (!confirm('ترحيل ' + finalIds.length + ' عمولة للمحاسبة؟ سيتم إنشاء قيد محاسبي.')) return;
+                const r = await req('/commissions/transactions/post-to-gl', 'POST', { ids: finalIds });
+                if (r.success) {
+                    alert('تم الترحيل بنجاح' + (r.data && r.data.jeId ? ' (قيد رقم ' + r.data.jeId + ')' : ''));
+                    loadData();
+                } else {
+                    alert('خطأ: ' + r.message);
+                }
+            };
+        }
 
         settleBtn.onclick = async function() {
             const ids = getSelectedIds(2, 2);

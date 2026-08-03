@@ -10,9 +10,18 @@ async function getKpiSummary() {
     const topCustomers = await repo.getTopCustomers(5);
     const topProducts = await repo.getTopProducts(5);
 
-    const netIncome = kpis.salesMonth - kpis.purchasesMonth;
+    const today = new Date().toISOString().slice(0, 10);
+    const monthStart = today.slice(0, 7) + '-01';
+    const isData = await repo.getIncomeStatement(monthStart, today);
+    const totalRevenue = isData
+        .filter(a => a.account_type === 'revenue')
+        .reduce((sum, a) => sum + (a.period_credit - a.period_debit), 0);
+    const totalExpenses = isData
+        .filter(a => a.account_type === 'expense')
+        .reduce((sum, a) => sum + (a.period_debit - a.period_credit), 0);
+    const netIncome = totalRevenue - totalExpenses;
     const grossMargin = kpis.salesMonth > 0
-        ? ((kpis.salesMonth - kpis.purchasesMonth) / kpis.salesMonth * 100).toFixed(1)
+        ? ((totalRevenue - totalExpenses) / kpis.salesMonth * 100).toFixed(1)
         : 0;
 
     return {
@@ -175,7 +184,9 @@ async function getInventoryKpis() {
  * @returns {Promise<{kpis, charts, topCustomers, topProducts, alerts, inventory}>}
  */
 async function getExecutiveDashboard() {
-    const [kpis, salesChart, agingAr, agingAp, topCust, topProd, alerts, invStatus] = await Promise.all([
+    const today = new Date().toISOString().slice(0, 10);
+    const monthStart = today.slice(0, 7) + '-01';
+    const [kpis, salesChart, agingAr, agingAp, topCust, topProd, alerts, invStatus, isData] = await Promise.all([
         repo.getDashboardKPIs(),
         repo.getSalesChart(30),
         repo.getAgingReceivables(),
@@ -183,8 +194,17 @@ async function getExecutiveDashboard() {
         repo.getTopCustomers(5),
         repo.getTopProducts(5),
         repo.getAlerts(),
-        repo.getInventoryStatus()
+        repo.getInventoryStatus(),
+        repo.getIncomeStatement(monthStart, today)
     ]);
+
+    const totalRevenue = isData
+        .filter(a => a.account_type === 'revenue')
+        .reduce((sum, a) => sum + (a.period_credit - a.period_debit), 0);
+    const totalExpenses = isData
+        .filter(a => a.account_type === 'expense')
+        .reduce((sum, a) => sum + (a.period_debit - a.period_credit), 0);
+    const netProfit = totalRevenue - totalExpenses;
 
     const totalAr = agingAr.reduce((s, c) => s + parseFloat(c.current_balance || 0), 0);
     const totalAp = agingAp.reduce((s, c) => s + parseFloat(c.current_balance || 0), 0);
@@ -199,13 +219,13 @@ async function getExecutiveDashboard() {
             banks: 0,
             receivables: kpis.totalReceivables,
             payables: kpis.totalPayables,
-            netProfit: kpis.salesMonth - kpis.purchasesMonth,
-            grossProfit: kpis.salesMonth > 0
-                ? (kpis.salesMonth - kpis.purchasesMonth) / kpis.salesMonth * 100
+            netProfit: netProfit,
+            grossProfit: totalRevenue > 0
+                ? netProfit / totalRevenue * 100
                 : 0,
             inventoryValue: kpis.inventoryValue,
             vat: 0,
-            expenses: kpis.purchasesMonth,
+            expenses: totalExpenses,
             customers: kpis.activeCustomers,
             salesCountToday: kpis.salesCountToday,
             collectionsMonth: kpis.collectionsMonth

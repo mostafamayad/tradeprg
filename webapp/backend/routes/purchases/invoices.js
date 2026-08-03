@@ -232,12 +232,13 @@ router.post('/invoices', async (req, res) => {
                 VALUES (@pi_iid_${i}, @pi_pid_${i}, @pi_qty_${i}, @pi_cost_${i}, @pi_sell_${i}, @pi_linetot_${i}, @pi_sname_${i}, @pi_sunit_${i}, @pi_sbar_${i})
             `);
 
-            // Read current stock and cost for WAC calculation
+            // Read current stock and cost for WAC calculation (per-store)
             txRequest.input(`wac_pid_${i}`, sql.Int, item.product_id);
+            txRequest.input(`wac_sid_${i}`, sql.Int, storeId);
             const pRes = await txRequest.query(`
                 SELECT p.cost_price as old_cost, ISNULL(SUM(ib.quantity), 0) as total_qty
-                FROM products p WITH (UPDLOCK)
-                LEFT JOIN inventory_balances ib WITH (UPDLOCK) ON ib.product_id = p.id
+                FROM products p
+                LEFT JOIN inventory_balances ib WITH (UPDLOCK) ON ib.product_id = p.id AND ib.store_id = @wac_sid_${i}
                 WHERE p.id = @wac_pid_${i}
                 GROUP BY p.cost_price
             `);
@@ -295,11 +296,11 @@ router.post('/invoices', async (req, res) => {
 
         // --- ACCOUNTING INTEGRATION: Purchase Invoice Accrual ---
         const accAP = await getSystemAccountAsync(txRequest, 'SYS_AP');
-        const accPurchases = await getSystemAccountAsync(txRequest, 'SYS_PURCHASES');
+        const accInventory = await getSystemAccountAsync(txRequest, 'SYS_INVENTORY');
         const accVatInput = tax > 0 ? await getSystemAccountAsync(txRequest, 'SYS_VAT_INPUT') : null;
 
         const accrualLines = [
-            { account_id: accPurchases, debit: subtotal - disc, credit: 0, description: `مشتريات فاتورة ${invoiceNo}` },
+            { account_id: accInventory, debit: subtotal - disc, credit: 0, description: `مخزون فاتورة ${invoiceNo}` },
             { account_id: accAP, debit: 0, credit: grandTotal, description: `استحقاق مورد فاتورة ${invoiceNo}` }
         ];
         if (tax > 0) {
@@ -541,12 +542,13 @@ router.put('/invoices/:id', async (req, res) => {
                 VALUES (@upi_iid_${i}, @upi_pid_${i}, @upi_qty_${i}, @upi_cost_${i}, @upi_sell_${i}, @upi_linetot_${i}, @upi_sname_${i}, @upi_sunit_${i}, @upi_sbar_${i})
             `);
 
-            // Read current stock and cost for WAC calculation (ignoring the reversed items)
+            // Read current stock and cost for WAC calculation (per-store, ignoring reversed items)
             txRequest.input(`uwac_pid_${i}`, sql.Int, item.product_id);
+            txRequest.input(`uwac_sid_${i}`, sql.Int, storeId);
             const pRes = await txRequest.query(`
                 SELECT p.cost_price as old_cost, ISNULL(SUM(ib.quantity), 0) as total_qty
-                FROM products p WITH (UPDLOCK)
-                LEFT JOIN inventory_balances ib WITH (UPDLOCK) ON ib.product_id = p.id
+                FROM products p
+                LEFT JOIN inventory_balances ib WITH (UPDLOCK) ON ib.product_id = p.id AND ib.store_id = @uwac_sid_${i}
                 WHERE p.id = @uwac_pid_${i}
                 GROUP BY p.cost_price
             `);
@@ -604,10 +606,10 @@ router.put('/invoices/:id', async (req, res) => {
 
         // Post new accrual JE with updated values
         const accAP = await getSystemAccountAsync(txRequest, 'SYS_AP');
-        const accPurchases = await getSystemAccountAsync(txRequest, 'SYS_PURCHASES');
+        const accInventory = await getSystemAccountAsync(txRequest, 'SYS_INVENTORY');
         const accVatInput = tax > 0 ? await getSystemAccountAsync(txRequest, 'SYS_VAT_INPUT') : null;
         const accrualLines = [
-            { account_id: accPurchases, debit: subtotal - disc, credit: 0, description: `مشتريات فاتورة ${invoice.invoice_no}` },
+            { account_id: accInventory, debit: subtotal - disc, credit: 0, description: `مخزون فاتورة ${invoice.invoice_no}` },
             { account_id: accAP, debit: 0, credit: grandTotal, description: `استحقاق مورد فاتورة ${invoice.invoice_no}` }
         ];
         if (tax > 0) {

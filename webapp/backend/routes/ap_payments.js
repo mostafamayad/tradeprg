@@ -350,7 +350,8 @@ router.post('/', asyncHandler(async (req, res) => {
                     { account_id: accCash, debit: 0, credit: amountValue, description: `سداد للمورد ${supplierName} بموجب سند ${payNo}` }
                 ];
                 await postJournalEntryAsync(txReq, date, `تسديد دفعة ${payNo}`, jeLines, 'ap_payment', paymentId, req.user ? req.user.id : null,
-                    { module: 'ap_payments', action: 'create_payment', document: payNo, isSystem: true });
+                    { module: 'ap_payments', action: 'create_payment', document: payNo, isSystem: true },
+                    supplier_id);
             }
 
             await tx.commit();
@@ -482,8 +483,8 @@ router.get('/matching/suppliers', asyncHandler(async (req, res) => {
         const pool = await getPool();
         const result = await pool.request().query(`
             SELECT DISTINCT s.id, s.supplier_name, s.current_balance FROM suppliers s
-            WHERE EXISTS (SELECT 1 FROM ap_payments ap WHERE ap.supplier_id = s.id AND ap.status = 'active'
-                AND ap.amount > COALESCE((SELECT SUM(allocated_amount) FROM ap_payment_allocations WHERE payment_id = ap.id), 0))
+            WHERE EXISTS (SELECT 1 FROM supplier_payments sp WHERE sp.supplier_id = s.id
+                AND sp.amount > COALESCE((SELECT SUM(allocated_amount) FROM supplier_payment_allocations WHERE payment_id = sp.id), 0))
             OR EXISTS (SELECT 1 FROM purchase_invoices pi WHERE pi.supplier_id = s.id AND pi.status IN ('pending', 'partial') AND pi.remaining > 0)
             ORDER BY s.supplier_name
         `);
@@ -503,10 +504,10 @@ router.get('/matching/data/:supplierId', asyncHandler(async (req, res) => {
         request.input('sid', sql.Int, sid);
         const paymentsRes = await request.query(`
             SELECT * FROM (
-                SELECT ap.id, ap.payment_no, ap.payment_date, ap.amount,
-                    COALESCE((SELECT SUM(allocated_amount) FROM ap_payment_allocations WHERE payment_id = ap.id), 0) AS allocated_total,
-                    ap.amount - COALESCE((SELECT SUM(allocated_amount) FROM ap_payment_allocations WHERE payment_id = ap.id), 0) AS unallocated
-                FROM ap_payments ap WHERE ap.supplier_id = @sid AND ap.status = 'active'
+                SELECT sp.id, sp.payment_no, sp.payment_date, sp.amount,
+                    COALESCE((SELECT SUM(allocated_amount) FROM supplier_payment_allocations WHERE payment_id = sp.id), 0) AS allocated_total,
+                    sp.amount - COALESCE((SELECT SUM(allocated_amount) FROM supplier_payment_allocations WHERE payment_id = sp.id), 0) AS unallocated
+                FROM supplier_payments sp WHERE sp.supplier_id = @sid
             ) sub WHERE sub.unallocated > 0 ORDER BY sub.payment_date
         `);
         const invoicesRes = await request.query(`
@@ -554,18 +555,21 @@ router.post('/matching/save', asyncHandler(async (req, res) => {
                 txReq.input(`mp_sid_${sfx}`, sql.Int, supplier_id);
                 const payRes = await txReq.query(`
                     SELECT id, payment_no, amount,
-                        COALESCE((SELECT SUM(allocated_amount) FROM ap_payment_allocations WHERE payment_id = @mp_pid_${sfx}), 0) AS allocated_total
-                    FROM ap_payments WHERE id = @mp_pid_${sfx} AND supplier_id = @mp_sid_${sfx} AND status = 'active'
+                        COALESCE((SELECT SUM(allocated_amount) FROM supplier_payment_allocations WHERE payment_id = @mp_pid_${sfx}), 0) AS allocated_total
+                    FROM supplier_payments WHERE id = @mp_pid_${sfx} AND supplier_id = @mp_sid_${sfx}
                 `);
-                if (!payRes.recordset[0]) throw new Error(`الدفعة رقم ${paymentId} غير موجودة أو ملغية`);
+                if (!payRes.recordset[0]) throw new Error(`سند الصرف الداخلي رقم ${paymentId} غير موجود`);
                 const payment = payRes.recordset[0];
                 const newAllocSum = paymentAllocs.reduce((s, a) => s + num(a.allocated_amount), 0);
                 const totalAfter = num(payment.allocated_total) + newAllocSum;
-                if (totalAfter > payment.amount) throw new Error(`إجمالي توزيع الدفعة ${payment.payment_no} (${totalAfter}) يتجاوز قيمتها (${payment.amount})`);
+                if (totalAfter > payment.amount) throw new Error(`إجمالي توزيع السند ${payment.payment_no} (${totalAfter}) يتجاوز قيمته (${payment.amount})`);
 
                 for (let i = 0; i < paymentAllocs.length; i++) {
                     const a = paymentAllocs[i];
                     const asfx = sfx + '_n' + i;
+                    const discAmt = parseFloat(a.discount_amount) || 0;
+                    const totalInvoiceDebit = num(a.allocated_amount) + discAmt;
+
                     txReq.input(`mp_npid_${asfx}`, sql.Int, paymentId);
                     txReq.input(`mp_niid_${asfx}`, sql.Int, a.invoice_id);
                     txReq.input(`mp_namt_${asfx}`, sql.Decimal(18, 2), a.allocated_amount);
@@ -576,33 +580,54 @@ router.post('/matching/save', asyncHandler(async (req, res) => {
                     if (!invRes.recordset[0]) throw new Error(`الفاتورة رقم ${a.invoice_id} غير موجودة لهذا المورد`);
                     const inv = invRes.recordset[0];
                     if (inv.status === 'cancelled' || inv.status === 'deleted') throw new Error(`لا يمكن توزيع المبلغ على فاتورة ملغية (${inv.invoice_no})`);
-                    if (a.allocated_amount > inv.remaining) throw new Error(`المبلغ الموزع (${a.allocated_amount}) يتجاوز المتبقي من الفاتورة ${inv.invoice_no} (${inv.remaining})`);
-                    await txReq.query(`INSERT INTO ap_payment_allocations (payment_id, invoice_id, allocated_amount) VALUES (@mp_npid_${asfx}, @mp_niid_${asfx}, @mp_namt_${asfx})`);
+                    if (totalInvoiceDebit > inv.remaining) throw new Error(`المبلغ المسدد + الخصم (${totalInvoiceDebit}) يتجاوز المتبقي من الفاتورة ${inv.invoice_no} (${inv.remaining})`);
+                    
+                    await txReq.query(`INSERT INTO supplier_payment_allocations (payment_id, invoice_id, allocated_amount) VALUES (@mp_npid_${asfx}, @mp_niid_${asfx}, @mp_namt_${asfx})`);
                     await txReq.query(`
-                        UPDATE purchase_invoices SET amount_paid = amount_paid + @mp_namt_${asfx},
-                            remaining = CASE WHEN remaining - @mp_namt_${asfx} < 0 THEN 0 ELSE remaining - @mp_namt_${asfx} END
+                        UPDATE purchase_invoices SET amount_paid = amount_paid + ${totalInvoiceDebit},
+                            remaining = CASE WHEN remaining - ${totalInvoiceDebit} < 0 THEN 0 ELSE remaining - ${totalInvoiceDebit} END
                         WHERE id = @mp_niid_${asfx}
                     `);
+                    
+                    if (discAmt > 0) {
+                        const { createJournalEntryAsync } = require('./journal_entries');
+                        await createJournalEntryAsync(txReq, {
+                            reference_type: 'purchase_discount',
+                            reference_id: a.invoice_id,
+                            entry_date: new Date(),
+                            description: `خصم نقدي مكتسب لفاتورة المشتريات ${inv.invoice_no} بموجب تسوية دفع`,
+                            customer_id: null,
+                            supplier_id: supplier_id,
+                            lines: [
+                                { account_system_code: 'SYS_AP', debit: discAmt, credit: 0 },
+                                { account_system_code: 'SYS_PURCHASE_DISCOUNT', debit: 0, credit: discAmt }
+                            ]
+                        });
+                    }
+
                     affectedInvoiceIds.add(a.invoice_id);
                 }
             }
             for (const invId of affectedInvoiceIds) {
                 const srfx = Math.random().toString(36).substring(2, 9);
-                txRequest.input(`ris_id_${srfx}`, sql.Int, invId);
-                const invRes = await txRequest.query(`SELECT * FROM purchase_invoices WHERE id = @ris_id_${srfx}`);
+                txReq.input(`ris_id_${srfx}`, sql.Int, invId);
+                const invRes = await txReq.query(`SELECT * FROM purchase_invoices WHERE id = @ris_id_${srfx}`);
                 const inv = invRes.recordset[0];
                 if (inv && inv.status !== 'cancelled') {
-                    const retRes = await txRequest.query(`SELECT COALESCE(SUM(grand_total),0) as total FROM purchase_returns WHERE invoice_id = @ris_id_${srfx} AND status NOT IN ('cancelled', 'deleted')`);
+                    const retRes = await txReq.query(`SELECT COALESCE(SUM(grand_total),0) as total FROM purchase_returns WHERE invoice_id = @ris_id_${srfx} AND status NOT IN ('cancelled', 'deleted')`);
                     const rTotal = retRes.recordset[0].total || 0;
-                    const aRes = await txRequest.query(`SELECT COALESCE(SUM(allocated_amount), 0) as total FROM ap_payment_allocations WHERE invoice_id = @ris_id_${srfx}`);
-                    const tPaid = aRes.recordset[0].total || 0;
+                    
+                    // We need to calculate how much was actually allocated to this invoice across all payments + discounts
+                    // The easiest way is to use the existing amount_paid directly since we already updated it correctly.
+                    const tPaid = num(inv.amount_paid);
+                    
                     const rem = Math.max(0, num(inv.grand_total) - tPaid - num(rTotal));
                     let st = 'pending';
                     if (rem <= 0) st = 'paid';
                     else if (tPaid > 0 || num(rTotal) > 0) st = 'partial';
-                    txRequest.input(`ris_rem_${srfx}`, sql.Decimal(18,2), rem);
-                    txRequest.input(`ris_stat_${srfx}`, sql.NVarChar, st);
-                    await txRequest.query(`UPDATE purchase_invoices SET remaining = @ris_rem_${srfx}, status = @ris_stat_${srfx} WHERE id = @ris_id_${srfx}`);
+                    txReq.input(`ris_rem_${srfx}`, sql.Decimal(18,2), rem);
+                    txReq.input(`ris_stat_${srfx}`, sql.NVarChar, st);
+                    await txReq.query(`UPDATE purchase_invoices SET remaining = @ris_rem_${srfx}, status = @ris_stat_${srfx} WHERE id = @ris_id_${srfx}`);
                 }
             }
             await tx.commit();

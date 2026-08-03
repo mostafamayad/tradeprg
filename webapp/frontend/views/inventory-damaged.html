@@ -1,0 +1,45 @@
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 class="page-title">إهلاكات التوالف والرواكد</h1>
+        <p class="page-subtitle">تسجيل البضائع التالفة أو منتهية الصلاحية وخصمها من الرصيد كخسائر/إهلاك</p>
+    </div>
+    <button class="btn btn-primary" style="background: var(--danger-color); border-color: var(--danger-color);">
+        <i class="fa-solid fa-trash-can"></i> إعدام بضاعة (إهلاك جديد)
+    </button>
+</div>
+
+<div class="card">
+    <div class="table-actions">
+        <select style="width: 200px;">
+            <option value="">نوع الإهلاك</option>
+            <option value="1">توالف وعيوب</option>
+            <option value="2">انتهاء صلاحية</option>
+            <option value="3">رواكد (تصفية)</option>
+        </select>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>تاريخ الإهلاك</th>
+                    <th>رقم المستند</th>
+                    <th>الصنف</th>
+                    <th>الكمية المُهلكة</th>
+                    <th>السبب</th>
+                    <th>قيمة الخسارة</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>2026-06-20</td>
+                    <td>DMG-001</td>
+                    <td>كوب ورقي 100 مل</td>
+                    <td>50</td>
+                    <td>تلف بسبب الرطوبة</td>
+                    <td class="text-danger">50.00 ج.م</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

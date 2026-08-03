@@ -160,6 +160,7 @@ function formatMoney(val) {
 
 function userHasPermission(req, perm) {
     if (!req.user) return false;
+    if (req.user.is_super_admin) return true;
     if (req.user.role === 'admin') return true;
     let perms = [];
     try {
@@ -328,7 +329,7 @@ router.post('/invoices', async (req, res) => {
             txRequest.input(`wac_pid_${i}`, sql.Int, item.product_id);
             const pRes = await txRequest.query(`
                 SELECT p.cost_price as old_cost, ISNULL(SUM(ib.quantity), 0) as total_qty
-                FROM products p WITH (UPDLOCK)
+                FROM products p
                 LEFT JOIN inventory_balances ib WITH (UPDLOCK) ON ib.product_id = p.id
                 WHERE p.id = @wac_pid_${i}
                 GROUP BY p.cost_price
@@ -411,7 +412,8 @@ router.post('/invoices', async (req, res) => {
         await postJournalEntryAsync(
             txRequest, iDate, `استحقاق فاتورة مشتريات ${invoiceNo}`, accrualLines,
             'purchase_invoice', invoiceId, req.user ? req.user.id : null,
-            { module: 'purchases', action: 'create_invoice', document: invoiceNo, isSystem: true }
+            { module: 'purchases', action: 'create_invoice', document: invoiceNo, isSystem: true },
+            supplier_id
         );
 
         await recalcSupplierBalanceAsync(txRequest, supplier_id);
@@ -832,7 +834,8 @@ router.post('/returns', asyncHandler(async (req, res) => {
                     transaction.request(), rDate, `مردودات مشتريات ${retNo}`,
                     lines,
                     'purchase_return', returnId, req.user ? req.user.id : null,
-                    { module: 'purchase_returns', action: 'create_return', document: retNo, isSystem: true }
+                    { module: 'purchase_returns', action: 'create_return', document: retNo, isSystem: true },
+                    supplier_id
                 );
             }
 
@@ -840,7 +843,7 @@ router.post('/returns', asyncHandler(async (req, res) => {
 
         } else {
             // ── MANUAL (free) return: no invoice linked ──
-            // Validate inventory with UPDLOCK/HOLDLOCK
+            // Validate inventory with UPDLOCK (no HOLDLOCK needed — point query on PK)
             for (const it of items) {
                 const chkReq = transaction.request();
                 const pRand = Math.random().toString(36).substring(2, 7);
@@ -848,8 +851,8 @@ router.post('/returns', asyncHandler(async (req, res) => {
                 chkReq.input(`chk_sid_${pRand}`, sql.Int, store_id);
                 const chkRes = await chkReq.query(`
                     SELECT ISNULL(ib.quantity, 0) as qty
-                    FROM products p WITH (UPDLOCK, HOLDLOCK)
-                    LEFT JOIN inventory_balances ib WITH (UPDLOCK, HOLDLOCK) ON ib.product_id = p.id AND ib.store_id = @chk_sid_${pRand}
+                    FROM products p WITH (UPDLOCK)
+                    LEFT JOIN inventory_balances ib WITH (UPDLOCK) ON ib.product_id = p.id AND ib.store_id = @chk_sid_${pRand}
                     WHERE p.id = @chk_pid_${pRand}
                 `);
                 if (!chkRes.recordset[0]) {
@@ -971,7 +974,8 @@ router.post('/returns', asyncHandler(async (req, res) => {
                         { account_id: accInventory, debit: 0, credit: returnGrandTotal, description: `مردودات مشتريات يدوي ${retNo}` }
                     ],
                     'purchase_return', returnId, req.user ? req.user.id : null,
-                    { module: 'purchase_returns', action: 'create_manual_return', document: retNo, isSystem: true }
+                    { module: 'purchase_returns', action: 'create_manual_return', document: retNo, isSystem: true },
+                    supplier_id
                 );
             }
         }
@@ -1162,6 +1166,19 @@ router.put('/invoices/:id', async (req, res) => {
         txRequest.input('txInvId', sql.Int, invoice.id);
         txRequest.input('txInvNo', sql.NVarChar, invoice.invoice_no);
 
+        // ── Accounting: reverse the old accrual JE(s) for this invoice ──
+        // (previously this was missing → stale GL balance on edit)
+        const oldJeRes = await txRequest.query(`
+            SELECT id FROM journal_entries
+            WHERE source_module = 'purchases'
+              AND source_document = @txInvNo
+              AND (is_reversed IS NULL OR is_reversed = 0)
+              AND (source_action IS NULL OR source_action NOT LIKE '%_cancel')
+        `);
+        for (const oldJe of oldJeRes.recordset) {
+            await reverseJournalEntryAsync(txRequest, oldJe.id, `إلغاء قيد فاتورة مشتريات قبل التعديل ${invoice.invoice_no}`, req.user ? req.user.id : null);
+        }
+
         // Reverse old items from stock
         const oldItemsRes = await txRequest.query('SELECT * FROM purchase_invoice_items WHERE invoice_id = @txInvId');
         for (let i = 0; i < oldItemsRes.recordset.length; i++) {
@@ -1228,7 +1245,7 @@ router.put('/invoices/:id', async (req, res) => {
             txRequest.input(`uwac_pid_${i}`, sql.Int, item.product_id);
             const pRes = await txRequest.query(`
                 SELECT p.cost_price as old_cost, ISNULL(SUM(ib.quantity), 0) as total_qty
-                FROM products p WITH (UPDLOCK)
+                FROM products p
                 LEFT JOIN inventory_balances ib WITH (UPDLOCK) ON ib.product_id = p.id
                 WHERE p.id = @uwac_pid_${i}
                 GROUP BY p.cost_price
@@ -1285,6 +1302,24 @@ router.put('/invoices/:id', async (req, res) => {
             WHERE id = @txInvId
         `);
 
+        // ── Accounting: post a fresh accrual JE with the new totals ──
+        const updAccAP = await getSystemAccountAsync(txRequest, 'SYS_AP');
+        const updAccInv = await getSystemAccountAsync(txRequest, 'SYS_INVENTORY');
+        const updAccVat = tax > 0 ? await getSystemAccountAsync(txRequest, 'SYS_VAT_INPUT') : null;
+        const updLines = [
+            { account_id: updAccInv, debit: subtotal - disc, credit: 0, description: `بضاعة واردة (تعديل) - فاتورة ${invoice.invoice_no}` },
+            { account_id: updAccAP, debit: 0, credit: grandTotal, description: `استحقاق مورد (تعديل) فاتورة ${invoice.invoice_no}` }
+        ];
+        if (updAccVat) {
+            updLines.push({ account_id: updAccVat, debit: tax, credit: 0, description: `ضريبة مدخلات (تعديل) فاتورة ${invoice.invoice_no}` });
+        }
+        await postJournalEntryAsync(
+            txRequest, iDate, `استحقاق فاتورة مشتريات (تعديل) ${invoice.invoice_no}`, updLines,
+            'purchase_invoice', invoice.id, req.user ? req.user.id : null,
+            { module: 'purchases', action: 'update_invoice', document: invoice.invoice_no, isSystem: true },
+            supplier_id || invoice.supplier_id
+        );
+
         await recalcSupplierBalanceAsync(txRequest, supplier_id);
         if (supplier_id !== invoice.supplier_id) {
             await recalcSupplierBalanceAsync(txRequest, invoice.supplier_id);
@@ -1340,6 +1375,20 @@ router.delete('/invoices/:id', async (req, res) => {
         await transaction.begin();
         const txRequest = transaction.request();
         txRequest.input('del_id', sql.Int, req.params.id);
+        txRequest.input('del_doc', sql.NVarChar, invoice.invoice_no);
+
+        // ── Accounting: reverse the accrual JE(s) before soft-deleting ──
+        const delJeRes = await txRequest.query(`
+            SELECT id FROM journal_entries
+            WHERE source_module = 'purchases'
+              AND source_document = @del_doc
+              AND (is_reversed IS NULL OR is_reversed = 0)
+              AND (source_action IS NULL OR source_action NOT LIKE '%_cancel')
+        `);
+        for (const delJe of delJeRes.recordset) {
+            await reverseJournalEntryAsync(txRequest, delJe.id, `إلغاء قيد فاتورة مشتريات محذوفة ${invoice.invoice_no}`, req.user ? req.user.id : null);
+        }
+
         await txRequest.query(`UPDATE purchase_invoices SET status = 'deleted' WHERE id = @del_id`);
         await recalcSupplierBalanceAsync(transaction.request(), invoice.supplier_id);
         await transaction.commit();

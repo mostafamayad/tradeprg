@@ -40,7 +40,7 @@ router.post('/transactions/:id/review', asyncHandler(async (req, res) => {
     res.json({ success: true, message: 'Transaction reviewed' });
 }));
 
-// ─── Approve ────────────────────────────────────────────────
+// ─── Approve (review only, no GL) ──────────────────────────
 router.post('/transactions/approve', asyncHandler(async (req, res) => {
     const { ids } = req.body;
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
@@ -48,6 +48,16 @@ router.post('/transactions/approve', asyncHandler(async (req, res) => {
     }
     const result = await commission.settlementEngine.approveTransactions(ids, req.user ? req.user.id : null);
     res.json({ success: true, message: `${result.approved} transaction(s) approved`, data: result });
+}));
+
+// ─── Post to GL (separate from approve) ─────────────────────
+router.post('/transactions/post-to-gl', asyncHandler(async (req, res) => {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ success: false, message: 'ids array is required' });
+    }
+    const result = await commission.settlementEngine.postToGL(ids, req.user ? req.user.id : null);
+    res.json({ success: true, message: `${result.posted} transaction(s) posted to GL (JE #${result.jeId})`, data: result });
 }));
 
 // ─── Lock Period ────────────────────────────────────────────

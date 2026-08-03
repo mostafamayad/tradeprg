@@ -76,10 +76,18 @@ router.post('/', asyncHandler(async (req, res) => {
 
         let code = product_code;
         if (!code) {
-            const lastCodeResult = await request.query('SELECT TOP 1 product_code FROM products WITH (TABLOCKX, HOLDLOCK) ORDER BY id DESC');
-            const last = lastCodeResult.recordset[0];
-            const lastNum = last && last.product_code ? parseInt(last.product_code.replace(/\D/g, '')) || 0 : 0;
-            code = `P-${String(lastNum + 1).padStart(4, '0')}`;
+            // Atomic counter-based generation — no table-level lock needed
+            const cntUpd = await request.query(`
+                UPDATE invoice_counters SET last_number = last_number + 1
+                OUTPUT INSERTED.last_number
+                WHERE counter_name = 'products'
+            `);
+            if (cntUpd.recordset[0]) {
+                code = `P-${String(cntUpd.recordset[0].last_number).padStart(4, '0')}`;
+            } else {
+                await request.query("INSERT INTO invoice_counters (counter_name, prefix, last_number) VALUES ('products', 'P', 1)");
+                code = 'P-0001';
+            }
         }
         
         const result = await request

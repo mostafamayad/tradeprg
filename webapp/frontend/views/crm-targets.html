@@ -1,0 +1,59 @@
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 class="page-title">تارجت ومستهدفات البيع (Targets)</h1>
+        <p class="page-subtitle">تحديد المستهدفات البيعية للمناديب شهرياً وتقييم نسبة الإنجاز</p>
+    </div>
+    <button class="btn btn-primary">
+        <i class="fa-solid fa-bullseye"></i> تحديد مستهدف جديد
+    </button>
+</div>
+
+<div class="card">
+    <div class="table-actions">
+        <select style="width: 200px;">
+            <option value="6">يونيو 2026</option>
+            <option value="5">مايو 2026</option>
+        </select>
+        <button class="btn btn-outline"><i class="fa-solid fa-chart-pie"></i> تقرير التقييم</button>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>المندوب</th>
+                    <th>مستهدف المبيعات (قيمة)</th>
+                    <th>ما تم تحقيقه</th>
+                    <th>نسبة الإنجاز %</th>
+                    <th>العمولة المستحقة</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>محمد صبحي</td>
+                    <td>150,000 ج.م</td>
+                    <td>120,000 ج.م</td>
+                    <td>
+                        <div style="background: #e2e8f0; border-radius: 10px; width: 100%; height: 10px;">
+                            <div style="background: var(--primary-color); width: 80%; height: 100%; border-radius: 10px;"></div>
+                        </div>
+                        <small>80%</small>
+                    </td>
+                    <td>1,200 ج.م</td>
+                </tr>
+                <tr>
+                    <td>محمود سعد</td>
+                    <td>200,000 ج.م</td>
+                    <td>210,000 ج.م</td>
+                    <td>
+                        <div style="background: #e2e8f0; border-radius: 10px; width: 100%; height: 10px;">
+                            <div style="background: var(--success-color); width: 100%; height: 100%; border-radius: 10px;"></div>
+                        </div>
+                        <small>105%</small>
+                    </td>
+                    <td class="text-success">2,500 ج.م (بونص)</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

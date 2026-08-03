@@ -1,0 +1,52 @@
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 class="page-title">تسويات العملاء</h1>
+        <p class="page-subtitle">تسوية أرصدة العملاء دائن/مدين ومعالجة الفروقات في الحسابات</p>
+    </div>
+    <button class="btn btn-primary">
+        <i class="fa-solid fa-handshake"></i> إنشاء تسوية جديدة
+    </button>
+</div>
+
+<div class="card">
+    <div class="table-actions">
+        <div class="search-box">
+            <i class="fa-solid fa-search"></i>
+            <input type="text" placeholder="اسم العميل...">
+        </div>
+        <input type="date" title="تاريخ التسوية">
+    </div>
+    
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>رقم التسوية</th>
+                    <th>التاريخ</th>
+                    <th>العميل</th>
+                    <th>نوع التسوية</th>
+                    <th>المبلغ</th>
+                    <th>البيان / السبب</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>SET-001</td>
+                    <td>2026-06-21</td>
+                    <td>عميل تجريبي</td>
+                    <td><span class="badge" style="background: var(--success-color);">دائن (لصالح العميل)</span></td>
+                    <td>500.00 ج.م</td>
+                    <td>تسوية فرق سعر فاتورة سابقة</td>
+                </tr>
+                <tr>
+                    <td>SET-002</td>
+                    <td>2026-06-15</td>
+                    <td>مؤسسة السلام</td>
+                    <td><span class="badge" style="background: var(--danger-color);">مدين (على العميل)</span></td>
+                    <td>200.00 ج.م</td>
+                    <td>تسوية مصاريف نقل إضافية</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

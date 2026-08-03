@@ -1,0 +1,58 @@
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 class="page-title">مرتجع المبيعات</h1>
+        <p class="page-subtitle">استرجاع بضاعة من عميل وخصمها من حسابه وإضافتها للمخزن</p>
+    </div>
+    <div>
+        <button class="btn btn-outline text-danger"><i class="fa-solid fa-ban"></i> إلغاء مرتجع</button>
+        <button class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> حفظ المرتجع</button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="form-grid">
+        <div class="form-group">
+            <label>رقم فاتورة البيع الأصلية</label>
+            <input type="text" placeholder="ابحث برقم الفاتورة المطبوعة..." style="border-color: var(--primary-color);">
+        </div>
+        <div class="form-group">
+            <label>العميل</label>
+            <input type="text" value="" disabled class="disabled-input" placeholder="سيتم ملؤه تلقائياً">
+        </div>
+        <div class="form-group">
+            <label>تاريخ المرتجع</label>
+            <input type="date">
+        </div>
+        <div class="form-group">
+            <label>سبب المرتجع</label>
+            <select>
+                <option value="1">بضاعة تالفة / عيوب صناعة</option>
+                <option value="2">خطأ في التوريد / الطلب</option>
+                <option value="3">تسوية رصيد عميل</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="table-responsive" style="margin-top: 20px;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>الصنف</th>
+                    <th>الكمية المباعة</th>
+                    <th>كمية المرتجع</th>
+                    <th>سعر الوحدة (كما بيعت)</th>
+                    <th>الإجمالي المرتجع</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>كوب بلاستيك 200 مل</td>
+                    <td>50</td>
+                    <td><input type="number" value="5" min="1" max="50" style="width: 80px;"></td>
+                    <td>2.50 ج.م</td>
+                    <td class="text-danger">12.50 ج.م</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -17,8 +17,10 @@ router.get('/', asyncHandler(async (req, res) => {
     if (req.query.customer_id) { w += ' AND s.customer_id = @cid'; r.input('cid', sql.Int, req.query.customer_id); }
     if (req.query.type) { w += ' AND s.type = @tp'; r.input('tp', sql.NVarChar, req.query.type); }
     if (req.query.workflow_status) { w += ' AND s.workflow_status = @ws'; r.input('ws', sql.NVarChar, req.query.workflow_status); }
+    if (req.query.created_by) { w += ' AND s.created_by = @cby'; r.input('cby', sql.Int, req.query.created_by); }
     if (req.query.date_from) { w += ' AND s.settlement_date >= @df'; r.input('df', sql.NVarChar, req.query.date_from); }
     if (req.query.date_to) { w += ' AND s.settlement_date <= @dt'; r.input('dt', sql.NVarChar, req.query.date_to); }
+    if (req.query.reason) { w += ' AND s.reason LIKE @rsn'; r.input('rsn', sql.NVarChar, '%' + req.query.reason + '%'); }
     const { page, limit, offset } = parsePagination(req.query, { limit: 0, maxLimit: 200 });
     const sortWhitelist = ['settlement_date', 'settlement_no', 'type', 'amount', 'workflow_status'];
     let orderBy = 's.settlement_date';
@@ -30,9 +32,16 @@ router.get('/', asyncHandler(async (req, res) => {
         const c = await r.query(`SELECT COUNT(*) AS total FROM crm_settlements s LEFT JOIN customers c ON s.customer_id=c.id ${w}`);
         total = c.recordset[0].total;
     }
-    const q = `SELECT s.*, c.customer_name FROM crm_settlements s LEFT JOIN customers c ON s.customer_id=c.id ${w} ORDER BY ${orderBy} ${orderDir}${limit > 0 ? ` OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY` : ''}`;
+    const q = `SELECT s.*, c.customer_name, u.username AS created_by_name FROM crm_settlements s LEFT JOIN customers c ON s.customer_id=c.id LEFT JOIN users u ON s.created_by = u.id ${w} ORDER BY ${orderBy} ${orderDir}${limit > 0 ? ` OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY` : ''}`;
     const result = await r.query(q);
-    const resp = { success: true, data: result.recordset };
+    // Read-only report summary (debit / credit / net) computed over the same filters
+    const sumRes = await r.query(`
+        SELECT COUNT(*) AS total_count,
+               ISNULL(SUM(CASE WHEN s.type='debit' THEN s.amount ELSE 0 END),0) AS total_debit,
+               ISNULL(SUM(CASE WHEN s.type='credit' THEN s.amount ELSE 0 END),0) AS total_credit,
+               ISNULL(SUM(CASE WHEN s.type='debit' THEN s.amount ELSE -s.amount END),0) AS net
+        FROM crm_settlements s LEFT JOIN customers c ON s.customer_id=c.id ${w}`);
+    const resp = { success: true, data: result.recordset, summary: sumRes.recordset[0] };
     const pg = buildPaginationResponse(total, { page, limit });
     if (pg) resp.pagination = pg;
     res.json(resp);
@@ -49,6 +58,20 @@ router.get('/summary', asyncHandler(async (req, res) => {
         FROM crm_settlements WHERE deleted_at IS NULL
     `);
     res.json({ success: true, data: r.recordset[0] });
+}));
+
+// Distinct users who created settlements — for the report "المستخدم" filter.
+// Lives under the same 'customers' permission so report viewers can use it.
+router.get('/creators', asyncHandler(async (req, res) => {
+    const pool = await getPool();
+    const r = await pool.request().query(`
+        SELECT DISTINCT s.created_by AS id, u.username, u.full_name
+        FROM crm_settlements s
+        LEFT JOIN users u ON s.created_by = u.id
+        WHERE s.deleted_at IS NULL AND s.created_by IS NOT NULL
+        ORDER BY u.username
+    `);
+    res.json({ success: true, data: r.recordset });
 }));
 
 router.get('/:id', asyncHandler(async (req, res) => {

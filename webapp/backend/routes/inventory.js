@@ -14,6 +14,7 @@
 
 const router = require('express').Router();
 const { getPool, sql } = require('../database/mssql_db');
+const { postJournalEntryAsync, getSystemAccountAsync, reverseJournalEntryAsync } = require('../services/accountingEngine');
 const logActivity = require('../middleware/logger');
 const asyncHandler = require('../utils/asyncHandler');
 
@@ -357,6 +358,22 @@ router.post('/damaged', async (req, res) => {
             VALUES (@sm_dam_date, 'damaged', @sm_dam_docno, @sm_dam_sid, @sm_dam_pid, @sm_dam_qty, @sm_dam_cost, @sm_dam_bal, @sm_dam_refid, @sm_dam_notes)
         `);
 
+        // --- ACCOUNTING INTEGRATION: Damaged inventory ---
+        const damValue = Math.abs(quantity) * cost;
+        if (damValue > 0) {
+            const accDamaged = await getSystemAccountAsync(txRequest, 'SYS_DAMAGED_INVENTORY');
+            const accInv = await getSystemAccountAsync(txRequest, 'SYS_INVENTORY');
+            const damLines = [
+                { account_id: accDamaged, debit: damValue, credit: 0, description: `تالف مخزون ${docNo}` },
+                { account_id: accInv, debit: 0, credit: damValue, description: `صرف تالف من المخزون ${docNo}` }
+            ];
+            await postJournalEntryAsync(
+                txRequest, dDate, `تسجيل مخزون تالف ${docNo}`, damLines,
+                'inventory_damaged', id, req.user ? req.user.id : null,
+                { module: 'inventory', action: 'create_damaged', document: docNo, isSystem: true }
+            );
+        }
+
         await transaction.commit();
         logActivity(req, 'UPDATE', 'inventory', docNo, `تسجيل تالف - الصنف ${product_id}`, null, { store_id, product_id, quantity, reason, doc_no: docNo }, 'SUCCESS', null);
         res.status(201).json({ success: true, message: 'تم تسجيل التالف', id });
@@ -428,6 +445,35 @@ router.post('/adjust', async (req, res) => {
             INSERT INTO stock_movements (move_date, move_type, document_no, store_id, product_id, qty_in, qty_out, cost_price, balance_after, reference_id, notes)
             VALUES (@sm_adj_date, 'adjustment', @sm_adj_docno, @sm_adj_sid, @sm_adj_pid, @sm_adj_qtyIn, @sm_adj_qtyOut, @sm_adj_cost, @sm_adj_bal, @sm_adj_refid, @sm_adj_notes)
         `);
+
+        // --- ACCOUNTING INTEGRATION: Stock adjustment ---
+        const adjValue = Math.abs(quantity) * cost;
+        if (adjValue > 0) {
+            const accInv = await getSystemAccountAsync(txRequest, 'SYS_INVENTORY');
+            if (quantity > 0) {
+                const accSurplus = await getSystemAccountAsync(txRequest, 'SYS_INVENTORY_SURPLUS');
+                const adjLines = [
+                    { account_id: accInv, debit: adjValue, credit: 0, description: `زيادة مخزون ${adjNo}` },
+                    { account_id: accSurplus, debit: 0, credit: adjValue, description: `فائض مخزون ${adjNo}` }
+                ];
+                await postJournalEntryAsync(
+                    txRequest, aDate, `تسوية زيادة مخزون ${adjNo}`, adjLines,
+                    'inventory_adjust', id, req.user ? req.user.id : null,
+                    { module: 'inventory', action: 'create_adjustment', document: adjNo, isSystem: true }
+                );
+            } else {
+                const accShortage = await getSystemAccountAsync(txRequest, 'SYS_INVENTORY_SHORTAGE');
+                const adjLines = [
+                    { account_id: accShortage, debit: adjValue, credit: 0, description: `عجز مخزون ${adjNo}` },
+                    { account_id: accInv, debit: 0, credit: adjValue, description: `صرف عجز من المخزون ${adjNo}` }
+                ];
+                await postJournalEntryAsync(
+                    txRequest, aDate, `تسوية عجز مخزون ${adjNo}`, adjLines,
+                    'inventory_adjust', id, req.user ? req.user.id : null,
+                    { module: 'inventory', action: 'create_adjustment', document: adjNo, isSystem: true }
+                );
+            }
+        }
 
         await transaction.commit();
         logActivity(req, 'UPDATE', 'inventory', adjNo, `تعديل مخزون - الصنف ${product_id}`, null, { store_id, product_id, quantity, reason, adj_no: adjNo }, 'SUCCESS', null);
@@ -602,6 +648,12 @@ router.post('/count/:id/complete', async (req, res) => {
             logActivity(req, 'UPDATE', 'inventory', null, `الجرد رقم ${req.params.id} غير موجود`, null, null, 'FAILED', 'الجرد غير موجود');
             return res.status(404).json({ success: false, message: 'الجرد غير موجود' });
         }
+        if (count.status === 'completed') {
+            return res.status(400).json({ success: false, message: 'الجرد مقفل مسبقاً' });
+        }
+        if (count.status === 'cancelled') {
+            return res.status(400).json({ success: false, message: 'الجرد ملغى' });
+        }
 
         transaction = new sql.Transaction(pool);
         await transaction.begin();
@@ -636,6 +688,42 @@ router.post('/count/:id/complete', async (req, res) => {
                 INSERT INTO stock_movements (move_date, move_type, document_no, store_id, product_id, qty_in, qty_out, cost_price, balance_after, reference_id, notes)
                 VALUES (@sm_cnt_date_${i}, 'adjustment', @sm_cnt_docno_${i}, @sm_cnt_sid_${i}, @sm_cnt_pid_${i}, @sm_cnt_qtyIn_${i}, @sm_cnt_qtyOut_${i}, @sm_cnt_cost_${i}, @sm_cnt_bal_${i}, @sm_cnt_refid_${i}, N'فرق جرد')
             `);
+        }
+
+        // --- ACCOUNTING INTEGRATION: Count difference (ONE aggregate entry for the whole count) ---
+        const surplusRes = await txRequest.query(`
+            SELECT SUM((sci.counted_qty - sci.system_qty) * p.cost_price) AS surplus_value
+            FROM stock_count_items sci
+            JOIN products p ON p.id = sci.product_id
+            WHERE sci.count_id = @countIdTx AND (sci.counted_qty - sci.system_qty) > 0
+        `);
+        const shortageRes = await txRequest.query(`
+            SELECT SUM((sci.system_qty - sci.counted_qty) * p.cost_price) AS shortage_value
+            FROM stock_count_items sci
+            JOIN products p ON p.id = sci.product_id
+            WHERE sci.count_id = @countIdTx AND (sci.system_qty - sci.counted_qty) > 0
+        `);
+        const surplusValue = Math.round((parseFloat(surplusRes.recordset[0].surplus_value) || 0) * 100) / 100;
+        const shortageValue = Math.round((parseFloat(shortageRes.recordset[0].shortage_value) || 0) * 100) / 100;
+
+        if (surplusValue > 0 || shortageValue > 0) {
+            const accInv = await getSystemAccountAsync(txRequest, 'SYS_INVENTORY');
+            const cntLines = [];
+            if (surplusValue > 0) {
+                const accSurplus = await getSystemAccountAsync(txRequest, 'SYS_INVENTORY_SURPLUS');
+                cntLines.push({ account_id: accInv, debit: surplusValue, credit: 0, description: `فائض جرد ${count.count_no}` });
+                cntLines.push({ account_id: accSurplus, debit: 0, credit: surplusValue, description: `فائض جرد ${count.count_no}` });
+            }
+            if (shortageValue > 0) {
+                const accShortage = await getSystemAccountAsync(txRequest, 'SYS_INVENTORY_SHORTAGE');
+                cntLines.push({ account_id: accShortage, debit: shortageValue, credit: 0, description: `عجز جرد ${count.count_no}` });
+                cntLines.push({ account_id: accInv, debit: 0, credit: shortageValue, description: `عجز جرد ${count.count_no}` });
+            }
+            await postJournalEntryAsync(
+                txRequest, count.count_date, `فرق جرد ${count.count_no}`, cntLines,
+                'inventory_count', parseInt(req.params.id), req.user ? req.user.id : null,
+                { module: 'inventory', action: 'complete_count', document: count.count_no, isSystem: true }
+            );
         }
 
         await txRequest.query(`UPDATE stock_count SET status = 'completed' WHERE id = @countIdTx`);
@@ -704,12 +792,12 @@ router.put('/transfer/:id/cancel', async (req, res) => {
             // Reverse movement for Destination
             txReq.input(`rc_in_date_${i}`, sql.NVarChar, cDate);
             txReq.input(`rc_in_docno_${i}`, sql.NVarChar, transfer.transfer_no);
-            txRequest.input(`rc_in_sid_${i}`, sql.Int, transfer.to_store_id);
-            txRequest.input(`rc_in_pid_${i}`, sql.Int, item.product_id);
-            txRequest.input(`rc_in_qty_${i}`, sql.Decimal(18, 4), item.quantity);
-            txRequest.input(`rc_in_refid_${i}`, sql.Int, transfer.id);
-            txRequest.input(`rc_in_cost_${i}`, sql.Decimal(18, 2), cost);
-            txRequest.input(`rc_in_bal_${i}`, sql.Decimal(18, 4), balIn);
+            txReq.input(`rc_in_sid_${i}`, sql.Int, transfer.to_store_id);
+            txReq.input(`rc_in_pid_${i}`, sql.Int, item.product_id);
+            txReq.input(`rc_in_qty_${i}`, sql.Decimal(18, 4), item.quantity);
+            txReq.input(`rc_in_refid_${i}`, sql.Int, transfer.id);
+            txReq.input(`rc_in_cost_${i}`, sql.Decimal(18, 2), cost);
+            txReq.input(`rc_in_bal_${i}`, sql.Decimal(18, 4), balIn);
             await txReq.query(`
                 INSERT INTO stock_movements (move_date, move_type, document_no, store_id, product_id, qty_out, cost_price, balance_after, reference_id, notes)
                 VALUES (@rc_in_date_${i}, 'transfer_cancel', @rc_in_docno_${i}, @rc_in_sid_${i}, @rc_in_pid_${i}, @rc_in_qty_${i}, @rc_in_cost_${i}, @rc_in_bal_${i}, @rc_in_refid_${i}, N'إلغاء تحويل (مستلم)')
@@ -718,12 +806,12 @@ router.put('/transfer/:id/cancel', async (req, res) => {
             // Reverse movement for Source
             txReq.input(`rc_out_date_${i}`, sql.NVarChar, cDate);
             txReq.input(`rc_out_docno_${i}`, sql.NVarChar, transfer.transfer_no);
-            txRequest.input(`rc_out_sid_${i}`, sql.Int, transfer.from_store_id);
-            txRequest.input(`rc_out_pid_${i}`, sql.Int, item.product_id);
-            txRequest.input(`rc_out_qty_${i}`, sql.Decimal(18, 4), item.quantity);
-            txRequest.input(`rc_out_refid_${i}`, sql.Int, transfer.id);
-            txRequest.input(`rc_out_cost_${i}`, sql.Decimal(18, 2), cost);
-            txRequest.input(`rc_out_bal_${i}`, sql.Decimal(18, 4), balOut);
+            txReq.input(`rc_out_sid_${i}`, sql.Int, transfer.from_store_id);
+            txReq.input(`rc_out_pid_${i}`, sql.Int, item.product_id);
+            txReq.input(`rc_out_qty_${i}`, sql.Decimal(18, 4), item.quantity);
+            txReq.input(`rc_out_refid_${i}`, sql.Int, transfer.id);
+            txReq.input(`rc_out_cost_${i}`, sql.Decimal(18, 2), cost);
+            txReq.input(`rc_out_bal_${i}`, sql.Decimal(18, 4), balOut);
             await txReq.query(`
                 INSERT INTO stock_movements (move_date, move_type, document_no, store_id, product_id, qty_in, cost_price, balance_after, reference_id, notes)
                 VALUES (@rc_out_date_${i}, 'transfer_cancel', @rc_out_docno_${i}, @rc_out_sid_${i}, @rc_out_pid_${i}, @rc_out_qty_${i}, @rc_out_cost_${i}, @rc_out_bal_${i}, @rc_out_refid_${i}, N'إلغاء تحويل (مرسل)')
@@ -774,6 +862,19 @@ router.put('/damaged/:id/cancel', async (req, res) => {
             VALUES (@rd_date, 'damaged_cancel', @rd_docno, @rd_sid, @cd_pid, @rd_qty, @rd_cost, @rd_bal, @rd_refid, N'إلغاء تالف')
         `);
 
+        // Reverse GL entry posted at creation (idempotent)
+        txReq.input('je_dam_no', sql.NVarChar, damaged.doc_no);
+        const jeResDam = await txReq.query(`
+            SELECT id FROM journal_entries
+            WHERE source_document = @je_dam_no
+              AND (is_reversed IS NULL OR is_reversed = 0)
+              AND (reversal_of_id IS NULL)
+              AND (source_action IS NULL OR source_action NOT LIKE '%_cancel')
+        `);
+        for (const je of jeResDam.recordset) {
+            await reverseJournalEntryAsync(txReq, je.id, `إلغاء تالف مخزون ${damaged.doc_no}`, req.user ? req.user.id : null);
+        }
+
         await txReq.input('x_id', sql.Int, req.params.id).query(`UPDATE damaged_stock SET status = 'cancelled' WHERE id = @x_id`);
         await transaction.commit();
         res.json({ success: true, message: 'تم إلغاء التالف واسترجاع المخزون' });
@@ -822,6 +923,19 @@ router.put('/adjust/:id/cancel', async (req, res) => {
             VALUES (@ra_date, 'adjustment_cancel', @ra_docno, @ra_sid, @ca_pid, @ra_qin, @ra_qout, @ra_cost, @ra_bal, @ra_refid, N'إلغاء تسوية')
         `);
 
+        // Reverse GL entry posted at creation (idempotent)
+        txReq.input('je_adj_no', sql.NVarChar, adjust.adj_no);
+        const jeResAdj = await txReq.query(`
+            SELECT id FROM journal_entries
+            WHERE source_document = @je_adj_no
+              AND (is_reversed IS NULL OR is_reversed = 0)
+              AND (reversal_of_id IS NULL)
+              AND (source_action IS NULL OR source_action NOT LIKE '%_cancel')
+        `);
+        for (const je of jeResAdj.recordset) {
+            await reverseJournalEntryAsync(txReq, je.id, `إلغاء تسوية مخزون ${adjust.adj_no}`, req.user ? req.user.id : null);
+        }
+
         await txReq.input('x_id', sql.Int, req.params.id).query(`UPDATE stock_adjustments SET status = 'cancelled' WHERE id = @x_id`);
         await transaction.commit();
         res.json({ success: true, message: 'تم إلغاء التسوية واسترجاع المخزون' });
@@ -864,17 +978,30 @@ router.put('/count/:id/cancel', async (req, res) => {
 
             txReq.input(`rc_date_${i}`, sql.NVarChar, cDate);
             txReq.input(`rc_docno_${i}`, sql.NVarChar, count.count_no);
-            txRequest.input(`rc_sid_${i}`, sql.Int, count.store_id);
-            txRequest.input(`rc_qin_${i}`, sql.Decimal(18, 4), qtyIn);
-            txRequest.input(`rc_qout_${i}`, sql.Decimal(18, 4), qtyOut);
-            txRequest.input(`rc_refid_${i}`, sql.Int, count.id);
-            txRequest.input(`rc_cost_${i}`, sql.Decimal(18, 2), cost);
-            txRequest.input(`rc_bal_${i}`, sql.Decimal(18, 4), balAfter);
+            txReq.input(`rc_sid_${i}`, sql.Int, count.store_id);
+            txReq.input(`rc_qin_${i}`, sql.Decimal(18, 4), qtyIn);
+            txReq.input(`rc_qout_${i}`, sql.Decimal(18, 4), qtyOut);
+            txReq.input(`rc_refid_${i}`, sql.Int, count.id);
+            txReq.input(`rc_cost_${i}`, sql.Decimal(18, 2), cost);
+            txReq.input(`rc_bal_${i}`, sql.Decimal(18, 4), balAfter);
 
             await txReq.query(`
                 INSERT INTO stock_movements (move_date, move_type, document_no, store_id, product_id, qty_in, qty_out, cost_price, balance_after, reference_id, notes)
                 VALUES (@rc_date_${i}, 'adjustment_cancel', @rc_docno_${i}, @rc_sid_${i}, @cc_pid_${i}, @rc_qin_${i}, @rc_qout_${i}, @rc_cost_${i}, @rc_bal_${i}, @rc_refid_${i}, N'إلغاء فرق جرد')
             `);
+        }
+
+        // Reverse GL entries posted at count completion (idempotent)
+        txReq.input('je_cnt_no', sql.NVarChar, count.count_no);
+        const jeResCnt = await txReq.query(`
+            SELECT id FROM journal_entries
+            WHERE source_document = @je_cnt_no
+              AND (is_reversed IS NULL OR is_reversed = 0)
+              AND (reversal_of_id IS NULL)
+              AND (source_action IS NULL OR source_action NOT LIKE '%_cancel')
+        `);
+        for (const je of jeResCnt.recordset) {
+            await reverseJournalEntryAsync(txReq, je.id, `إلغاء جرد ${count.count_no}`, req.user ? req.user.id : null);
         }
 
         await txReq.input('x_id', sql.Int, req.params.id).query(`UPDATE stock_count SET status = 'cancelled' WHERE id = @x_id`);

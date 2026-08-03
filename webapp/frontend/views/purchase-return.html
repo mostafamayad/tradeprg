@@ -1,0 +1,60 @@
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 class="page-title">مرتجع المشتريات</h1>
+        <p class="page-subtitle">رد بضاعة للمورد وتسوية حسابه الدائن وتخفيض رصيد المخزن</p>
+    </div>
+    <div>
+        <button class="btn btn-outline text-danger"><i class="fa-solid fa-ban"></i> إلغاء العملية</button>
+        <button class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> ترحيل المرتجع</button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="form-grid">
+        <div class="form-group">
+            <label>رقم فاتورة الشراء الأصلية</label>
+            <input type="text" placeholder="اكتب رقم الفاتورة..." style="border-color: var(--primary-color);">
+        </div>
+        <div class="form-group">
+            <label>المورد</label>
+            <input type="text" value="مصنع النور للبلاستيك" disabled class="disabled-input">
+        </div>
+        <div class="form-group">
+            <label>المخزن (المسحوب منه)</label>
+            <input type="text" value="المخزن الرئيسي" disabled class="disabled-input">
+        </div>
+        <div class="form-group">
+            <label>سبب الرد</label>
+            <select>
+                <option value="1">عدم مطابقة المواصفات</option>
+                <option value="2">بضاعة تالفة / مكسورة</option>
+                <option value="3">كمية زائدة عن الطلب</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="table-responsive" style="margin-top: 20px;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>الصنف</th>
+                    <th>السيريال (اختياري)</th>
+                    <th>الكمية المستلمة مسبقاً</th>
+                    <th>الكمية المرتجعة</th>
+                    <th>سعر الوحدة</th>
+                    <th>إجمالي قيمة المرتجع</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>كوب بلاستيك 200 مل</td>
+                    <td><input type="text" placeholder="S/N..." style="width: 100px;"></td>
+                    <td>1000</td>
+                    <td><input type="number" value="10" min="1" max="1000" style="width: 80px;"></td>
+                    <td>1.50 ج.م</td>
+                    <td class="text-danger">15.00 ج.م</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

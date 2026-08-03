@@ -5,6 +5,8 @@ const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
 const logActivity = require('../middleware/logger');
+const { encrypt } = require('../utils/encryption');
+const { getPool, sql } = require('../database/mssql_db');
 const router = express.Router();
 
 const RATE_LIMIT_FILE = path.join(__dirname, '..', 'storage', '.rate_limit_store');
@@ -112,6 +114,23 @@ router.post('/activate', rateLimitActivation, async (req, res) => {
         }
         const result = await req.app.licenseManager.activate(buf);
         if (result.success) {
+            const info = result.info || {};
+            const licenseStr = req.body.license;
+            const hwFp = typeof req.app.licenseManager.getHardwareFingerprint === 'function' ? req.app.licenseManager.getHardwareFingerprint() : null;
+            try {
+                const pool = await getPool();
+                const existing = await pool.request().query("SELECT COUNT(*) AS cnt FROM system_info");
+                if (existing.recordset[0].cnt > 0) {
+                    await pool.request()
+                        .input('encrypted_license', sql.NVarChar(sql.MAX), encrypt(licenseStr))
+                        .input('machine_fingerprint_hash', sql.NVarChar(128), hwFp ? require('crypto').createHash('sha256').update(hwFp).digest('hex') : null)
+                        .input('edition', sql.NVarChar(50), info.edition || result.edition)
+                        .input('max_users', sql.Int, info.enabledModules ? (info.edition === 'enterprise' ? 100 : info.edition === 'professional' ? 25 : 10) : 10)
+                        .query("UPDATE system_info SET license_code = @edition, encrypted_license = @encrypted_license, machine_fingerprint_hash = @machine_fingerprint_hash, updated_at = GETDATE()");
+                }
+            } catch (dbErr) {
+                console.error('[License] Failed to save to system_info:', dbErr.message);
+            }
             logActivity(req, 'ACTIVATE', 'license', null, 'License activated: ' + result.state, null, { state: result.state, edition: result.edition }, 'SUCCESS', null);
             res.json({ success: true, data: { state: result.state, edition: result.edition } });
         } else {

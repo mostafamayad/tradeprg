@@ -817,8 +817,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     prodSearchTimer = setTimeout(async () => {
                         const q = prodSearchInput.value.trim();
                         try {
-                            const res = await fetch('/api/products' + (q ? '?q=' + encodeURIComponent(q) : ''));
-                            const data = await res.json();
+                            const data = await window.API.request('/products' + (q ? '?q=' + q : ''));
                             if (data.success) renderProductsTable(data.data);
                         } catch(e) { console.error(e); }
                     }, 300);
@@ -1084,6 +1083,95 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // ============================================================
+    // 2b. MOBILE SUBMENU ACCORDION (MOBILE ONLY)
+    // ============================================================
+    const sidebarNav = document.getElementById('sidebar-nav');
+
+    function buildMobileSubmenus() {
+        if (!sidebarNav) return;
+        const isMobile = window.innerWidth <= 768;
+
+        // Teardown any previously built accordion
+        sidebarNav.querySelectorAll('.sidebar-submenu').forEach(p => p.remove());
+        sidebarNav.querySelectorAll('.nav-item.has-submenu').forEach(item => {
+            const arrow = item.querySelector('.submenu-arrow');
+            if (arrow) arrow.remove();
+            item.classList.remove('submenu-open');
+        });
+        if (!isMobile) return;
+
+        document.querySelectorAll('.nav-item.has-submenu').forEach(item => {
+            const menuId = item.getAttribute('data-menu');
+            const popup = document.getElementById(menuId);
+            if (!popup) return;
+
+            if (!item.querySelector('.submenu-arrow')) {
+                const arrow = document.createElement('span');
+                arrow.className = 'submenu-arrow';
+                arrow.textContent = '▶';
+                item.appendChild(arrow);
+            }
+
+            const panel = document.createElement('div');
+            panel.className = 'sidebar-submenu';
+            panel.dataset.menuPanel = menuId;
+            popup.querySelectorAll('.popup-item[data-target]').forEach(link => {
+                const clone = link.cloneNode(true);
+                clone.classList.remove('active');
+                panel.appendChild(clone);
+            });
+            item.insertAdjacentElement('afterend', panel);
+        });
+    }
+
+    if (sidebarNav) {
+        sidebarNav.addEventListener('click', (e) => {
+            if (window.innerWidth > 768) return;
+
+            const hasSub = e.target.closest('.nav-item.has-submenu');
+            if (hasSub) {
+                e.preventDefault();
+                const panel = sidebarNav.querySelector('.sidebar-submenu[data-menu-panel="' + hasSub.getAttribute('data-menu') + '"]');
+                if (!panel) return;
+                const wasOpen = panel.classList.contains('open');
+                // Accordion: close all other panels
+                sidebarNav.querySelectorAll('.sidebar-submenu.open').forEach(p => {
+                    p.classList.remove('open');
+                    p.style.maxHeight = '0';
+                });
+                sidebarNav.querySelectorAll('.nav-item.has-submenu.submenu-open').forEach(i => i.classList.remove('submenu-open'));
+                if (!wasOpen) {
+                    panel.classList.add('open');
+                    const h = panel.scrollHeight || 800;
+                    panel.style.maxHeight = h + 'px';
+                    hasSub.classList.add('submenu-open');
+                }
+                return;
+            }
+
+            const subItem = e.target.closest('.sidebar-submenu .popup-item[data-target]');
+            if (subItem) {
+                e.preventDefault();
+                const target = subItem.getAttribute('data-target');
+                // Close the whole sidebar on mobile
+                if (sidebar) sidebar.classList.remove('open');
+                const bd = document.querySelector('.sidebar-backdrop');
+                if (bd) bd.classList.remove('active');
+                document.body.style.overflow = '';
+                if (typeof window.showView === 'function') window.showView(target);
+                else if (typeof window.navigateTo === 'function') window.navigateTo(target);
+            }
+        });
+
+        buildMobileSubmenus();
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(buildMobileSubmenus, 150);
+        });
+    }
+
     const navItems = document.querySelectorAll('.nav-item[data-target]');
     const breadcrumb = document.getElementById('breadcrumb');
     openActiveGroup();
@@ -1120,9 +1208,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 targetView.classList.add('active-view');
                 
                 // Trigger loaders if they exist
-                if (targetId === 'dashboard' && typeof window.loadDashboard === 'function') {
-                    window.loadDashboard();
-                }
+
                 if (targetId === 'collections' && typeof window.loadCollections === 'function') {
                     window.loadCollections();
                 }
@@ -1518,7 +1604,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             window.API.getCustomerStatement(custId, fromDate, toDate, invType).then(res => {
                 // api.js يرجع {success, data} حيث data فيها customer, rows, ...
-                const payload = res.data || res;
+                const payload = res.data || { customer: null, rows: [] };
                 const customer = payload.customer;
                 const lines = payload.rows || payload.lines || [];
                 const custName = customer ? customer.customer_name : "عميل غير معروف";
@@ -1766,7 +1852,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle all generic Add buttons (e.g. New Customer, New Supplier)
     document.querySelectorAll('.btn-primary').forEach(btn => {
-        if (!btn.dataset.action && btn.id !== 'btn-save-invoice' && btn.id !== 'btn-add-row' && btn.id !== 'btn-add-prow' && btn.id !== 'btn-modal-save' && btn.id !== 'btn-add-user' && btn.id !== 'btn-add-product' && btn.id !== 'stab-btn-add-rep' && btn.id !== 'stab-btn-add-user' && btn.id !== 'btn-new-transfer' && btn.id !== 'btn-new-disposal') {
+        if (!btn.dataset.action && btn.id !== 'btn-save-invoice' && btn.id !== 'btn-add-row' && btn.id !== 'btn-add-prow' && btn.id !== 'btn-modal-save' && btn.id !== 'btn-add-user' && btn.id !== 'btn-add-product' && btn.id !== 'stab-btn-add-rep' && btn.id !== 'btn-new-transfer' && btn.id !== 'btn-new-disposal') {
             btn.addEventListener('click', (e) => {
                 const btnText = btn.textContent.trim();
                 
@@ -1842,35 +1928,26 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-// ---- Collections Logic ----
+// ---- Collections Report Logic ----
+// Delegates to the report handler in viewFinance.js (professional report-only screen).
 window.loadCollections = async function() {
+    try {
+        const handler = window.viewHandlers && window.viewHandlers['view-collections'];
+        if (typeof handler === 'function') { await handler(); return; }
+    } catch (e) {
+        console.error(e);
+        try { console.error(e); } catch (e2) {}
+        const tbody = document.getElementById('collections-tbody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:30px;color:var(--text-muted)">خطأ في تحميل التقرير</td></tr>';
+        return;
+    }
+    // Fallback (legacy) in case the report handler is not available
     try {
         const res = await window.API.getCollections();
         const tbody = document.getElementById('collections-tbody');
         if (!tbody) return;
-        tbody.innerHTML = '';
-        let total = 0;
-        res.data.forEach(c => {
-            total += parseFloat(c.amount);
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td></td>
-                <td></td>
-                <td></td>
-                <td style='color:var(--primary-color);font-weight:bold'> ج.م</td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
-            `;
-            tbody.appendChild(tr);
-        });
-        if (res.data.length === 0) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center">أ¯طںآ½أ¯طںآ½ أ¯طںآ½أ¯طںآ½أ¯طںآ½أ¯طںآ½ أ¯طںآ½أ¯طںآ½أ¯طںآ½أ¯طںآ½أ¯طںآ½أ¯طںآ½أ¯طںآ½</td></tr>';
-        
-        const countElem = document.getElementById('collections-count');
-        const totalElem = document.getElementById('collections-month-total');
-        if (countElem) countElem.textContent = res.data.length;
-        if (totalElem) totalElem.innerHTML =formatMoney(total) + ' ج.م';
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:30px;color:var(--text-muted)">لا توجد تحصيلات</td></tr>';
+        if (res.data.length > 0) tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:30px;color:var(--text-muted)">' + res.data.length + ' سند</td></tr>';
     } catch (e) {
         console.error(e);
     }
@@ -2995,8 +3072,19 @@ window.initSalesReturn = async function(invoiceNo) {
     }
 };
 
-// ---- Supplier Payments Logic ----
+// ---- Supplier Payments Report Logic ----
+// Delegates to the report handler in viewSupplierFinance.js (analytical report-only screen).
 window.loadSupplierPayments = async function() {
+    try {
+        const handler = window.viewHandlers && window.viewHandlers['view-supplier-payments'];
+        if (typeof handler === 'function') { await handler(); return; }
+    } catch (e) {
+        console.error(e);
+        const tbody = document.getElementById('payments-tbody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:30px;color:var(--text-muted)">خطأ في تحميل التقرير</td></tr>';
+        return;
+    }
+    // Fallback (legacy) in case the report handler is not available
     const selSup = document.getElementById('spay-supplier');
     const pDate = document.getElementById('spay-date');
     const btnSave = document.getElementById('btn-save-spay');
@@ -3640,18 +3728,29 @@ window.initPurchaseInvoice = function() {
     }
     
     function calcPTotals() {
-        let grandTotal = 0;
+        let subtotal = 0;
         tbody.querySelectorAll('tr').forEach((tr, idx) => {
             tr.firstElementChild.textContent = idx + 1;
             const qty = parseFloat(tr.querySelector('.pitem-qty').value) || 0;
             const cost = parseFloat(tr.querySelector('.pitem-cost').value) || 0;
             const lineTotal = qty * cost;
             tr.querySelector('.pitem-total').value = lineTotal.toFixed(2);
-            grandTotal += lineTotal;
+            subtotal += lineTotal;
         });
-        
-        document.getElementById('p-grand-total').innerHTML =formatMoney(grandTotal) + ' ج.م';
-        
+
+        // Global discount
+        const globalDiscEl = document.getElementById('p-global-discount');
+        const globalDisc = parseFloat(globalDiscEl?.value) || 0;
+        const discountAmt = subtotal * (globalDisc / 100);
+        const grandTotal = subtotal - discountAmt;
+
+        // Update display
+        const pSubtotalEl = document.getElementById('p-subtotal');
+        if (pSubtotalEl) pSubtotalEl.innerHTML = formatMoney(subtotal) + ' ج.م';
+        const pDiscAmtEl = document.getElementById('p-discount-amount');
+        if (pDiscAmtEl) pDiscAmtEl.textContent = formatMoney(discountAmt) + ' ج.م';
+        document.getElementById('p-grand-total').innerHTML = formatMoney(grandTotal) + ' ج.م';
+
         let paid = parseFloat(pAmountPaid.value) || 0;
         if (pPayment.value === 'cash') {
             paid = grandTotal;
@@ -3660,9 +3759,9 @@ window.initPurchaseInvoice = function() {
         } else {
             pAmountPaid.disabled = false;
         }
-        
+
         const rem = grandTotal - paid;
-        document.getElementById('p-remaining').innerHTML =formatMoney(rem) + ' ج.م';
+        document.getElementById('p-remaining').innerHTML = formatMoney(rem) + ' ج.م';
     }
     
     function addPRow() {
@@ -3704,6 +3803,9 @@ window.initPurchaseInvoice = function() {
     btnAddRow.onclick = addPRow;
     pPayment.addEventListener('change', calcPTotals);
     pAmountPaid.addEventListener('input', calcPTotals);
+    // Wire global discount input
+    const pGlobalDiscount = document.getElementById('p-global-discount');
+    if (pGlobalDiscount) pGlobalDiscount.addEventListener('input', calcPTotals);
     
     if (tbody.children.length === 0) addPRow();
     
@@ -3728,12 +3830,17 @@ window.initPurchaseInvoice = function() {
         if (!valid) { alert('يوجد أصناف غير صحيحة أو غير مسجلة'); return; }
         if (items.length === 0) { alert('الفاتورة فارغة'); return; }
         
+        const pGlobalDiscVal = parseFloat(document.getElementById('p-global-discount')?.value) || 0;
+        let pSubtotalVal = 0;
+        items.forEach(it => { pSubtotalVal += it.quantity * it.cost_price; });
+        const pDiscAmountVal = pSubtotalVal * (pGlobalDiscVal / 100);
         const data = {
             supplier_id,
             invoice_date: pDate.value,
             supplier_invoice_no: document.getElementById('pinv-supplier-doc').value,
             store_id: document.getElementById('pinv-store').value,
             payment_type: pPayment.value,
+            discount_amount: pDiscAmountVal,
             amount_paid: parseFloat(pAmountPaid.value) || 0,
             items
         };
@@ -6155,143 +6262,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// ---- Dashboard Logic ----
-let salesChartInstance = null;
 
-window.loadDashboard = async function() {
-    try {
-        const statsRes = await window.API.request('/dashboard/stats');
-        if (statsRes && statsRes.data) {
-            const stats = statsRes.data;
-            document.getElementById('dash-sales-today').innerHTML =formatMoney(stats.sales_today || 0) + ' ج.م';
-            document.getElementById('dash-purchases-today').innerHTML =formatMoney(stats.purchases_today || 0) + ' ج.م';
-            document.getElementById('dash-total-customers').textContent = stats.total_customers || 0;
-            document.getElementById('dash-treasury').innerHTML =formatMoney(stats.treasury_balance || 0) + ' ج.م';
-            
-            if (document.getElementById('dash-sales-month')) document.getElementById('dash-sales-month').innerHTML = 'مبيعات الشهر: ' +formatMoney(stats.sales_month || 0) + ' ج.م';
-            if (document.getElementById('dash-purchases-month')) document.getElementById('dash-purchases-month').innerHTML = 'مشتريات الشهر: ' +formatMoney(stats.purchases_month || 0) + ' ج.م';
-            if (document.getElementById('dash-total-receivable')) document.getElementById('dash-total-receivable').innerHTML = 'إجمالي المديونيات: ' +formatMoney(stats.total_receivable || 0) + ' ج.م';
-            if (document.getElementById('dash-collections-today')) document.getElementById('dash-collections-today').innerHTML = 'تحصيلات اليوم: ' +formatMoney(stats.collections_today || 0) + ' ج.م';
-        }
-
-        const recentRes = await window.API.request('/dashboard/recent');
-        if (recentRes && recentRes.data) {
-            const recent = recentRes.data;
-            const dashInvoices = document.getElementById('dash-recent-invoices');
-            if (dashInvoices) {
-                dashInvoices.innerHTML = '';
-                recent.invoices.slice(0,5).forEach(inv => {
-                    const statusClass = inv.status === 'paid' ? 'background:#ecfdf5;color:#10b981;' : 
-                                      (inv.status === 'partial' ? 'background:#eff6ff;color:#3b82f6;' : 'background:#fffbeb;color:#f59e0b;');
-                    const statusText = inv.status === 'paid' ? 'مسدد' : (inv.status === 'partial' ? 'جزئي' : 'آجل');
-                    const badge = `<span style="padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; ${statusClass}">${statusText}</span>`;
-                    
-                    const dt = inv.invoice_date ? inv.invoice_date.split('T')[0] : '';
-                    
-                    dashInvoices.innerHTML += `<tr style="border-bottom: 1px solid #f8fafc;">
-                        <td style="padding: 12px 0; font-weight: 600; color:#1e293b;">${inv.invoice_no}</td>
-                        <td style="padding: 12px 0; color:#475569;">${inv.customer_name || 'غير مسجل'}</td>
-                        <td style="padding: 12px 0; font-weight: 700; color:#1e293b;">${formatMoney(inv.grand_total)} ج.م</td>
-                        <td style="padding: 12px 0; text-align:center;">${badge}</td>
-                        <td style="padding: 12px 0; color:#64748b; font-size:0.85rem;">${dt}</td>
-                        <td style="padding: 12px 0; text-align:left; color:#cbd5e1;"><i class="fa-regular fa-file-lines"></i></td>
-                    </tr>`;
-                });
-                if(recent.invoices.length === 0) dashInvoices.innerHTML = '<tr><td colspan="6" class="text-center" style="padding:20px;color:#888;">لا توجد فواتير</td></tr>';
-            }
-        }
-
-        const topRes = await window.API.request('/dashboard/top');
-        if (topRes && topRes.data) {
-            const topCustomers = document.getElementById('dash-top-customers');
-            if (topCustomers) {
-                topCustomers.innerHTML = '';
-                topRes.data.customers.forEach((c, idx) => {
-                    const badgeColor = idx === 0 ? '#fbbf24' : (idx === 1 ? '#94a3b8' : '#f87171');
-                    topCustomers.innerHTML += `<li style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f1f5f9;">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <span style="font-size:1.1rem; color:${badgeColor}"><i class="fa-solid fa-medal"></i></span>
-                            <span style="font-weight:600; color:#1e293b; font-size:0.9rem;">${c.customer_name}</span>
-                        </div>
-                        <strong style="color:#64748b; font-size:0.85rem;">${formatMoney(c.total_sales)} ج.م</strong>
-                    </li>`;
-                });
-            }
-
-            const topProducts = document.getElementById('dash-top-products');
-            if (topProducts) {
-                topProducts.innerHTML = '';
-                topRes.data.products.forEach(p => {
-                    topProducts.innerHTML += `<li style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f1f5f9;">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <span style="color:#3b82f6; background:#eff6ff; padding:5px; border-radius:6px;"><i class="fa-solid fa-box"></i></span>
-                            <span style="font-weight:600; color:#1e293b; font-size:0.9rem;">${p.product_name}</span>
-                        </div>
-                        <span style="color:#64748b; font-size:0.85rem; font-weight:600;">${p.total_qty} وحدة</span>
-                    </li>`;
-                });
-            }
-        }
-
-        // Render Chart
-        const chartRes = await window.API.request('/dashboard/chart/sales?days=7');
-        if (chartRes && chartRes.data) {
-            const ctx = document.getElementById('salesChart');
-            if (ctx && window.Chart) {
-                if (salesChartInstance) salesChartInstance.destroy();
-                
-                let totalSales = 0;
-                const labels = chartRes.data.map(d => {
-                    totalSales += parseFloat(d.total);
-                    const dt = new Date(d.date);
-                    return dt.getDate() + ' ' + dt.toLocaleString('ar-EG', {month:'short'});
-                });
-                const data = chartRes.data.map(d => parseFloat(d.total));
-                
-                document.getElementById('chart-total-sales').innerHTML =formatMoney(totalSales) + ' ج.م';
-                document.getElementById('chart-avg-sales').innerHTML = formatMoney(totalSales / (chartRes.data.length || 1)) + ' ج.م';
-
-                salesChartInstance = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'المبيعات',
-                            data: data,
-                            borderColor: '#8b5cf6',
-                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                            borderWidth: 3,
-                            fill: true,
-                            tension: 0.4,
-                            pointBackgroundColor: '#fff',
-                            pointBorderColor: '#8b5cf6',
-                            pointBorderWidth: 2,
-                            pointRadius: 4,
-                            pointHoverRadius: 6
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false }
-                        },
-                        scales: {
-                            y: { beginAtZero: true, grid: { borderDash: [5, 5] }, ticks: { font: { family: 'Cairo' } } },
-                            x: { grid: { display: false }, ticks: { font: { family: 'Cairo' } } }
-                        }
-                    }
-                });
-            }
-        }
-
-    } catch (e) {
-        console.error("Dashboard Load Error", e);
-    }
-};
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => { if (typeof window.loadDashboard === 'function') window.loadDashboard(); }, 600);
-});
 
 
 
@@ -6767,6 +6738,7 @@ function getActiveUser() {
 
 function isAdminUser(user) {
     if (!user) return false;
+    if (user.is_super_admin) return true;
     if (user.role === 'admin') return true;
     const perms = user.permissions || [];
     return perms.includes('*');
@@ -6775,6 +6747,7 @@ function isAdminUser(user) {
 function hasPerm(permId) {
     const user = getActiveUser();
     if (!user) return false;
+    if (user.is_super_admin) return true;
     if (user.role === 'admin') return true;
     const perms = user.permissions || [];
     return perms.includes('*') || perms.includes(permId);
@@ -6876,7 +6849,7 @@ window.handleLogin = async function() {
         
         if (currentUser) {
             const name = currentUser.full_name || currentUser.name || currentUser.username || currentUser.email;
-            const role = currentUser.role === 'admin' ? 'مدير النظام' : 'مستخدم';
+            const role = currentUser.display_roles || (currentUser.is_super_admin ? 'مدير النظام' : (currentUser.role === 'admin' ? 'مدير النظام' : 'مستخدم'));
             const nameEl = document.getElementById('header-user-name');
             const roleEl = document.getElementById('header-user-role');
             const nameDd = document.getElementById('header-user-name-dd');
@@ -6897,7 +6870,7 @@ window.handleLogin = async function() {
         // Check license state after login
         try {
             const licRes = await window.API.getLicenseStatus();
-            const licData = licRes.data || licRes;
+            const licData = licRes && typeof licRes.data === 'object' ? licRes.data : {};
             if (licData.state === 'UNACTIVATED' || licData.state === 'EXPIRED' || licData.state === 'INVALID' || licData.state === 'TAMPERED') {
                 showLicenseActivation(licData);
                 return;
@@ -6978,7 +6951,7 @@ window.checkAuth = async function() {
         // Update header profile
         if (currentUser) {
             const name = currentUser.full_name || currentUser.name || currentUser.username || currentUser.email;
-            const role = currentUser.role === 'admin' ? 'مدير النظام' : 'مستخدم';
+            const role = currentUser.display_roles || (currentUser.is_super_admin ? 'مدير النظام' : (currentUser.role === 'admin' ? 'مدير النظام' : 'مستخدم'));
             const nameEl = document.getElementById('header-user-name');
             const roleEl = document.getElementById('header-user-role');
             const nameDd = document.getElementById('header-user-name-dd');
@@ -6999,7 +6972,7 @@ window.checkAuth = async function() {
         // Check license state
         try {
             const licRes = await window.API.getLicenseStatus();
-            const licData = licRes.data || licRes;
+            const licData = licRes && typeof licRes.data === 'object' ? licRes.data : {};
             if (licData.state === 'UNACTIVATED' || licData.state === 'EXPIRED' || licData.state === 'INVALID' || licData.state === 'TAMPERED') {
                 showLicenseActivation(licData);
                 return;
@@ -7020,231 +6993,127 @@ window.checkAuth = async function() {
     }
 };
 
+const USER_PERMS = ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.reset_password', 'users.assign_roles', 'users.assign_permissions'];
+
+const NAV_PERM_MAP = {
+    'dashboard': 'dashboard',
+    'executive-dashboard': 'dashboard',
+    'cash-flow': 'reports',
+    'aging': 'reports',
+    'inventory-analytics': 'inventory',
+    'profitability': 'reports',
+    'sales-invoices': 'sales',
+    'sales-invoice': 'sales',
+    'sales-return': 'sales_returns',
+    'sales-returns': 'sales_returns',
+    'sales-credit': 'sales_returns',
+    'customers': 'customers',
+    'customer-payments': 'collections',
+    'ar-payment': 'collections',
+    'purchase-invoices': 'purchases',
+    'purchase-invoice': 'purchases',
+    'purchase-return': 'purchase_returns',
+    'purchase-returns': 'purchase_returns',
+    'suppliers-list': 'suppliers',
+    'supplier-payments': 'payments',
+    'products': 'products',
+    'stores-management': 'stores',
+    'inventory-list': 'inventory',
+    'inventory-transfers': 'inventory',
+    'inventory-damaged': 'inventory',
+    'stock-count': 'inventory',
+    'stock-adjust': 'inventory',
+    'treasury': 'treasury',
+    'accounting': 'accounting',
+    'chart-of-accounts': 'accounts',
+    'fiscal-periods': 'fiscal_periods',
+    'settings': 'settings',
+    'license': 'settings',
+    'new-year': 'fiscal_periods',
+    'activity-logs': 'logs',
+    'view-users': 'users',
+    'reps': 'reps',
+    'hr': 'hr',
+    'payroll': 'hr',
+    'commissions': 'commission',
+    'commission-plans': 'commission',
+    'reports-sales': 'reports',
+    'reports-purchases': 'reports',
+    'reports-inventory': 'reports',
+    'reports-profit': 'reports',
+    'reports-customers': 'reports',
+    'reports-suppliers': 'reports',
+    'crm-workplan': 'customers',
+    'crm-targets': 'customers',
+    'crm-settlements': 'customers',
+    'crm-settlements-report': 'customers',
+    'fixed-assets': 'accounting'
+};
+
+function hasNavAccess(target, perms) {
+    if (perms.includes('*')) return true;
+    if (perms.includes(target)) return true;
+    const module = NAV_PERM_MAP[target];
+    if (module && perms.some(p => p === module || p.startsWith(module + '.'))) return true;
+    return false;
+}
+
 function applyPermissions() {
     const user = getActiveUser();
     if (!user) return;
     const perms = user.permissions || [];
-    const isAdmin = user.role === 'admin' || perms.includes('*');
+    const isAdmin = user.is_super_admin || user.role === 'admin' || perms.includes('*');
     
-    // Hide all nav items first if not admin
     if (!isAdmin) {
         document.querySelectorAll('.nav-item[data-target]').forEach(el => {
             const target = el.getAttribute('data-target');
-            if (perms.includes(target)) {
-                el.style.display = 'flex';
-            } else {
-                el.style.display = 'none';
-            }
+            el.style.display = hasNavAccess(target, perms) ? 'flex' : 'none';
         });
         
-        // Hide empty groups
         document.querySelectorAll('.nav-group').forEach(group => {
             const visibleItems = group.querySelectorAll('.nav-item[data-target][style*="display: flex"]');
-            if (visibleItems.length === 0) {
-                group.style.display = 'none';
-            } else {
-                group.style.display = 'block';
-            }
+            group.style.display = visibleItems.length === 0 ? 'none' : 'block';
         });
     } else {
-        // Show everything
         document.querySelectorAll('.nav-item').forEach(el => el.style.display = 'flex');
         document.querySelectorAll('.nav-group').forEach(el => el.style.display = 'block');
     }
     
-    // Default redirect to dashboard if allowed (unless a saved view exists)
     const savedView = localStorage.getItem('activeView');
     if (savedView && document.querySelector(`[data-target="${savedView}"]`)) {
         return;
     }
-    const target = (isAdmin || perms.includes('dashboard')) ? 'dashboard' : (perms[0] || 'dashboard');
+    const target = (isAdmin || perms.includes('dashboard') || perms.includes('executive-dashboard')) ? 'executive-dashboard' : (perms[0] || 'executive-dashboard');
     if (document.querySelector(`[data-target="${target}"]`)) {
         document.querySelector(`[data-target="${target}"]`).click();
     }
 }
 
-// Intercept nav clicks to check permissions
-const originalClick = document.onclick;
 document.addEventListener('click', (e) => {
     const navItem = e.target.closest('.nav-item[data-target]');
-    if (navItem && currentUser) {
-        const targetId = navItem.getAttribute('data-target');
+    const popupItem = e.target.closest('.popup-item[data-target]');
+    const item = navItem || popupItem;
+    if (item && currentUser) {
+        const targetId = item.getAttribute('data-target');
         const perms = currentUser.permissions || [];
-        const isAdmin = currentUser.role === 'admin' || perms.includes('*');
+        const isAdmin = currentUser.is_super_admin || currentUser.role === 'admin' || perms.includes('*');
         
-        // Reset editing state if navigating away
         if (targetId !== 'sales-invoice') {
             window.editingInvoiceId = null;
         }
 
-        if (!isAdmin && !perms.includes(targetId) && !(isAdminUser(getActiveUser()) && targetId === 'activity-logs')) {
+        if (!isAdmin && !hasNavAccess(targetId, perms)) {
             e.preventDefault();
             e.stopPropagation();
             alert('ليس لديك صلاحية للدخول إلى هذه الشاشة');
             return;
         }
     }
-}, true); // Use capture phase to intercept
+}, true);
 
 
 
-// ============================================================
-// USERS MANAGEMENT LOGIC
-// ============================================================
-const availableScreens = [
-    { id: 'dashboard', name: 'لوحة التحكم الرئيسية' },
-    { id: 'executive-dashboard', name: 'لوحة القيادة التنفيذية (BI)' },
-    { id: 'cash-flow', name: 'التدفقات النقدية (BI)' },
-    { id: 'aging', name: 'أعمار الديون (BI)' },
-    { id: 'inventory-analytics', name: 'تحليلات المخزون (BI)' },
-    { id: 'profitability', name: 'تحليل الربحية (BI)' },
-    { id: 'sales-invoices', name: 'فواتير المبيعات' },
-    { id: 'sales-returns', name: 'مرتجعات المبيعات' },
-    { id: 'customers', name: 'قائمة العملاء (دخول للشاشة)' },
-    { id: 'customers.create', name: 'العملاء - إضافة' },
-    { id: 'customers.update', name: 'العملاء - تعديل' },
-    { id: 'customers.delete', name: 'العملاء - حذف' },
-    { id: 'customers.export', name: 'العملاء - تصدير' },
-    { id: 'customers.block', name: 'العملاء - حظر/إلغاء حظر' },
-    { id: 'customer-payments', name: 'مقبوضات العملاء' },
-    { id: 'purchase-invoices', name: 'فواتير المشتريات' },
-    { id: 'purchase-returns', name: 'مرتجعات المشتريات' },
-    { id: 'suppliers-list', name: 'قائمة الموردين' },
-    { id: 'supplier-payments', name: 'مدفوعات الموردين' },
-    { id: 'inventory-list', name: 'قائمة المنتجات (جرد)' },
-    { id: 'inventory-transfers', name: 'التحويلات المخزنية' },
-    { id: 'stores-management', name: 'إدارة المخازن' },
-    { id: 'fiscal-periods', name: 'الفترات المالية' },
-    { id: 'fiscal-periods.create', name: 'الفترات المالية - إنشاء' },
-    { id: 'fiscal-periods.close', name: 'الفترات المالية - إغلاق' },
-    { id: 'fiscal-periods.reopen', name: 'الفترات المالية - إعادة فتح' },
-    { id: 'settings', name: 'الإعدادات' } // Settings allows access to all settings tabs except users management
-];
 
-async function loadUsersList() {
-    try {
-        const res = await window.API.getUsers();
-        const tbody = document.querySelector('#users-table tbody');
-        tbody.innerHTML = '';
-        res.data.forEach(user => {
-            const isSuperAdmin = user.id === 1 && user.role === 'admin';
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${user.full_name} ${isSuperAdmin ? '<span class="badge-status paid">مدير أساسي</span>' : ''}</td>
-                <td>${user.username}</td>
-                <td>${user.role}</td>
-                <td>${new Date(user.created_at).toLocaleDateString('ar-EG')}</td>
-                <td class="actions-cell">
-                    ${!isSuperAdmin ? `<button class="icon-btn btn-edit" title="تعديل الصلاحيات" onclick="showEditPermsModal(${user.id}, '${encodeURIComponent(user.permissions)}')"><i class="fa-solid fa-list-check"></i></button>` : ''}
-                    ${!isSuperAdmin ? `<button class="icon-btn btn-edit" title="تغيير كلمة المرور" onclick="showEditPasswordModal(${user.id})"><i class="fa-solid fa-key"></i></button>` : ''}
-                    ${!isSuperAdmin ? `<button class="icon-btn btn-delete" title="حذف" onclick="deleteUser(${user.id})"><i class="fa-solid fa-trash"></i></button>` : ''}
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    } catch (e) {
-        showAlert(e.message, { title: 'خطأ', type: 'danger', infoText: false });
-    }
-}
-
-function renderPermCheckboxes(containerId, selectedPerms = []) {
-    const container = document.getElementById(containerId);
-    container.innerHTML = availableScreens.map(s => `
-        <label style="display:flex; align-items:center; gap:8px;">
-            <input type="checkbox" value="${s.id}" ${selectedPerms.includes(s.id) || selectedPerms.includes('*') ? 'checked' : ''}>
-            ${s.name}
-        </label>
-    `).join('');
-}
-
-window.showAddUserModal = function() {
-    renderPermCheckboxes('add-user-perms', []);
-    document.getElementById('modal-user-add').classList.add('active');
-};
-
-window.showEditPermsModal = function(id, permsStr) {
-    document.getElementById('edit-perm-user-id').value = id;
-    let perms = [];
-    try { perms = JSON.parse(decodeURIComponent(permsStr)); } catch(e){}
-    renderPermCheckboxes('edit-user-perms-list', perms);
-    document.getElementById('modal-user-perms').classList.add('active');
-};
-
-window.showEditPasswordModal = function(id) {
-    document.getElementById('edit-pw-user-id').value = id;
-    document.getElementById('modal-user-password').classList.add('active');
-};
-
-window.deleteUser = async function(id) {
-    const confirmed = await showConfirm('هل أنت متأكد من حذف هذا المستخدم؟ لن يمكن التراجع عن هذا الإجراء.', {
-        title: 'حذف المستخدم',
-        confirmText: '<i class="fa-solid fa-trash" style="margin-left:6px"></i> حذف',
-    });
-    if (confirmed) {
-        try {
-            await window.API.deleteUser(id);
-            showAlert('تم حذف المستخدم بنجاح', { title: 'تمت العملية', type: 'success', infoText: false });
-            loadUsersList();
-        } catch(e) { showAlert(e.message, { type: 'danger', title: 'خطأ' }); }
-    }
-};
-
-// Form submissions
-document.addEventListener('DOMContentLoaded', () => {
-    const formAdd = document.getElementById('form-user-add');
-    if (formAdd) {
-        formAdd.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const name = document.getElementById('add-user-name').value;
-            const email = document.getElementById('add-user-email').value;
-            const password = document.getElementById('add-user-password').value;
-            const perms = Array.from(document.querySelectorAll('#add-user-perms input:checked')).map(cb => cb.value);
-            
-            try {
-                await window.API.createUser({ name, email, password, permissions: perms });
-                document.getElementById('modal-user-add').classList.remove('active');
-                formAdd.reset();
-                loadUsersList();
-            } catch (err) { showAlert(err.message, { title: 'خطأ', type: 'danger', infoText: false }); }
-        });
-    }
-
-    const formPerms = document.getElementById('form-user-perms');
-    if (formPerms) {
-        formPerms.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const id = document.getElementById('edit-perm-user-id').value;
-            const perms = Array.from(document.querySelectorAll('#edit-user-perms-list input:checked')).map(cb => cb.value);
-            try {
-                await window.API.updateUserPermissions(id, perms);
-                document.getElementById('modal-user-perms').classList.remove('active');
-                loadUsersList();
-            } catch (err) { showAlert(err.message, { title: 'خطأ', type: 'danger', infoText: false }); }
-        });
-    }
-
-    const formPw = document.getElementById('form-user-password');
-    if (formPw) {
-        formPw.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const id = document.getElementById('edit-pw-user-id').value;
-            const password = document.getElementById('edit-user-password-input').value;
-            try {
-                await window.API.updateUserPassword(id, password);
-                document.getElementById('modal-user-password').classList.remove('active');
-                formPw.reset();
-            } catch (err) { showAlert(err.message, { title: 'خطأ', type: 'danger', infoText: false }); }
-        });
-    }
-    
-    // Load users if settings view is opened
-    document.addEventListener('click', (e) => {
-        const item = e.target.closest('.nav-item, .settings-nav li');
-        if (item && item.getAttribute('data-target') === 'settings-users') {
-            loadUsersList();
-        }
-    });
-});
 
 
     // Generic modal close for any button with class .close-modal or .btn-close-modal
@@ -7452,7 +7321,7 @@ window.showLicenseActivation = async function(errorData) {
     if (!overlay) return;
     overlay.style.display = 'flex';
     document.getElementById('app').style.display = 'none';
-    try { const sr = await window.API.getLicenseStatus(); updateActivationUI(sr.data || sr); } catch (e) {}
+    try { const sr = await window.API.getLicenseStatus(); updateActivationUI(sr && typeof sr.data === 'object' ? sr.data : {}); } catch (e) {}
     try {
         const hwRes = await window.API.getLicenseHardware();
         if (hwRes.success) {
@@ -7473,7 +7342,8 @@ window.showLicenseActivation = async function(errorData) {
     }
     try {
         const sc = await window.API.getLicenseStatus();
-        const b = (sc.data || sc).build_profile || '';
+        const scData = sc && typeof sc.data === 'object' ? sc.data : {};
+        const b = scData.build_profile || '';
         const lbl = document.getElementById('activation-build-label');
         if (lbl) { lbl.textContent = b === 'development' ? 'DEVELOPMENT BUILD' : 'PRODUCTION BUILD'; lbl.style.background = b === 'development' ? 'rgba(245,158,11,0.15)' : 'rgba(79,70,229,0.15)'; lbl.style.color = b === 'development' ? '#fcd34d' : 'var(--primary-light)'; }
     } catch (e) {}
@@ -7582,8 +7452,9 @@ window.submitActivation = async function() {
             setTimeout(async () => {
                 try {
                     const sr = await window.API.getLicenseStatus();
-                    updateActivationUI(sr.data || sr);
-                    const s = (sr.data || sr).state;
+                    const srData = sr && typeof sr.data === 'object' ? sr.data : {};
+                    updateActivationUI(srData);
+                    const s = srData.state;
                     if (s === 'ACTIVE' || s === 'DEVELOPER' || s === 'GRACE_PERIOD') {
                         hideLicenseActivation(); showApp();
                         if (typeof window.initDataFromServer === 'function') window.initDataFromServer();
@@ -7627,7 +7498,7 @@ window.loadLicenseView = async function() {
             window.API.getLicenseHistory ? window.API.getLicenseHistory().catch(() => null) : null
         ]);
 
-        const data = statusRes?.data || statusRes || {};
+        const data = (statusRes && statusRes.data) || {};
         const hw = hwRes?.data || {};
         const diag = diagRes?.data || {};
         const hist = histRes?.data || {};
@@ -8028,7 +7899,7 @@ window.refreshLicenseSettings = function() {
     infoEl.innerHTML = '<div class="lm-loading"><i class="fa-solid fa-spinner fa-spin"></i> جاري التحميل...</div>';
     modEl.innerHTML = '<div class="lm-loading"><i class="fa-solid fa-spinner fa-spin"></i> جاري التحميل...</div>';
     window.API.getLicenseStatus().then(res => {
-        const d = res.data || res;
+        const d = res && typeof res.data === 'object' ? res.data : {};
         let html = '<div class="lm-info-list">';
         html += '<div class="lm-info-item"><span class="lm-label">الحالة</span><span class="lm-value"><span class="lm-state-badge ' + (d.state === 'ACTIVE' || d.state === 'DEVELOPER' ? 'active' : d.state === 'DEVELOPER' ? 'developer' : 'inactive') + '" style="font-size:0.75rem;padding:2px 10px;display:inline-block;margin:0">' + window.translateState(d.state) + '</span></span></div>';
         html += '<div class="lm-info-item"><span class="lm-label">معرف الترخيص</span><span class="lm-value" style="font-size:0.75rem">' + escapeHtml(d.license_id || '---') + '</span></div>';

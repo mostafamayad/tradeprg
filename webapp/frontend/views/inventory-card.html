@@ -1,0 +1,74 @@
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 class="page-title">بطاقة حركة الصنف</h1>
+        <p class="page-subtitle">تتبع تفصيلي لحركة الصنف داخل وخارج المخازن (كارت الصنف)</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="form-grid" style="align-items: end;">
+        <div class="form-group" style="grid-column: span 2;">
+            <label>اختر الصنف</label>
+            <select style="font-size: 1.2rem; padding: 10px; border-color: var(--primary-color);">
+                <option value="">-- ابحث باسم أو كود الصنف --</option>
+                <option value="1" selected>كوب بلاستيك 200 مل (كود: P-001)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <button class="btn btn-primary" style="padding: 12px 20px;"><i class="fa-solid fa-list-check"></i> عرض البطاقة</button>
+        </div>
+    </div>
+    
+    <div style="margin-top: 20px; display: flex; gap: 20px;">
+        <div style="flex: 1; background: #f8fafc; padding: 15px; border-radius: 8px; border-right: 4px solid var(--primary-color);">
+            <strong>الرصيد الحالي بالمخزن:</strong> <span style="font-size: 1.5rem; color: var(--primary-color);">1,500</span> قطعة
+        </div>
+        <div style="flex: 1; background: #f8fafc; padding: 15px; border-radius: 8px; border-right: 4px solid var(--warning-color);">
+            <strong>حد الطلب (نواقص):</strong> 200 قطعة
+        </div>
+        <div style="flex: 1; background: #f8fafc; padding: 15px; border-radius: 8px; border-right: 4px solid var(--success-color);">
+            <strong>متوسط التكلفة:</strong> 1.25 ج.م
+        </div>
+    </div>
+
+    <div class="table-responsive" style="margin-top: 30px;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>التاريخ</th>
+                    <th>نوع الحركة</th>
+                    <th>رقم المستند</th>
+                    <th>وارد (+)</th>
+                    <th>صادر (-)</th>
+                    <th>الرصيد التراكمي</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>2026-06-01</td>
+                    <td>رصيد افتتاحي (جرد أول المدة)</td>
+                    <td>-</td>
+                    <td>1000</td>
+                    <td>0</td>
+                    <td>1000</td>
+                </tr>
+                <tr>
+                    <td>2026-06-10</td>
+                    <td>فاتورة مشتريات (من: النور للبلاستيك)</td>
+                    <td>PINV-990</td>
+                    <td>550</td>
+                    <td>0</td>
+                    <td>1550</td>
+                </tr>
+                <tr>
+                    <td>2026-06-15</td>
+                    <td>فاتورة مبيعات (إلى: الأمل للتجارة)</td>
+                    <td>INV-00453</td>
+                    <td>0</td>
+                    <td>50</td>
+                    <td>1500</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

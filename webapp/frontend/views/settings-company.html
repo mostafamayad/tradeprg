@@ -1,0 +1,109 @@
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 class="page-title">بيانات الشركة الأساسية</h1>
+        <p class="page-subtitle">تعديل اسم الشركة، اللوجو، وأرقام التواصل التي تظهر على الفواتير</p>
+    </div>
+    <button class="btn btn-primary" onclick="saveCompanySettings()">
+        <i class="fa-solid fa-floppy-disk"></i> حفظ التعديلات
+    </button>
+</div>
+
+<div class="card">
+    <div class="form-grid">
+        <div class="form-group">
+            <label>اسم الشركة (عربي)</label>
+            <input type="text" id="comp-name-ar" placeholder="اسم الشركة">
+        </div>
+        <div class="form-group">
+            <label>اسم الشركة (إنجليزي)</label>
+            <input type="text" id="comp-name-en" dir="ltr" placeholder="Company Name">
+        </div>
+        <div class="form-group">
+            <label>رقم السجل التجاري</label>
+            <input type="text" id="comp-cr" placeholder="رقم السجل التجاري">
+        </div>
+        <div class="form-group">
+            <label>الرقم الضريبي</label>
+            <input type="text" id="comp-tax" placeholder="الرقم الضريبي">
+        </div>
+        <div class="form-group" style="grid-column: span 2;">
+            <label>العنوان الرئيسي</label>
+            <input type="text" id="comp-address" placeholder="العنوان">
+        </div>
+        <div class="form-group">
+            <label>المدينة</label>
+            <input type="text" id="comp-city" placeholder="المدينة">
+        </div>
+        <div class="form-group">
+            <label>الدولة</label>
+            <input type="text" id="comp-country" placeholder="الدولة">
+        </div>
+        <div class="form-group">
+            <label>رقم الهاتف</label>
+            <input type="text" id="comp-phone" placeholder="رقم الهاتف">
+        </div>
+        <div class="form-group">
+            <label>رقم الجوال</label>
+            <input type="text" id="comp-mobile" placeholder="رقم الجوال">
+        </div>
+        <div class="form-group">
+            <label>البريد الإلكتروني</label>
+            <input type="email" id="comp-email" dir="ltr" placeholder="email@company.com">
+        </div>
+        <div class="form-group">
+            <label>الموقع الإلكتروني</label>
+            <input type="text" id="comp-website" dir="ltr" placeholder="www.company.com">
+        </div>
+        <div class="form-group">
+            <label>الرمز البريدي</label>
+            <input type="text" id="comp-postal" placeholder="الرمز البريدي">
+        </div>
+        <div class="form-group">
+            <label>نسبة الضريبة الافتراضية (%)</label>
+            <input type="number" id="comp-tax-rate" min="0" max="100" placeholder="14">
+        </div>
+    </div>
+</div>
+
+<script>
+    async function loadCompanySettings() {
+        if(window.API) {
+            const res = await window.API.getSettings();
+            if(res.success && res.data) {
+                document.getElementById('comp-name-ar').value = res.data.company_name || '';
+                document.getElementById('comp-name-en').value = res.data.company_name_en || '';
+                document.getElementById('comp-cr').value = res.data.company_cr_no || '';
+                document.getElementById('comp-tax').value = res.data.tax_number || '';
+                document.getElementById('comp-address').value = res.data.company_address || '';
+                document.getElementById('comp-city').value = res.data.company_city || '';
+                document.getElementById('comp-country').value = res.data.company_country || '';
+                document.getElementById('comp-phone').value = res.data.company_phone || '';
+                document.getElementById('comp-mobile').value = res.data.company_mobile || '';
+                document.getElementById('comp-email').value = res.data.company_email || '';
+                document.getElementById('comp-website').value = res.data.company_website || '';
+                document.getElementById('comp-postal').value = res.data.company_postal_code || '';
+                document.getElementById('comp-tax-rate').value = res.data.tax_rate || '14';
+            }
+        }
+    }
+
+    async function saveCompanySettings() {
+        if(window.API) {
+            await window.API.updateSetting('company_name', document.getElementById('comp-name-ar').value);
+            await window.API.updateSetting('company_address', document.getElementById('comp-address').value);
+            await window.API.updateSetting('company_phone', document.getElementById('comp-phone').value);
+            await window.API.updateSetting('tax_number', document.getElementById('comp-tax').value);
+            await window.API.updateSetting('tax_rate', document.getElementById('comp-tax-rate').value);
+            
+            // update global cache
+            if(window.AppData) window.AppData.settings = await window.API.getSettings().then(r=>r.data);
+            
+            alert("تم حفظ بيانات الشركة بنجاح! سيتم تحديث ترويسة الفواتير تلقائياً.");
+        } else {
+            alert("API غير متاح");
+        }
+    }
+    
+    // Load settings when view opens
+    setTimeout(loadCompanySettings, 100);
+</script>

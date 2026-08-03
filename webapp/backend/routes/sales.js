@@ -297,7 +297,7 @@ router.post('/invoices', asyncHandler(async (req, res) => {
             
             const stock = await txRequest.query(`
                 SELECT ib.quantity, p.product_name, p.cost_price 
-                FROM products p WITH (UPDLOCK)
+                FROM products p
                 LEFT JOIN inventory_balances ib WITH (UPDLOCK) ON p.id = ib.product_id AND ib.store_id = @chk_sid_${i}
                 WHERE p.id = @chk_pid_${i}
             `);
@@ -436,7 +436,8 @@ router.post('/invoices', asyncHandler(async (req, res) => {
         await postJournalEntryAsync(
             txRequest, iDate, `استحقاق فاتورة مبيعات ${invoiceNo}`, accrualLines,
             'sales_invoice', invoiceId, req.user ? req.user.id : null,
-            { module: 'sales', action: 'create_invoice', document: invoiceNo, isSystem: true }
+            { module: 'sales', action: 'create_invoice', document: invoiceNo, isSystem: true },
+            null, customer_id
         );
 
         // 2. COGS Entry
@@ -448,7 +449,8 @@ router.post('/invoices', asyncHandler(async (req, res) => {
             await postJournalEntryAsync(
                 txRequest, iDate, `تكلفة البضاعة لفاتورة ${invoiceNo}`, cogsLines,
                 'sales_invoice_cogs', invoiceId, req.user ? req.user.id : null,
-                { module: 'sales', action: 'cogs', document: invoiceNo, isSystem: true }
+                { module: 'sales', action: 'cogs', document: invoiceNo, isSystem: true },
+                null, customer_id
             );
         }
 
@@ -823,6 +825,7 @@ router.get('/collections', async (req, res) => {
 // ── Permission helper (reads from JWT user.permissions) ──
 function userHasPermission(req, perm) {
     if (!req.user) return false;
+    if (req.user.is_super_admin) return true;
     if (req.user.role === 'admin') return true;
     let perms = [];
     try {
@@ -2229,32 +2232,65 @@ router.delete('/invoices/:id', async (req, res) => {
             await logActivity(req, 'DELETE', 'sales', req.params.id, 'حذف فاتورة', null, null, 'FAILED', 'الفاتورة غير موجودة');
             return res.status(404).json({ success: false, message: 'الفاتورة غير موجودة' });
         }
-        if (invoice.status === 'cancelled' || invoice.status === 'deleted') {
-            await logActivity(req, 'DELETE', 'sales', req.params.id, 'حذف فاتورة', null, null, 'FAILED', 'الفاتورة ملغاة أو محذوفة مسبقاً');
-            return res.status(400).json({ success: false, message: 'هذه الفاتورة ملغاة أو محذوفة بالفعل' });
-        }
 
-        // ── Dependency scan ──
+        // ── Pre-delete safety scan: collect ALL blockers ──
         const blockers = [];
 
-        // 1. Sales returns linked to this invoice
+        // 1. Already deleted / cancelled / reversed
+        if (invoice.status === 'deleted') blockers.push('الفاتورة محذوفة مسبقاً');
+        if (invoice.status === 'cancelled') blockers.push('الفاتورة ملغاة مسبقاً');
+
+        // 2. Reversed at GL level (all active journal entries already reversed → invoice effectively voided)
+        const activeJeRes = await pool.request()
+            .input('del_jeno', sql.NVarChar, invoice.invoice_no)
+            .query(`
+                SELECT COUNT(*) AS active_cnt FROM journal_entries
+                WHERE source_document = @del_jeno
+                  AND (is_reversed IS NULL OR is_reversed = 0)
+                  AND (reversal_of_id IS NULL)
+                  AND (source_action IS NULL OR source_action NOT LIKE '%_cancel')
+            `);
+        const allJeRes = await pool.request()
+            .input('del_jeno2', sql.NVarChar, invoice.invoice_no)
+            .query(`SELECT COUNT(*) AS total_cnt FROM journal_entries WHERE source_document = @del_jeno2`);
+        const activeCnt = activeJeRes.recordset[0].active_cnt || 0;
+        const totalCnt = allJeRes.recordset[0].total_cnt || 0;
+        if (totalCnt > 0 && activeCnt === 0) blockers.push('الفاتورة معكوسة مسبقاً (قيودها كلها ملغاة)');
+
+        // 3. Approved / active sales returns linked to this invoice
         const retRes = await pool.request()
             .input('del_rid', sql.Int, req.params.id)
             .query(`SELECT COUNT(*) as cnt FROM sales_returns WHERE invoice_id = @del_rid AND status NOT IN ('cancelled', 'deleted')`);
         if (retRes.recordset[0].cnt > 0) {
-            blockers.push(`مرتجعات (${retRes.recordset[0].cnt})`);
+            blockers.push(`مرتجع بيع نشط (${retRes.recordset[0].cnt})`);
         }
 
-        // 2. Amount paid (any payment = collections or cash payments recorded)
+        // 4. Cash collections allocated to this invoice
+        const colAllocRes = await pool.request()
+            .input('del_cid', sql.Int, req.params.id)
+            .query(`SELECT COUNT(*) as cnt FROM collection_allocations WHERE invoice_id = @del_cid`);
+        if (colAllocRes.recordset[0].cnt > 0) {
+            blockers.push('تحصيلات نقدية');
+        }
+
+        // 5. AR payment allocations (cash/cheque payments, matching) on this invoice
+        const payAllocRes = await pool.request()
+            .input('del_pid', sql.Int, req.params.id)
+            .query(`SELECT COUNT(*) as cnt FROM ar_payment_allocations WHERE invoice_id = @del_pid`);
+        if (payAllocRes.recordset[0].cnt > 0) {
+            blockers.push('سداد / مطابقة / شيكات');
+        }
+
+        // 6. Any amount already paid
         if (parseFloat(invoice.amount_paid) > 0) {
-            blockers.push('مدفوعات / تحصيلات مسجلة');
+            blockers.push('مبلغ مدفوع مسجل');
         }
 
         if (blockers.length > 0) {
             await logActivity(req, 'DELETE', 'sales', invoice.invoice_no, 'حذف فاتورة', null, null, 'FAILED', 'مرتبط بمستندات: ' + blockers.join(', '));
             return res.status(400).json({
                 success: false,
-                message: 'لا يمكن حذف الفاتورة لأنها مرتبطة بالمستندات التالية:\n• ' + blockers.join('\n• ') + '\n\nقم بإلغاء الفاتورة بدلاً من الحذف.'
+                message: 'لا يمكن حذف الفاتورة للأسباب التالية:\n• ' + blockers.join('\n• ') + '\n\nقم بإلغاء الفاتورة بدلاً من الحذف.'
             });
         }
 
@@ -2263,6 +2299,43 @@ router.delete('/invoices/:id', async (req, res) => {
         await transaction.begin();
         const txReq = transaction.request();
         txReq.input('sd_id', sql.Int, req.params.id);
+
+        // Restore stock from invoice items
+        const delItemsRes = await txReq.query(`SELECT ii.*, p.cost_price as current_cost FROM sales_invoice_items ii LEFT JOIN products p ON ii.product_id = p.id WHERE ii.invoice_id = @sd_id`);
+        const delItems = delItemsRes.recordset;
+        for (let i = 0; i < delItems.length; i++) {
+            const item = delItems[i];
+            const costPrice = parseFloat(item.cost_price) || parseFloat(item.current_cost) || 0;
+            const balanceAfter = await updateStockBalanceAsync(txReq, invoice.store_id, item.product_id, +item.quantity);
+
+            txReq.input(`dsm_date_${i}`, sql.NVarChar, invoice.invoice_date || new Date().toISOString().slice(0, 10));
+            txReq.input(`dsm_doc_${i}`, sql.NVarChar, `DEL-${invoice.invoice_no}`);
+            txReq.input(`dsm_sid_${i}`, sql.Int, invoice.store_id);
+            txReq.input(`dsm_pid_${i}`, sql.Int, item.product_id);
+            txReq.input(`dsm_qty_${i}`, sql.Decimal(18, 4), item.quantity);
+            txReq.input(`dsm_cost_${i}`, sql.Decimal(18, 2), costPrice);
+            txReq.input(`dsm_bal_${i}`, sql.Decimal(18, 4), balanceAfter);
+            txReq.input(`dsm_ref_${i}`, sql.Int, invoice.id);
+            await txReq.query(`
+                INSERT INTO stock_movements (move_date, move_type, document_no, store_id, product_id, qty_in, cost_price, balance_after, reference_id, notes)
+                VALUES (@dsm_date_${i}, 'deletion', @dsm_doc_${i}, @dsm_sid_${i}, @dsm_pid_${i}, @dsm_qty_${i}, @dsm_cost_${i}, @dsm_bal_${i}, @dsm_ref_${i}, N'حذف فاتورة مبيعات ${invoice.invoice_no}')
+            `);
+        }
+
+        // Reverse ALL active journal entries for this invoice by source_document
+        // Idempotent: skip entries already reversed, cancel actions, or reversal entries.
+        txReq.input('je_del_no', sql.NVarChar, invoice.invoice_no);
+        const jeResDel = await txReq.query(`
+            SELECT id FROM journal_entries 
+            WHERE source_document = @je_del_no 
+              AND (is_reversed IS NULL OR is_reversed = 0)
+              AND (reversal_of_id IS NULL)
+              AND (source_action IS NULL OR source_action NOT LIKE '%_cancel')
+        `);
+        for (const je of jeResDel.recordset) {
+            await reverseJournalEntryAsync(txReq, je.id, `حذف فاتورة مبيعات ${invoice.invoice_no}`, req.user ? req.user.id : null);
+        }
+
         await txReq.query(`UPDATE sales_invoices SET status = 'deleted' WHERE id = @sd_id`);
 
         // Update customer balance
@@ -2272,7 +2345,7 @@ router.delete('/invoices/:id', async (req, res) => {
 
         await transaction.commit();
         await logActivity(req, 'DELETE', 'sales', invoice.invoice_no, `حذف فاتورة ${invoice.invoice_no}`, { invoice_no: invoice.invoice_no, grand_total: invoice.grand_total }, null, 'SUCCESS', null);
-        res.json({ success: true, message: 'تم حذف الفاتورة بنجاح' });
+        res.json({ success: true, message: 'تم حذف الفاتورة واسترجاع المخزون وعكس القيود المحاسبية' });
     } catch (err) {
         if (transaction) await transaction.rollback();
         console.error('Sales delete invoice error:', err);
@@ -2329,6 +2402,7 @@ router.put('/invoices/:id', async (req, res) => {
         const storeId = store_id || invoice.store_id;
         const iDate = invoice_date || invoice.invoice_date;
         const dDate = due_date !== undefined ? due_date : invoice.due_date;
+        let totalCost = 0;
 
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
@@ -2337,7 +2411,7 @@ router.put('/invoices/:id', async (req, res) => {
             
             const stock = await txRequest.query(`
                 SELECT ib.quantity, p.product_name, p.cost_price 
-                FROM products p WITH (UPDLOCK)
+                FROM products p
                 LEFT JOIN inventory_balances ib WITH (UPDLOCK) ON p.id = ib.product_id AND ib.store_id = @chk_sid_${i}
                 WHERE p.id = @chk_pid_${i}
             `);
@@ -2360,6 +2434,7 @@ router.put('/invoices/:id', async (req, res) => {
             } else {
                 item.db_cost_price = pInfo.cost_price || 0;
             }
+            totalCost += (item.quantity * item.db_cost_price);
         }
 
         let subtotal = 0;
@@ -2455,6 +2530,54 @@ router.put('/invoices/:id', async (req, res) => {
             WHERE id = @txInvId
         `);
 
+        // --- ACCOUNTING INTEGRATION: Reverse old entries, repost updated Sales & COGS ---
+        // Idempotent: only reverse entries that are (a) not already reversed,
+        // (b) not cancel/reversal actions, (c) not themselves reversal entries.
+        txRequest.input('je_inv_no_edit', sql.NVarChar, invoice.invoice_no);
+        const jeResEdit = await txRequest.query(`
+            SELECT id FROM journal_entries 
+            WHERE source_document = @je_inv_no_edit 
+              AND (is_reversed IS NULL OR is_reversed = 0)
+              AND (reversal_of_id IS NULL)
+              AND (source_action IS NULL OR source_action NOT LIKE '%_cancel')
+        `);
+        for (const je of jeResEdit.recordset) {
+            await reverseJournalEntryAsync(txRequest, je.id, `عكس قيود تعديل فاتورة مبيعات ${invoice.invoice_no}`, req.user ? req.user.id : null);
+        }
+
+        const accAR = await getSystemAccountAsync(txRequest, 'SYS_AR');
+        const accSales = await getSystemAccountAsync(txRequest, 'SYS_SALES');
+        const accVatOut = tax > 0 ? await getSystemAccountAsync(txRequest, 'SYS_VAT_OUTPUT') : null;
+
+        const accrualLines = [
+            { account_id: accAR, debit: grandTotal, credit: 0, description: `استحقاق فاتورة مبيعات ${invoice.invoice_no}` },
+            { account_id: accSales, debit: 0, credit: subtotal - disc, description: `إيراد مبيعات فاتورة ${invoice.invoice_no}` }
+        ];
+        if (tax > 0) {
+            accrualLines.push({ account_id: accVatOut, debit: 0, credit: tax, description: `ضريبة مخرجات فاتورة ${invoice.invoice_no}` });
+        }
+        await postJournalEntryAsync(
+            txRequest, iDate, `استحقاق فاتورة مبيعات ${invoice.invoice_no}`, accrualLines,
+            'sales_invoice', invoice.id, req.user ? req.user.id : null,
+            { module: 'sales', action: 'create_invoice', document: invoice.invoice_no, isSystem: true },
+            null, customer_id
+        );
+
+        if (totalCost > 0) {
+            const accCogs = await getSystemAccountAsync(txRequest, 'SYS_COGS');
+            const accInv = await getSystemAccountAsync(txRequest, 'SYS_INVENTORY');
+            const cogsLines = [
+                { account_id: accCogs, debit: totalCost, credit: 0, description: `تكلفة البضاعة المباعة لفاتورة ${invoice.invoice_no}` },
+                { account_id: accInv, debit: 0, credit: totalCost, description: `صرف مخزون لفاتورة ${invoice.invoice_no}` }
+            ];
+            await postJournalEntryAsync(
+                txRequest, iDate, `تكلفة البضاعة لفاتورة ${invoice.invoice_no}`, cogsLines,
+                'sales_invoice_cogs', invoice.id, req.user ? req.user.id : null,
+                { module: 'sales', action: 'cogs', document: invoice.invoice_no, isSystem: true },
+                null, customer_id
+            );
+        }
+
         await recalcCustomerBalanceAsync(txRequest, customer_id);
         if (customer_id !== invoice.customer_id) {
             await recalcCustomerBalanceAsync(txRequest, invoice.customer_id);
@@ -2466,7 +2589,7 @@ router.put('/invoices/:id', async (req, res) => {
     } catch (err) {
         if (transaction) await transaction.rollback();
         console.error('Sales update invoice error:', err);
-        await logActivity(req, 'UPDATE', 'sales', invoice ? invoice.invoice_no : req.params.id, 'تعديل فاتورة مبيعات', null, null, 'FAILED', err.message);
+        await logActivity(req, 'UPDATE', 'sales', req.params.id, 'تعديل فاتورة مبيعات', null, null, 'FAILED', err.message);
         res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
     }
 });

@@ -1,5 +1,4 @@
-const sql = require('mssql');
-const { getPool } = require('../database/mssql_db');
+const { getPool, sql } = require('../database/mssql_db');
 
 class StatementEngine {
     constructor(config) {

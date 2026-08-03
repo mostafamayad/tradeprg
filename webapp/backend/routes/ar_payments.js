@@ -330,19 +330,10 @@ router.post('/', asyncHandler(async (req, res) => {
             return res.status(404).json({ success: false, message: 'العميل غير موجود' });
         }
 
-        // ── Overpayment Guard ────────────────────────────────────────────
-        const arBalReq = pool.request();
-        arBalReq.input('ar_bal_cid', sql.Int, customer_id);
-        const arBalRes = await arBalReq.query(`
-            SELECT ISNULL(SUM(remaining), 0) AS total_remaining
-            FROM sales_invoices
-            WHERE customer_id = @ar_bal_cid
-              AND status NOT IN ('cancelled', 'deleted', 'paid')
-              AND remaining > 0
-        `);
-        const arTotalRemaining = num(arBalRes.recordset[0]?.total_remaining || 0);
+        // ── Overpayment Guard (only when allocating to specific invoices) ──
+        const explicitInvoices = Array.isArray(apply_to_invoices) && apply_to_invoices.length > 0;
 
-        if (Array.isArray(apply_to_invoices) && apply_to_invoices.length > 0) {
+        if (explicitInvoices) {
             let requestedTotal = 0;
             for (const item of apply_to_invoices) {
                 requestedTotal += num(item.amount || item.apply_amount || item.remaining || 0);
@@ -353,12 +344,9 @@ router.post('/', asyncHandler(async (req, res) => {
                     message: `المبلغ المدخل (${amountValue.toFixed(2)} ج.م) أكبر من مجموع الفواتير المحددة (${requestedTotal.toFixed(2)} ج.م). لا يمكن تحصيل أكثر مما هو مستحق.`
                 });
             }
-        } else if (arTotalRemaining >= 0 && amountValue > arTotalRemaining + 0.01) {
-            return res.status(400).json({
-                success: false,
-                message: `المبلغ المدخل (${amountValue.toFixed(2)} ج.م) أكبر من إجمالي مديونية العميل (${arTotalRemaining.toFixed(2)} ج.م). لا يمكن تحصيل أكثر مما هو مستحق.`
-            });
         }
+        // When no invoices selected: payment is saved as unallocated
+        // (will be distributed later via matching screen)
         // ────────────────────────────────────────────────────────────────
 
         const tx = new sql.Transaction(pool);
@@ -405,8 +393,10 @@ router.post('/', asyncHandler(async (req, res) => {
                 paymentMethod: method
             });
 
-            // Allocate to invoices
-            await allocatePaymentAsync(txReq, customer_id, paymentId, amountValue, apply_to_invoices);
+            // Allocate to specific invoices (if any selected); otherwise leave as unallocated for matching
+            if (explicitInvoices) {
+                await allocatePaymentAsync(txReq, customer_id, paymentId, amountValue, apply_to_invoices);
+            }
 
             // Recalculate customer balance
             await recalcCustomerBalanceAsync(txReq, customer_id);
@@ -637,7 +627,7 @@ router.get('/matching/customers', asyncHandler(async (req, res) => {
     }
 }));
 
-// GET /matching/data/:customerId - Unmatched payments + unpaid invoices
+// GET /matching/data/:customerId - Unmatched AR payments + unpaid invoices
 router.get('/matching/data/:customerId', asyncHandler(async (req, res) => {
     try {
         const cid = parseInt(req.params.customerId);
@@ -649,13 +639,18 @@ router.get('/matching/data/:customerId', asyncHandler(async (req, res) => {
             SELECT * FROM (
                 SELECT ap.id, ap.payment_no, ap.payment_date, ap.amount,
                     COALESCE((SELECT SUM(allocated_amount) FROM ar_payment_allocations WHERE payment_id = ap.id), 0) AS allocated_total,
-                    ap.amount - COALESCE((SELECT SUM(allocated_amount) FROM ar_payment_allocations WHERE payment_id = ap.id), 0) AS unallocated
+                    ap.amount - COALESCE((SELECT SUM(allocated_amount) FROM ar_payment_allocations WHERE payment_id = ap.id), 0) AS unallocated,
+                    ap.payment_method
                 FROM ar_payments ap
                 WHERE ap.customer_id = @cid AND ap.status = 'active'
             ) sub
             WHERE sub.unallocated > 0
             ORDER BY sub.payment_date
         `);
+        console.log(`[AR Matching] Customer ${cid}: found ${paymentsRes.recordset.length} AR payments (source: ar_payments)`);
+        if (paymentsRes.recordset.length > 0) {
+            paymentsRes.recordset.forEach(p => console.log(`  Payment #${p.id}: ${p.payment_no}, amount=${p.amount}, unallocated=${p.unallocated}`));
+        }
 
         const invoicesRes = await request.query(`
             SELECT si.id, si.invoice_no, si.invoice_date, si.grand_total, 
@@ -664,6 +659,10 @@ router.get('/matching/data/:customerId', asyncHandler(async (req, res) => {
             WHERE si.customer_id = @cid AND si.status IN ('pending', 'partial') AND si.remaining > 0
             ORDER BY si.invoice_date
         `);
+        console.log(`[AR Matching] Customer ${cid}: found ${invoicesRes.recordset.length} unpaid invoices`);
+        if (invoicesRes.recordset.length > 0) {
+            invoicesRes.recordset.forEach(inv => console.log(`  Invoice #${inv.id}: ${inv.invoice_no}, remaining=${inv.remaining}`));
+        }
 
         res.json({
             success: true,
@@ -682,6 +681,9 @@ router.get('/matching/data/:customerId', asyncHandler(async (req, res) => {
 router.post('/matching/save', asyncHandler(async (req, res) => {
     try {
         const { customer_id, allocations } = req.body;
+        console.log(`[AR Matching Save] Starting for customer=${customer_id}, allocations=${allocations ? allocations.length : 0}`);
+        if (allocations) allocations.forEach((a, i) => console.log(`  Alloc #${i}: payment_id=${a.payment_id}, invoice_id=${a.invoice_id}, amount=${a.allocated_amount}, discount=${a.discount_amount}`));
+
         if (!customer_id) {
             await logActivity(req, 'CREATE', 'ar_payment_matching', null, 'مطابقة سداد مع فواتير', null, null, 'FAILED', 'العميل مطلوب');
             return res.status(400).json({ success: false, message: 'العميل مطلوب' });
@@ -728,7 +730,6 @@ router.post('/matching/save', asyncHandler(async (req, res) => {
                 const paymentId = parseInt(payIdStr);
                 const sfx = Math.random().toString(36).substring(2, 9);
 
-                // Verify payment exists, is active, belongs to customer
                 txReq.input(`mp_pid_${sfx}`, sql.Int, paymentId);
                 txReq.input(`mp_cid_${sfx}`, sql.Int, customer_id);
                 const payRes = await txReq.query(`
@@ -738,72 +739,90 @@ router.post('/matching/save', asyncHandler(async (req, res) => {
                     WHERE id = @mp_pid_${sfx} AND customer_id = @mp_cid_${sfx} AND status = 'active'
                 `);
                 if (!payRes.recordset[0]) {
-                    throw new Error(`الدفعة رقم ${paymentId} غير موجودة أو ملغية`);
+                    console.log(`[AR Matching Save] FAIL: payment ${paymentId} not found or not active in ar_payments`);
+                    throw new Error(`سند القبض ${paymentId} غير موجود أو ملغي`);
                 }
                 const payment = payRes.recordset[0];
+                console.log(`[AR Matching Save] Payment found: ${payment.payment_no}, amount=${payment.amount}, already_allocated=${payment.allocated_total}`);
 
-                // Validate: existing + new allocations <= payment amount
                 const newAllocSum = paymentAllocs.reduce((s, a) => s + num(a.allocated_amount), 0);
                 const totalAfter = num(payment.allocated_total) + newAllocSum;
                 if (totalAfter > payment.amount) {
-                    throw new Error(`إجمالي توزيع الدفعة ${payment.payment_no} (${totalAfter}) يتجاوز قيمتها (${payment.amount})`);
+                    throw new Error(`إجمالي التوزيع المختار (${totalAfter}) يتجاوز قيمة السند (${payment.amount})`);
                 }
 
-                // Insert new allocations on top of existing ones
                 for (let i = 0; i < paymentAllocs.length; i++) {
                     const a = paymentAllocs[i];
                     const asfx = sfx + '_n' + i;
+                    const discAmt = parseFloat(a.discount_amount) || 0;
+                    const totalInvoiceCredit = num(a.allocated_amount) + discAmt;
+
                     txReq.input(`mp_npid_${asfx}`, sql.Int, paymentId);
                     txReq.input(`mp_niid_${asfx}`, sql.Int, a.invoice_id);
                     txReq.input(`mp_namt_${asfx}`, sql.Decimal(18, 2), a.allocated_amount);
 
-                    // Validate invoice has enough remaining
                     const invRes = await txReq.query(`
                         SELECT id, invoice_no, grand_total, amount_paid, remaining, status
                         FROM sales_invoices
                         WHERE id = @mp_niid_${asfx} AND customer_id = @mp_cid_${sfx}
                     `);
                     if (!invRes.recordset[0]) {
+                        console.log(`[AR Matching Save] FAIL: invoice ${a.invoice_id} not found for customer ${customer_id}`);
                         throw new Error(`الفاتورة رقم ${a.invoice_id} غير موجودة لهذا العميل`);
                     }
                     const inv = invRes.recordset[0];
-                    if (inv.status === 'cancelled' || inv.status === 'deleted') {
-                        throw new Error(`لا يمكن توزيع المبلغ على فاتورة ملغية (${inv.invoice_no})`);
-                    }
-                    if (a.allocated_amount > inv.remaining) {
-                        throw new Error(`المبلغ الموزع (${a.allocated_amount}) يتجاوز المتبقي من الفاتورة ${inv.invoice_no} (${inv.remaining})`);
-                    }
+                    console.log(`[AR Matching Save] Invoice found: ${inv.invoice_no}, remaining=${inv.remaining}, status=${inv.status}, to_allocate=${a.allocated_amount}, discount=${discAmt}`);
+                    
+                    if (inv.status === 'cancelled' || inv.status === 'deleted') throw new Error(`لا يمكن توزيع المبلغ على فاتورة ملغية (${inv.invoice_no})`);
+                    if (totalInvoiceCredit > inv.remaining) throw new Error(`المبلغ المدفوع + الخصم (${totalInvoiceCredit}) يتجاوز المتبقي من الفاتورة ${inv.invoice_no} (${inv.remaining})`);
 
-                    // Insert allocation
                     await txReq.query(`
                         INSERT INTO ar_payment_allocations (payment_id, invoice_id, allocated_amount)
                         VALUES (@mp_npid_${asfx}, @mp_niid_${asfx}, @mp_namt_${asfx})
                     `);
 
-                    // Update invoice
                     await txReq.query(`
                         UPDATE sales_invoices
-                        SET amount_paid = amount_paid + @mp_namt_${asfx},
-                            remaining = CASE WHEN remaining - @mp_namt_${asfx} < 0 THEN 0 ELSE remaining - @mp_namt_${asfx} END
+                        SET amount_paid = amount_paid + ${totalInvoiceCredit},
+                            remaining = CASE WHEN remaining - ${totalInvoiceCredit} < 0 THEN 0 ELSE remaining - ${totalInvoiceCredit} END
                         WHERE id = @mp_niid_${asfx}
                     `);
+                    console.log(`[AR Matching Save] Invoice ${inv.invoice_no} updated: amount_paid += ${totalInvoiceCredit}`);
+
+                    // If there is a discount, generate a Journal Entry for it
+                    if (discAmt > 0) {
+                        const { createJournalEntryAsync } = require('./journal_entries');
+                        await createJournalEntryAsync(txReq, {
+                            reference_type: 'sales_discount',
+                            reference_id: a.invoice_id,
+                            entry_date: new Date(),
+                            description: `خصم سداد نقدي للفاتورة ${inv.invoice_no} بموجب تسوية دفع`,
+                            customer_id: customer_id,
+                            lines: [
+                                { account_system_code: 'SYS_SALES_DISCOUNT', debit: discAmt, credit: 0 },
+                                { account_system_code: 'SYS_AR', debit: 0, credit: discAmt }
+                            ]
+                        });
+                        console.log(`[AR Matching Save] Discount journal entry created: ${discAmt}`);
+                    }
 
                     affectedInvoiceIds.add(a.invoice_id);
                 }
             }
 
-            // Refresh status for all affected invoices
             for (const invId of affectedInvoiceIds) {
                 await refreshInvoiceStatusAsync(txReq, invId);
             }
 
             await tx.commit();
+            console.log(`[AR Matching Save] Transaction committed successfully for customer ${customerName}, ${allocations.length} allocations`);
 
-            await logActivity(req, 'CREATE', 'ar_payment_matching', null, `مطابقة سداد مع فواتير للعميل ${customerName}`, null, {
+            await logActivity(req, 'CREATE', 'payment_matching', null, `مطابقة سندات قبض مع فواتير للعميل ${customerName}`, null, {
                 customer_id,
                 customer_name: customerName,
                 allocation_count: allocations.length,
-                total: allocations.reduce((s, a) => s + num(a.allocated_amount), 0)
+                total: allocations.reduce((s, a) => s + num(a.allocated_amount), 0),
+                total_discount: allocations.reduce((s, a) => s + num(a.discount_amount||0), 0)
             }, 'SUCCESS', null);
 
             res.json({ success: true, message: 'تم حفظ المطابقة بنجاح' });

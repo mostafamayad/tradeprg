@@ -196,12 +196,9 @@
     function doCsv() {
         if (!currentData || !currentData.sections) return;
         var d = currentData;
-        var rows = [];
+        var dataRows = [];
         var from = document.getElementById('bs-from').value || 'البداية';
         var to = document.getElementById('bs-to').value || 'النهاية';
-
-        rows.push(['الميزانية العمومية', from, to, '', '', '']);
-        rows.push(['القسم', 'المجموعة', 'كود الحساب', 'اسم الحساب', 'رصيد أول المدة', 'رصيد آخر المدة']);
 
         for (var si = 0; si < d.sections.length; si++) {
             var sec = d.sections[si];
@@ -209,36 +206,29 @@
                 var grp = sec.groups[gi];
                 for (var ai = 0; ai < grp.accounts.length; ai++) {
                     var ac = grp.accounts[ai];
-                    rows.push([sec.name, grp.name, ac.account_code, ac.account_name, r2(ac.opening), r2(ac.closing)]);
+                    dataRows.push([sec.name, grp.name, ac.account_code, ac.account_name, r2(ac.opening) || 0, r2(ac.closing) || 0]);
                 }
-                rows.push(['', 'إجمالي ' + grp.name, '', '', r2(grp.totals.opening), r2(grp.totals.closing)]);
+                dataRows.push(['', 'إجمالي ' + grp.name, '', '', r2(grp.totals.opening) || 0, r2(grp.totals.closing) || 0]);
             }
-            rows.push(['', 'إجمالي ' + sec.name, '', '', r2(sec.totals.opening), r2(sec.totals.closing)]);
+            dataRows.push(['', 'إجمالي ' + sec.name, '', '', r2(sec.totals.opening) || 0, r2(sec.totals.closing) || 0]);
         }
-        rows.push(['', 'إجمالي الأصول', '', '', r2(d.totals.totalAssets.opening), r2(d.totals.totalAssets.closing)]);
-        rows.push(['', 'إجمالي الخصوم وحقوق الملكية', '', '', r2(d.totals.totalLiabilitiesAndEquity.opening), r2(d.totals.totalLiabilitiesAndEquity.closing)]);
+        
+        dataRows.push([]);
+        dataRows.push(['', 'إجمالي الأصول', '', '', r2(d.totals.totalAssets.opening) || 0, r2(d.totals.totalAssets.closing) || 0]);
+        dataRows.push(['', 'إجمالي الخصوم وحقوق الملكية', '', '', r2(d.totals.totalLiabilitiesAndEquity.opening) || 0, r2(d.totals.totalLiabilitiesAndEquity.closing) || 0]);
 
-        var csv = '\uFEFF';
-        for (var i = 0; i < rows.length; i++) {
-            var cols = [];
-            for (var j = 0; j < rows[i].length; j++) {
-                var val = String(rows[i][j] || '');
-                if (val.indexOf(',') >= 0 || val.indexOf('"') >= 0 || val.indexOf('\n') >= 0) {
-                    val = '"' + val.replace(/"/g, '""') + '"';
-                }
-                cols.push(val);
-            }
-            csv += cols.join(',') + '\r\n';
+        if (window.exportStyledExcel) {
+            window.exportStyledExcel({
+                filename: 'balance-sheet-' + from + '-' + to,
+                title: 'الميزانية العمومية',
+                subtitle: 'من ' + from + ' إلى ' + to,
+                headers: ['القسم', 'المجموعة', 'كود الحساب', 'اسم الحساب', 'رصيد أول المدة', 'رصيد آخر المدة'],
+                data: dataRows,
+                colWidths: [20, 25, 15, 30, 20, 20]
+            });
+        } else {
+            alert('مكتبة التصدير غير متوفرة');
         }
-
-        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        var link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = 'balance-sheet-' + from + '-' + to + '.csv';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
     }
 
     window.loadBalanceSheet = function () {

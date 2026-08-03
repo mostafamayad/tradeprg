@@ -63,6 +63,12 @@ startup.err
 # ─── Test baseline reports (too many) ───────────────────────────
 backend/tests/reports/baseline-*.json
 
+# ─── Generated / runtime artifacts (Phase 1 freeze) ─────────────
+backend/database/mssql_debug.txt
+backend/test_server.err
+backend/scripts/integrity_audit_report.json
+backend/storage/.clock_store
+
 # ─── Dead code folders ──────────────────────────────────────────
 backend/api/
 

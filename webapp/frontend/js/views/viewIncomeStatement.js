@@ -147,6 +147,7 @@
         </tr></thead><tbody>';
 
         html += sectionHTML(d.revenue, d.revenue.name, false);
+        if (d.costOfSales) html += sectionHTML(d.costOfSales, d.costOfSales.name, true);
         html += sectionHTML(d.expenses, d.expenses.name, true);
 
         var niClass = d.netIncome >= 0 ? 'is-positive' : 'is-negative';
@@ -155,7 +156,9 @@
             <td style="text-align:left;direction:ltr"><span class="' + niClass + '">' + fmt(d.netIncome) + '</span></td></tr>';
 
         html += '</tbody></table></div>';
-        html += '<div class="is-note">صافي الدخل = إجمالي الإيرادات (' + fmt(d.totals.totalRevenue) + ') - إجمالي المصروفات (' + fmt(d.totals.totalExpenses) + ')</div>';
+        html += '<div class="is-note">صافي الدخل = إجمالي الإيرادات (' + fmt(d.totals.totalRevenue) + ')';
+        if (d.costOfSales) html += ' - تكلفة المبيعات (' + fmt(d.totals.totalCostOfSales || 0) + ')';
+        html += ' - إجمالي المصروفات (' + fmt(d.totals.totalExpenses) + ')</div>';
 
         container.innerHTML = html;
     }
@@ -169,48 +172,38 @@
         var d = currentData;
         var from = document.getElementById('is-from').value || 'البداية';
         var to = document.getElementById('is-to').value || 'النهاية';
-        var rows = [];
-        rows.push(['قائمة الدخل', from, to, '']);
-        rows.push(['البيان', 'المجموعة', 'كود الحساب', 'اسم الحساب', 'الفترة', 'تراكمي']);
+        var dataRows = [];
 
         function addSection(section, label) {
-            rows.push([label, '', '', '', '', '']);
+            dataRows.push([label, '', '', '', '', '']);
             for (var gi = 0; gi < section.groups.length; gi++) {
                 var grp = section.groups[gi];
                 for (var ai = 0; ai < grp.accounts.length; ai++) {
                     var ac = grp.accounts[ai];
-                    rows.push(['', grp.name, ac.account_code, ac.account_name, r2(ac.period), r2(ac.closing)]);
+                    dataRows.push(['', grp.name, ac.account_code, ac.account_name, r2(ac.period) || 0, r2(ac.closing) || 0]);
                 }
-                rows.push(['', 'إجمالي ' + grp.name, '', '', r2(grp.totals.period), r2(grp.totals.closing)]);
+                dataRows.push(['', 'إجمالي ' + grp.name, '', '', r2(grp.totals.period) || 0, r2(grp.totals.closing) || 0]);
             }
-            rows.push(['', 'إجمالي ' + label, '', '', r2(section.totals.period), r2(section.totals.closing)]);
+            dataRows.push(['', 'إجمالي ' + label, '', '', r2(section.totals.period) || 0, r2(section.totals.closing) || 0]);
         }
 
         addSection(d.revenue, d.revenue.name);
+        if (d.costOfSales) addSection(d.costOfSales, d.costOfSales.name);
         addSection(d.expenses, d.expenses.name);
-        rows.push(['صافي الدخل', '', '', '', r2(d.netIncome), r2(d.netIncome)]);
 
-        var csv = '\uFEFF';
-        for (var i = 0; i < rows.length; i++) {
-            var cols = [];
-            for (var j = 0; j < rows[i].length; j++) {
-                var val = String(rows[i][j] || '');
-                if (val.indexOf(',') >= 0 || val.indexOf('"') >= 0 || val.indexOf('\n') >= 0) {
-                    val = '"' + val.replace(/"/g, '""') + '"';
-                }
-                cols.push(val);
-            }
-            csv += cols.join(',') + '\r\n';
+        if (window.exportStyledExcel) {
+            window.exportStyledExcel({
+                filename: 'income-statement-' + from + '-' + to,
+                title: 'قائمة الدخل',
+                subtitle: 'من ' + from + ' إلى ' + to,
+                headers: ['البيان', 'المجموعة', 'كود الحساب', 'اسم الحساب', 'الفترة', 'تراكمي'],
+                data: dataRows,
+                totals: ['صافي الدخل', '', '', '', r2(d.netIncome) || 0, r2(d.netIncome) || 0],
+                colWidths: [20, 25, 15, 30, 20, 20]
+            });
+        } else {
+            alert('مكتبة التصدير غير متوفرة');
         }
-
-        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        var link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = 'income-statement-' + from + '-' + to + '.csv';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
     }
 
     window.loadIncomeStatement = function () {

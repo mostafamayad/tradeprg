@@ -569,7 +569,7 @@ router.post('/year-close', asyncHandler(async (req, res) => {
             await postJournalEntryAsync(txRequest, `${year}-12-31`,
                 `قيود إقفال حسابات الإيرادات والمصروفات للسنة ${year}`, closeLines,
                 'year_close', null, req.user.id,
-                { module: 'admin', action: 'year_close', document: `CLOSING_${year}`, isSystem: true });
+                { module: 'admin', action: 'year_close', document: `CLOSING_${year}`, isSystem: true, bypassPeriodLock: true });
         }
 
         for (const acc of plAccounts) {

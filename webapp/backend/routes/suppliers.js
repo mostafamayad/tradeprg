@@ -6,34 +6,8 @@ const asyncHandler = require('../utils/asyncHandler');
 
 // Private async helper to recalculate supplier balance
 async function recalcSupplierBalanceAsync(poolOrTxReq, supplierId) {
-    const pRand = Math.random().toString(36).substring(2, 9);
-    const request = typeof poolOrTxReq.request === 'function' ? poolOrTxReq.request() : poolOrTxReq;
-    request.input(`rsb_sid_${pRand}`, sql.Int, supplierId);
-
-    const sRes = await request.query(`SELECT opening_balance FROM suppliers WHERE id = @rsb_sid_${pRand}`);
-    if (!sRes.recordset[0]) return;
-    
-    const purRes = await request.query(`SELECT COALESCE(SUM(grand_total), 0) as total FROM purchase_invoices WHERE supplier_id = @rsb_sid_${pRand} AND status != 'cancelled'`);
-    const retRes = await request.query(`SELECT COALESCE(SUM(grand_total), 0) as total FROM purchase_returns WHERE supplier_id = @rsb_sid_${pRand} AND status != 'cancelled'`);
-    
-    // Payments: exclude bounced/cancelled checks
-    const payRes = await request.query(`
-        SELECT COALESCE(SUM(sp.amount), 0) as total 
-        FROM supplier_payments sp
-        LEFT JOIN checks ch ON ch.payment_id = sp.id
-        WHERE sp.supplier_id = @rsb_sid_${pRand} AND (ch.id IS NULL OR ch.status NOT IN ('bounced', 'cancelled'))
-    `);
-
-    const opening = sRes.recordset[0].opening_balance || 0;
-    const purchases = purRes.recordset[0].total || 0;
-    const returns = retRes.recordset[0].total || 0;
-    const payments = payRes.recordset[0].total || 0;
-
-    const balance = opening + purchases - returns - payments;
-    
-    request.input(`rsb_bal_${pRand}`, sql.Decimal(18, 2), balance);
-    await request.query(`UPDATE suppliers SET current_balance = @rsb_bal_${pRand} WHERE id = @rsb_sid_${pRand}`);
-    return balance;
+    const { recalcSupplierBalanceAsync: canonical } = require('../services/accountingEngine');
+    return canonical(poolOrTxReq, supplierId);
 }
 
 router.get('/', asyncHandler(async (req, res) => {
@@ -116,11 +90,17 @@ router.post('/', asyncHandler(async (req, res) => {
         let code = supplier_code;
         
         if (!code) {
-            // UPDLOCK prevents other transactions from reading the last row until this transaction completes
-            const lastCodeResult = await request.query('SELECT TOP 1 supplier_code FROM suppliers WITH (UPDLOCK, HOLDLOCK) ORDER BY id DESC');
-            const last = lastCodeResult.recordset[0];
-            const lastNum = last && last.supplier_code ? parseInt(last.supplier_code.replace(/\D/g, '')) || 0 : 0;
-            code = `S-${String(lastNum + 1).padStart(4, '0')}`;
+            const cntUpd = await request.query(`
+                UPDATE invoice_counters SET last_number = last_number + 1
+                OUTPUT INSERTED.last_number
+                WHERE counter_name = 'suppliers'
+            `);
+            if (cntUpd.recordset[0]) {
+                code = `S-${String(cntUpd.recordset[0].last_number).padStart(4, '0')}`;
+            } else {
+                await request.query("INSERT INTO invoice_counters (counter_name, prefix, last_number) VALUES ('suppliers', 'S', 1)");
+                code = 'S-0001';
+            }
         }
         
         const ob = opening_balance || 0;

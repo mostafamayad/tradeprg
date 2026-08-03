@@ -1,0 +1,123 @@
+name: Phase 1 Regression (Posting Pipeline Integrity)
+
+on:
+  pull_request:
+    paths:
+      - 'webapp/backend/routes/sales*.js'
+      - 'webapp/backend/routes/sales/**'
+      - 'webapp/backend/routes/purchases*.js'
+      - 'webapp/backend/routes/purchases/**'
+      - 'webapp/backend/routes/inventory*.js'
+      - 'webapp/backend/routes/accounting*.js'
+      - 'webapp/backend/routes/ar_payments.js'
+      - 'webapp/backend/routes/ap_payments.js'
+      - 'webapp/backend/routes/collections.js'
+      - 'webapp/backend/routes/payments.js'
+      - 'webapp/backend/services/accountingEngine.js'
+      - 'webapp/backend/services/stockEngine.js'
+      - 'webapp/backend/services/treasuryEngine.js'
+      - 'webapp/backend/services/documentEngine.js'
+      - 'webapp/backend/services/statementEngine.js'
+      - 'webapp/backend/services/commission/**'
+      - 'webapp/backend/services/commissionEngine.js'
+      - 'webapp/backend/services/settlementEngine.js'
+      - 'webapp/backend/schema*.sql'
+      - 'webapp/backend/migrations/*.sql'
+      - 'webapp/backend/tests/**'
+      - 'webapp/backend/scripts/ci_seed.js'
+      - 'webapp/backend/scripts/integrity_audit.js'
+      - '.github/workflows/phase1-regression.yml'
+  push:
+    branches: [main, develop, phase1-stable]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  phase1:
+    name: Posting Pipeline + Integrity Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "TradePro_CI_2026!"
+          MSSQL_PID: "Express"
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'TradePro_CI_2026!' -Q 'SELECT 1' -b"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 15
+
+    defaults:
+      run:
+        working-directory: webapp/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: webapp/backend/package-lock.json
+
+      - name: Install dependencies (no native builds)
+        run: npm install --ignore-scripts
+
+      - name: Configure backend for CI database
+        run: |
+          @"
+          MSSQL_USE_WINDOWS_AUTH=false
+          MSSQL_SERVER=localhost
+          MSSQL_DATABASE=TradePro
+          MSSQL_USER=sa
+          MSSQL_PASSWORD=TradePro_CI_2026!
+          PORT=3000
+          "@ | Set-Content -Path .env -Encoding UTF8
+        shell: pwsh
+
+      - name: Start server (auto-creates database + schema)
+        run: |
+          node server.js > server.out.log 2>&1 &
+          $ready = $false
+          for ($i = 0; $i -lt 60; $i++) {
+            Start-Sleep -Seconds 2
+            try {
+              $r = Invoke-WebRequest -Uri http://localhost:3000/health -UseBasicParsing -TimeoutSec 5
+              if ($r.StatusCode -eq 200) { $ready = $true; break }
+            } catch { }
+          }
+          if (-not $ready) {
+            Write-Host "Server did not become healthy. Log tail:"
+            Get-Content server.out.log -Tail 40 -ErrorAction SilentlyContinue
+            exit 1
+          }
+          Write-Host "Server healthy."
+        shell: pwsh
+
+      - name: Seed CI baseline
+        run: node scripts/ci_seed.js
+
+      - name: Run Phase 1 integration suite (14 checks)
+        run: node tests/phase1/integration.js
+
+      - name: Run integrity audit (gate: 0 issues / 0 errors)
+        run: node scripts/integrity_audit.js --json ci-audit.json
+
+      - name: Upload reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase1-failure-reports
+          path: |
+            webapp/backend/server.out.log
+            webapp/backend/ci-audit.json
+            webapp/backend/tests/reports/*.json
+            webapp/backend/tests/reports/*.md
+          if-no-files-found: ignore

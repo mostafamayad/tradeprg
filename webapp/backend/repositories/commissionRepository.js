@@ -155,10 +155,7 @@ class CommissionRepository {
 
     async bulkUpdateStatus(ids, status, userId = null) {
         const pool = await getPool();
-        const table = new sql.Table();
-        table.create = false;
-        table.columns.add('id', sql.Int, { nullable: false });
-        for (const id of ids) table.rows.add(id);
+        const idsStr = ids.join(',');
 
         let setClause = '';
         switch (status) {
@@ -170,9 +167,9 @@ class CommissionRepository {
         }
 
         await pool.request()
-            .input('ids', table)
+            .input('idsStr', sql.NVarChar, idsStr)
             .input('userId', sql.Int, userId)
-            .query(`UPDATE commission_transactions SET ${setClause} WHERE id IN (SELECT id FROM @ids)`);
+            .query(`UPDATE commission_transactions SET ${setClause} WHERE id IN (SELECT value FROM STRING_SPLIT(@idsStr, ','))`);
     }
 
     async getTransactionsByPeriod(period, companyId = null) {
@@ -218,17 +215,14 @@ class CommissionRepository {
 
     async getTransactionsByIds(ids) {
         const pool = await getPool();
-        const table = new sql.Table();
-        table.create = false;
-        table.columns.add('id', sql.Int, { nullable: false });
-        for (const id of ids) table.rows.add(id);
+        const idsStr = ids.join(',');
 
         const r = await pool.request()
-            .input('ids', table)
+            .input('idsStr', sql.NVarChar, idsStr)
             .query(`SELECT ct.*, sr.rep_code, sr.rep_name
                     FROM commission_transactions ct
                     LEFT JOIN sales_reps sr ON ct.rep_id = sr.id
-                    WHERE ct.id IN (SELECT id FROM @ids)`);
+                    WHERE ct.id IN (SELECT value FROM STRING_SPLIT(@idsStr, ','))`);
         return r.recordset;
     }
 

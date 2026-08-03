@@ -1,5 +1,6 @@
 const repo = require('../../repositories/commissionRepository');
 const { getPool, sql } = require('../../database/mssql_db');
+const { postJournalEntryAsync, getSystemAccountAsync } = require('../accountingEngine');
 
 async function postApprovalJournalEntry(transactions, userId) {
     if (!transactions.length) return null;
@@ -7,45 +8,37 @@ async function postApprovalJournalEntry(transactions, userId) {
     const now = new Date().toISOString().split('T')[0];
     const totalAmount = transactions.reduce((s, t) => s + (t.commission_amount || 0), 0);
     if (totalAmount <= 0) return null;
-
-    const expenseAcc = await pool.request().query(`SELECT id FROM chart_of_accounts WHERE system_code = 'SYS_COMMISSION_EXPENSE'`);
-    const payableAcc = await pool.request().query(`SELECT id FROM chart_of_accounts WHERE system_code = 'SYS_COMMISSION_PAYABLE'`);
-    if (!expenseAcc.recordset[0] || !payableAcc.recordset[0]) throw new Error('Commission COA accounts not found (551/221)');
-
-    const expenseId = expenseAcc.recordset[0].id;
-    const payableId = payableAcc.recordset[0].id;
-    const counterResult = await pool.request().query(`SELECT ISNULL(MAX(CAST(SUBSTRING(entry_no, 3, LEN(entry_no)) AS INT)), 0) + 1 AS next_no FROM journal_entries`);
-    const entryNo = 'JE' + String(counterResult.recordset[0].next_no).padStart(6, '0');
     const period = transactions[0].period;
 
-    const jeResult = await pool.request()
-        .input('entryNo', sql.NVarChar, entryNo)
-        .input('entryDate', sql.NVarChar, now)
-        .input('desc', sql.NVarChar, `عمولات المندوبين - ${period}`)
-        .input('total', sql.Decimal(18, 2), totalAmount)
-        .input('userId', sql.Int, userId)
-        .query(`INSERT INTO journal_entries (entry_no, entry_date, description, total_debit, total_credit, created_by, source_module, source_action, is_system_generated)
-                OUTPUT INSERTED.id
-                VALUES (@entryNo, @entryDate, @desc, @total, @total, @userId, 'commission', 'approve', 1)`);
-    const jeId = jeResult.recordset[0].id;
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+    const txReq = transaction.request();
+    try {
+        const expenseId = await getSystemAccountAsync(txReq, 'SYS_COMMISSION_EXPENSE');
+        const payableId = await getSystemAccountAsync(txReq, 'SYS_COMMISSION_PAYABLE');
 
-    await pool.request()
-        .input('jeId', sql.Int, jeId).input('expenseId', sql.Int, expenseId)
-        .input('total', sql.Decimal(18, 2), totalAmount).input('desc', sql.NVarChar, 'مصروف عمولات')
-        .query(`INSERT INTO journal_entry_lines (entry_id, account_id, debit, credit, description) VALUES (@jeId, @expenseId, @total, 0, @desc)`);
+        const jeId = await postJournalEntryAsync(
+            txReq, now, `عمولات المندوبين - ${period}`,
+            [
+                { account_id: expenseId, debit: totalAmount, credit: 0, description: 'مصروف عمولات' },
+                { account_id: payableId, debit: 0, credit: totalAmount, description: 'عمولات مستحقة للمندوبين' }
+            ],
+            'commission', null, userId,
+            { module: 'commission', action: 'approve', document: period, isSystem: true }
+        );
 
-    await pool.request()
-        .input('jeId', sql.Int, jeId).input('payableId', sql.Int, payableId)
-        .input('total', sql.Decimal(18, 2), totalAmount).input('desc', sql.NVarChar, 'عمولات مستحقة للمندوبين')
-        .query(`INSERT INTO journal_entry_lines (entry_id, account_id, debit, credit, description) VALUES (@jeId, @payableId, 0, @total, @desc)`);
+        for (const t of transactions) {
+            await txReq
+                .input('txId', sql.Int, t.id).input('jeId', sql.Int, jeId)
+                .query(`UPDATE commission_transactions SET is_posted_to_gl = 1, journal_entry_id = @jeId WHERE id = @txId`);
+        }
 
-    for (const t of transactions) {
-        await pool.request()
-            .input('txId', sql.Int, t.id).input('jeId', sql.Int, jeId)
-            .query(`UPDATE commission_transactions SET is_posted_to_gl = 1, journal_entry_id = @jeId WHERE id = @txId`);
+        await transaction.commit();
+        return jeId;
+    } catch (err) {
+        await transaction.rollback();
+        throw err;
     }
-
-    return jeId;
 }
 
 async function postPaymentJournalEntry(voucher, transactions, userId) {
@@ -54,49 +47,43 @@ async function postPaymentJournalEntry(voucher, transactions, userId) {
     const totalAmount = voucher.total_amount;
     if (totalAmount <= 0) return null;
 
-    const payableAcc = await pool.request().query(`SELECT id FROM chart_of_accounts WHERE system_code = 'SYS_COMMISSION_PAYABLE'`);
-    const treasuryAcc = await pool.request().query(`SELECT TOP 1 id FROM treasury_accounts WHERE is_active = 1`);
-    if (!payableAcc.recordset[0]) throw new Error('Commission Payable account not found (221)');
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+    const txReq = transaction.request();
+    try {
+        const payableId = await getSystemAccountAsync(txReq, 'SYS_COMMISSION_PAYABLE');
+        const treasuryRes = await txReq.query(`SELECT TOP 1 id FROM treasury_accounts`);
+        const treasuryId = treasuryRes.recordset[0] ? treasuryRes.recordset[0].id : null;
 
-    const payableId = payableAcc.recordset[0].id;
-    const treasuryId = treasuryAcc.recordset[0] ? treasuryAcc.recordset[0].id : null;
-    const counterResult = await pool.request().query(`SELECT ISNULL(MAX(CAST(SUBSTRING(entry_no, 3, LEN(entry_no)) AS INT)), 0) + 1 AS next_no FROM journal_entries`);
-    const entryNo = 'JE' + String(counterResult.recordset[0].next_no).padStart(6, '0');
+        const lines = [
+            { account_id: payableId, debit: totalAmount, credit: 0, description: 'صرف عمولات مستحقة' }
+        ];
+        if (treasuryId) {
+            lines.push({ account_id: treasuryId, debit: 0, credit: totalAmount, description: 'دفع عمولات من الخزينة' });
+        }
 
-    const jeResult = await pool.request()
-        .input('entryNo', sql.NVarChar, entryNo)
-        .input('entryDate', sql.NVarChar, now)
-        .input('desc', sql.NVarChar, `صرف عمولات - ${voucher.voucher_no}`)
-        .input('total', sql.Decimal(18, 2), totalAmount)
-        .input('userId', sql.Int, userId)
-        .query(`INSERT INTO journal_entries (entry_no, entry_date, description, total_debit, total_credit, created_by, source_module, source_action, is_system_generated)
-                OUTPUT INSERTED.id
-                VALUES (@entryNo, @entryDate, @desc, @total, @total, @userId, 'commission', 'pay', 1)`);
-    const jeId = jeResult.recordset[0].id;
+        const jeId = await postJournalEntryAsync(
+            txReq, now, `صرف عمولات - ${voucher.voucher_no}`, lines,
+            'commission', voucher.id, userId,
+            { module: 'commission', action: 'pay', document: voucher.voucher_no, isSystem: true }
+        );
 
-    await pool.request()
-        .input('jeId', sql.Int, jeId).input('payableId', sql.Int, payableId)
-        .input('total', sql.Decimal(18, 2), totalAmount).input('desc', sql.NVarChar, 'صرف عمولات مستحقة')
-        .query(`INSERT INTO journal_entry_lines (entry_id, account_id, debit, credit, description) VALUES (@jeId, @payableId, @total, 0, @desc)`);
+        for (const t of transactions) {
+            await txReq
+                .input('txId', sql.Int, t.id)
+                .query(`UPDATE commission_transactions SET is_paid = 1 WHERE id = @txId`);
+        }
 
-    if (treasuryId) {
-        await pool.request()
-            .input('jeId', sql.Int, jeId).input('treasuryId', sql.Int, treasuryId)
-            .input('total', sql.Decimal(18, 2), totalAmount).input('desc', sql.NVarChar, 'دفع عمولات من الخزينة')
-            .query(`INSERT INTO journal_entry_lines (entry_id, account_id, debit, credit, description) VALUES (@jeId, @treasuryId, 0, @total, @desc)`);
+        await txReq
+            .input('jeId', sql.Int, jeId).input('vId', sql.Int, voucher.id)
+            .query(`UPDATE commission_payment_vouchers SET journal_entry_id = @jeId WHERE id = @vId`);
+
+        await transaction.commit();
+        return jeId;
+    } catch (err) {
+        await transaction.rollback();
+        throw err;
     }
-
-    for (const t of transactions) {
-        await pool.request()
-            .input('txId', sql.Int, t.id).input('jeId', sql.Int, jeId)
-            .query(`UPDATE commission_transactions SET is_paid = 1 WHERE id = @txId`);
-    }
-
-    await pool.request()
-        .input('jeId', sql.Int, jeId).input('vId', sql.Int, voucher.id)
-        .query(`UPDATE commission_payment_vouchers SET journal_entry_id = @jeId WHERE id = @vId`);
-
-    return jeId;
 }
 
 async function lockPeriod(period, userId, companyId = null) {
@@ -141,17 +128,29 @@ async function unlockPeriod(period, userId, companyId = null) {
 
 async function approveTransactions(ids, userId, companyId = null) {
     const transactions = await repo.getTransactionsByIds(ids);
+    const invalid = transactions.filter(t => t.workflow_status > 1);
+    if (invalid.length > 0) {
+        throw new Error('Some transactions already approved or locked (ids: ' + invalid.map(t => t.id).join(', ') + ')');
+    }
     await repo.bulkUpdateStatus(ids, 2, userId);
     for (const id of ids) {
         await repo.logAudit(companyId, 'commission_transaction', id, 'approved', { workflow_status: 1 }, { workflow_status: 2 }, userId);
     }
-    let jeId = null;
-    try {
-        jeId = await postApprovalJournalEntry(transactions, userId);
-    } catch (e) {
-        console.error('[Commission] GL posting failed on approve:', e.message);
+    return { approved: ids.length };
+}
+
+async function postToGL(ids, userId, companyId = null) {
+    const transactions = await repo.getTransactionsByIds(ids);
+    if (!transactions.length) throw new Error('No transactions found');
+    const invalid = transactions.filter(t => t.workflow_status !== 2 || t.is_posted_to_gl);
+    if (invalid.length > 0) {
+        throw new Error('Some transactions are not approved or already posted (ids: ' + invalid.map(t => t.id).join(', ') + ')');
     }
-    return { approved: ids.length, jeId };
+    const jeId = await postApprovalJournalEntry(transactions, userId);
+    for (const id of ids) {
+        await repo.logAudit(companyId, 'commission_transaction', id, 'posted_to_gl', { is_posted_to_gl: 0 }, { is_posted_to_gl: 1, journal_entry_id: jeId }, userId);
+    }
+    return { posted: ids.length, jeId };
 }
 
 async function settleTransactions(ids, userId, companyId = null) {
@@ -224,6 +223,7 @@ module.exports = {
     lockPeriod,
     unlockPeriod,
     approveTransactions,
+    postToGL,
     settleTransactions,
     createPaymentVoucher,
     approveVoucher,

@@ -92,13 +92,8 @@ licenseManager.onEvent(async (entry) => {
 app.use(helmet({ contentSecurityPolicy: false })); // Allow serving frontend
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
-        // Or if origin is localhost/LAN IP
-        if (!origin || origin.includes('localhost') || origin.startsWith('http://192.168.') || origin.startsWith('http://10.') || origin.startsWith('http://100.') || origin.match(/^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\./)) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
+        // Always allow for Cloudflare tunnels and local access
+        callback(null, true);
     },
     credentials: true
 }));
@@ -238,6 +233,7 @@ app.use('/api/notifications',      require('./routes/notifications'));
 app.use('/api/hr',                 applyPermissions('settings'),    require('./routes/hr'));
 app.use('/api/commissions',        applyPermissions('commission'),  require('./routes/commissions'));
 app.use('/api/commission-plans',   applyPermissions('commission'),  require('./routes/commission_plans'));
+app.use('/api/rbac',               require('./routes/rbac'));
 
 // ─── SPA Fallback (for direct URL access) ────────────────────
 app.get('*', (req, res) => {

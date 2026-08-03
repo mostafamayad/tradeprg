@@ -9,7 +9,7 @@
 
 const router = require('express').Router();
 const { getPool, sql } = require('../database/mssql_db');
-const { postJournalEntryAsync, getSystemAccountAsync, reverseJournalEntryAsync } = require('../services/accountingEngine');
+const { postJournalEntryAsync, getSystemAccountAsync, reverseJournalEntryAsync, recalcCustomerBalanceAsync } = require('../services/accountingEngine');
 const logActivity = require('../middleware/logger');
 const asyncHandler = require('../utils/asyncHandler');
 
@@ -45,34 +45,6 @@ async function nextDocNoAsync(txRequest, counterName) {
         WHERE counter_name = @cn_${pRand}
     `);
     return `${row.recordset[0].prefix}-${String(next).padStart(4, '0')}`;
-}
-
-async function recalcCustomerBalanceAsync(txRequest, customerId) {
-    const pRand = Math.random().toString(36).substring(2, 9);
-    txRequest.input(`rcb_cid_${pRand}`, sql.Int, customerId);
-
-    const cRes = await txRequest.query(`SELECT opening_balance FROM customers WHERE id = @rcb_cid_${pRand}`);
-    if (!cRes.recordset[0]) return;
-
-    const salesRes = await txRequest.query(`SELECT COALESCE(SUM(grand_total), 0) as total FROM sales_invoices WHERE customer_id = @rcb_cid_${pRand} AND status != 'cancelled'`);
-    const returnsRes = await txRequest.query(`SELECT COALESCE(SUM(grand_total), 0) as total FROM sales_returns WHERE customer_id = @rcb_cid_${pRand} AND status != 'cancelled'`);
-    const collectionsRes = await txRequest.query(`
-        SELECT COALESCE(SUM(cc.amount), 0) as total 
-        FROM customer_collections cc
-        LEFT JOIN checks ch ON ch.collection_id = cc.id
-        WHERE cc.customer_id = @rcb_cid_${pRand} AND (ch.id IS NULL OR ch.status NOT IN ('bounced', 'cancelled'))
-    `);
-
-    const opening = cRes.recordset[0].opening_balance || 0;
-    const sales = salesRes.recordset[0].total || 0;
-    const returns = returnsRes.recordset[0].total || 0;
-    const collections = collectionsRes.recordset[0].total || 0;
-
-    const balance = opening + sales - returns - collections;
-    
-    txRequest.input(`rcb_bal_${pRand}`, sql.Decimal(18, 2), balance);
-    await txRequest.query(`UPDATE customers SET current_balance = @rcb_bal_${pRand} WHERE id = @rcb_cid_${pRand}`);
-    return balance;
 }
 
 async function refreshInvoiceStatusAsync(txRequest, invoiceId) {
@@ -204,22 +176,58 @@ async function allocateCollectionAsync(txRequest, customerId, collectionId, amou
 // ── List Collections ──────────────────────────────────────
 router.get('/', asyncHandler(async (req, res) => {
     try {
-        const { q, customer_id, from, to, payment_method, status } = req.query;
+        const { q, customer_id, rep_id, from, to, payment_method, bank, status } = req.query;
         const pool = await getPool();
         const request = pool.request();
-        let sqlQuery = `SELECT TOP 500 cc.*, c.customer_name, c.customer_code, c.phone, r.rep_name
-                   FROM customer_collections cc
-                   LEFT JOIN customers c ON cc.customer_id = c.id
-                   LEFT JOIN sales_reps r ON cc.rep_id = r.id
-                   WHERE 1=1`;
-        if (q) { sqlQuery += ` AND (cc.collection_no LIKE @q OR c.customer_name LIKE @q)`; request.input('q', sql.NVarChar, `%\${q}%`); }
-        if (customer_id) { sqlQuery += ` AND cc.customer_id = @cid`; request.input('cid', sql.Int, customer_id); }
-        if (from) { sqlQuery += ` AND cc.collection_date >= @from`; request.input('from', sql.NVarChar, from); }
-        if (to) { sqlQuery += ` AND cc.collection_date <= @to`; request.input('to', sql.NVarChar, to); }
-        if (payment_method) { sqlQuery += ` AND cc.payment_method = @pm`; request.input('pm', sql.NVarChar, payment_method); }
-        sqlQuery += ` ORDER BY cc.id DESC`;
-        const dataRes = await request.query(sqlQuery);
-        res.json({ success: true, data: dataRes.recordset });
+
+        // المصدر الحقيقي لسندات القبض هو ar_payments (نفس مصدر شاشة تحصيلات العملاء).
+        // customer_collections هي الجدول القديم وليست مصدر الحقيقة بعد الآن.
+        let where = ' WHERE 1=1';
+        if (q) { where += ` AND (ap.payment_no LIKE @q OR c.customer_name LIKE @q)`; request.input('q', sql.NVarChar, `%${q}%`); }
+        if (customer_id) { where += ` AND ap.customer_id = @cid`; request.input('cid', sql.Int, customer_id); }
+        if (rep_id) { where += ` AND c.rep_id = @rid`; request.input('rid', sql.Int, rep_id); }
+        if (from) { where += ` AND ap.payment_date >= @from`; request.input('from', sql.Date, from); }
+        if (to) { where += ` AND ap.payment_date <= @to`; request.input('to', sql.Date, to); }
+        if (payment_method) { where += ` AND ap.payment_method = @pm`; request.input('pm', sql.NVarChar, payment_method); }
+        if (bank) { where += ` AND ap.bank_name LIKE @bank`; request.input('bank', sql.NVarChar, `%${bank}%`); }
+
+        // Enrichment: allocated (from ar_payment_allocations), remaining and derived status.
+        const inner = `
+            SELECT ap.id, ap.payment_no AS collection_no,
+                   CONVERT(varchar(10), ap.payment_date, 23) AS collection_date,
+                   ap.customer_id, ap.amount,
+                   ap.payment_method, ap.check_no, ap.check_date, ap.bank_name, ap.notes,
+                   ap.created_by, ap.created_at, ap.status AS payment_status,
+                   c.rep_id, c.customer_name, c.customer_code, c.phone, r.rep_name,
+                   COALESCE(alloc.allocated, 0) AS allocated,
+                   (ap.amount - COALESCE(alloc.allocated, 0)) AS remaining,
+                   CASE
+                     WHEN ap.status = 'reversed' THEN 'cancelled'
+                     WHEN COALESCE(alloc.allocated, 0) >= ap.amount THEN 'allocated'
+                     WHEN COALESCE(alloc.allocated, 0) > 0 THEN 'partial'
+                     ELSE 'unallocated'
+                   END AS status
+            FROM ar_payments ap
+            LEFT JOIN customers c ON ap.customer_id = c.id
+            LEFT JOIN sales_reps r ON c.rep_id = r.id
+            LEFT JOIN (SELECT payment_id, SUM(allocated_amount) AS allocated
+                       FROM ar_payment_allocations GROUP BY payment_id) alloc ON alloc.payment_id = ap.id
+            ${where}
+        `;
+
+        let statusWhere = '';
+        if (status) { statusWhere = ' WHERE t.status = @st'; request.input('st', sql.NVarChar, status); }
+
+        const dataRes = await request.query(`SELECT TOP 1000 * FROM (${inner}) t ${statusWhere} ORDER BY t.id DESC`);
+        const sumRes = await request.query(`
+            SELECT COUNT(*) AS total_count,
+                   COALESCE(SUM(amount),0) AS total_amount,
+                   COALESCE(SUM(allocated),0) AS total_allocated,
+                   COALESCE(SUM(remaining),0) AS total_remaining,
+                   COALESCE(SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END),0) AS reversed_count,
+                   COALESCE(SUM(CASE WHEN status<>'cancelled' THEN 1 ELSE 0 END),0) AS active_count
+            FROM (${inner}) t ${statusWhere}`);
+        res.json({ success: true, data: dataRes.recordset, summary: sumRes.recordset[0] });
     } catch (err) {
         console.error(err);
         err.status = 500;
@@ -351,6 +359,14 @@ router.post('/', asyncHandler(async (req, res) => {
             await logActivity(req, 'CREATE', 'collections', collection_no || null, 'تسجيل تحصيل', null, null, 'FAILED', 'العميل غير موجود');
             return res.status(404).json({ success: false, message: 'العميل غير موجود' });
         }
+        if (customer.current_balance > 0 && amountValue > customer.current_balance) {
+            await logActivity(req, 'CREATE', 'collections', collection_no || null, 'تسجيل تحصيل', null, null, 'FAILED', 'قيمة التحصيل تتجاوز الرصيد المستحق');
+            return res.status(400).json({ success: false, message: 'قيمة التحصيل تتجاوز الرصيد المستحق للعميل (' + Number(customer.current_balance).toFixed(2) + ')' });
+        }
+        if (customer.current_balance <= 0) {
+            await logActivity(req, 'CREATE', 'collections', collection_no || null, 'تسجيل تحصيل', null, null, 'FAILED', 'لا يوجد رصيد مستحق للتحصيل');
+            return res.status(400).json({ success: false, message: 'لا يوجد رصيد مستحق للتحصيل من هذا العميل' });
+        }
 
         const tx = new sql.Transaction(pool);
         await tx.begin();
@@ -440,10 +456,10 @@ router.post('/', asyncHandler(async (req, res) => {
                     collection: {
                         id: collectionId,
                         customer_id,
-                        rep_id: repIdValue,
+                        rep_id: rep_id,
                         amount: amountValue,
                         collection_no: colNo,
-                        collection_date: colDate,
+                        collection_date: date,
                         company_id: null,
                         customer_name: null,
                         invoice_no: null,
@@ -520,6 +536,14 @@ router.get('/customer/:id/unpaid', asyncHandler(async (req, res) => {
         err.message = 'خطأ في الخادم';
         throw err;
     }
+}));
+
+// Balance preview for collection screen
+router.get('/customer/:id/preview', asyncHandler(async (req, res) => {
+    const { getCustomerFullBalance } = require('../services/balanceService');
+    const data = await getCustomerFullBalance(req.params.id);
+    if (!data) return res.status(404).json({ success: false, message: 'العميل غير موجود' });
+    res.json({ success: true, data });
 }));
 
 module.exports = router;

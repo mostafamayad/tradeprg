@@ -270,7 +270,7 @@ async function getDashboardKPIs() {
 
     const queries = [
         `SELECT COALESCE(SUM(grand_total), 0) as v FROM sales_invoices WHERE invoice_date = @t1 AND status NOT IN ('cancelled', 'deleted')`,
-        `SELECT COALESCE(SUM(grand_total), 0) as v FROM sales_invoices WHERE CAST(invoice_date AS DATE) >= DATEADD(day, -7, GETDATE()) AND status NOT IN ('cancelled', 'deleted')`,
+        `SELECT COALESCE(SUM(grand_total), 0) as v FROM sales_invoices WHERE TRY_CAST(invoice_date AS DATE) >= DATEADD(day, -7, GETDATE()) AND status NOT IN ('cancelled', 'deleted')`,
         `SELECT COALESCE(SUM(grand_total), 0) as v FROM sales_invoices WHERE LEFT(invoice_date, 7) = LEFT(CONVERT(NVarChar(10), GETDATE(), 120), 7) AND status NOT IN ('cancelled', 'deleted')`,
         `SELECT COUNT(*) as v FROM sales_invoices WHERE invoice_date = @t2 AND status NOT IN ('cancelled', 'deleted')`,
         `SELECT COALESCE(SUM(grand_total), 0) as v FROM purchase_invoices WHERE invoice_date = @t3 AND status NOT IN ('cancelled', 'deleted')`,
@@ -345,7 +345,7 @@ async function getAlerts() {
     const [lowStock, outOfStock, overdueCustomers] = await Promise.all([
         ctx.request.query(`SELECT TOP 20 p.id, p.product_code, p.product_name, ib.quantity, p.min_stock, p.unit_name FROM inventory_balances ib JOIN products p ON ib.product_id = p.id WHERE ib.quantity <= p.min_stock ORDER BY (ib.quantity - p.min_stock) ASC`),
         ctx.request.query(`SELECT TOP 20 p.id, p.product_code, p.product_name, p.unit_name FROM products p WHERE p.is_active = 1 AND NOT EXISTS (SELECT 1 FROM inventory_balances ib WHERE ib.product_id = p.id AND ib.quantity > 0)`),
-        ctx.request.query(`SELECT TOP 20 c.id, c.customer_name, COUNT(i.id) as overdue_count, SUM(i.grand_total - i.amount_paid) as overdue_amount FROM sales_invoices i JOIN customers c ON i.customer_id = c.id WHERE i.status NOT IN ('cancelled', 'deleted') AND CAST(i.invoice_date AS DATE) < DATEADD(day, -60, GETDATE()) AND (i.grand_total - i.amount_paid) > 0 GROUP BY c.id, c.customer_name ORDER BY overdue_amount DESC`)
+        ctx.request.query(`SELECT TOP 20 c.id, c.customer_name, COUNT(i.id) as overdue_count, SUM(i.grand_total - i.amount_paid) as overdue_amount FROM sales_invoices i JOIN customers c ON i.customer_id = c.id WHERE i.status NOT IN ('cancelled', 'deleted') AND TRY_CAST(i.invoice_date AS DATE) < DATEADD(day, -60, GETDATE()) AND (i.grand_total - i.amount_paid) > 0 GROUP BY c.id, c.customer_name ORDER BY overdue_amount DESC`)
     ]);
 
     return { lowStock: lowStock.recordset, outOfStock: outOfStock.recordset, overdueCustomers: overdueCustomers.recordset };
@@ -362,11 +362,15 @@ async function getSalesChart(days) {
     const ctx = await init(req());
     inp(ctx, 'days', sql.Int, days);
     const result = await ctx.request.query(`
-        SELECT invoice_date as date, SUM(grand_total) as total, COUNT(*) as count
+        SELECT 
+            CAST(invoice_date AS DATE) as date, 
+            SUM(grand_total) as total, 
+            COUNT(*) as count
         FROM sales_invoices
-        WHERE status NOT IN ('cancelled', 'deleted') AND CAST(invoice_date AS DATE) >= DATEADD(day, -@days, GETDATE())
-        GROUP BY invoice_date
-        ORDER BY invoice_date
+        WHERE status NOT IN ('cancelled', 'deleted') 
+          AND TRY_CAST(invoice_date AS DATE) >= DATEADD(day, -@days, CAST(GETDATE() AS DATE))
+        GROUP BY CAST(invoice_date AS DATE)
+        ORDER BY CAST(invoice_date AS DATE)
     `);
     return result.recordset;
 }
@@ -447,7 +451,7 @@ async function getAgingReceivables() {
                (c.credit_limit - c.current_balance) AS available_credit,
                CASE
                  WHEN c.current_balance > 0 AND c.last_invoice_date IS NOT NULL
-                 THEN DATEDIFF(DAY, CAST(c.last_invoice_date AS DATE), GETDATE())
+                 THEN DATEDIFF(DAY, TRY_CAST(c.last_invoice_date AS DATE), GETDATE())
                  ELSE 0
                END AS days_outstanding,
                COALESCE((
@@ -456,7 +460,7 @@ async function getAgingReceivables() {
                  WHERE i.customer_id = c.id
                    AND i.status NOT IN ('cancelled', 'deleted')
                    AND (i.grand_total - i.amount_paid) > 0
-                   AND DATEDIFF(DAY, CAST(i.invoice_date AS DATE), GETDATE()) BETWEEN 0 AND 30
+                   AND DATEDIFF(DAY, TRY_CAST(i.invoice_date AS DATE), GETDATE()) BETWEEN 0 AND 30
                ), 0) AS age_0_30,
                COALESCE((
                  SELECT SUM(i.grand_total - i.amount_paid)
@@ -464,7 +468,7 @@ async function getAgingReceivables() {
                  WHERE i.customer_id = c.id
                    AND i.status NOT IN ('cancelled', 'deleted')
                    AND (i.grand_total - i.amount_paid) > 0
-                   AND DATEDIFF(DAY, CAST(i.invoice_date AS DATE), GETDATE()) BETWEEN 31 AND 60
+                   AND DATEDIFF(DAY, TRY_CAST(i.invoice_date AS DATE), GETDATE()) BETWEEN 31 AND 60
                ), 0) AS age_31_60,
                COALESCE((
                  SELECT SUM(i.grand_total - i.amount_paid)
@@ -472,7 +476,7 @@ async function getAgingReceivables() {
                  WHERE i.customer_id = c.id
                    AND i.status NOT IN ('cancelled', 'deleted')
                    AND (i.grand_total - i.amount_paid) > 0
-                   AND DATEDIFF(DAY, CAST(i.invoice_date AS DATE), GETDATE()) BETWEEN 61 AND 90
+                   AND DATEDIFF(DAY, TRY_CAST(i.invoice_date AS DATE), GETDATE()) BETWEEN 61 AND 90
                ), 0) AS age_61_90,
                COALESCE((
                  SELECT SUM(i.grand_total - i.amount_paid)
@@ -480,7 +484,7 @@ async function getAgingReceivables() {
                  WHERE i.customer_id = c.id
                    AND i.status NOT IN ('cancelled', 'deleted')
                    AND (i.grand_total - i.amount_paid) > 0
-                   AND DATEDIFF(DAY, CAST(i.invoice_date AS DATE), GETDATE()) BETWEEN 91 AND 120
+                   AND DATEDIFF(DAY, TRY_CAST(i.invoice_date AS DATE), GETDATE()) BETWEEN 91 AND 120
                ), 0) AS age_91_120,
                COALESCE((
                  SELECT SUM(i.grand_total - i.amount_paid)
@@ -488,7 +492,7 @@ async function getAgingReceivables() {
                  WHERE i.customer_id = c.id
                    AND i.status NOT IN ('cancelled', 'deleted')
                    AND (i.grand_total - i.amount_paid) > 0
-                   AND DATEDIFF(DAY, CAST(i.invoice_date AS DATE), GETDATE()) > 120
+                   AND DATEDIFF(DAY, TRY_CAST(i.invoice_date AS DATE), GETDATE()) > 120
                ), 0) AS age_120_plus
         FROM customers c
         WHERE c.is_active = 1 AND c.current_balance > 0

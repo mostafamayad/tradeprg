@@ -769,19 +769,13 @@ window.API = {
 
     //  License 
     async getLicenseStatus() {
-        const res = await fetch(`${BASE_URL}/license/status`);
-        return await res.json();
+        return await this.request('/license/status', 'GET', null, { silent: true });
     },
     async getLicenseHardware() {
         return await this.request('/license/hardware', 'GET', null, { silent: true });
     },
     async activateLicense(licenseBase64) {
-        const res = await fetch(`${BASE_URL}/license/activate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ license: licenseBase64 })
-        });
-        return await res.json();
+        return await this.request('/license/activate', 'POST', { license: licenseBase64 }, { silent: true });
     },
     async getLicenseHealth() {
         return await this.request('/license/health');

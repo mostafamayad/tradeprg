@@ -84,9 +84,23 @@ router.post('/payments', async (req, res) => {
             await createTreasuryTransactionAsync(txRequest, {
                 transNo, transDate: pDate, transType: 'out', amount,
                 accountId: treasury.id, relatedType: 'supplier_payment', relatedId: supplier_id,
-                documentNo: payNo, description: `دفعية للمورد ${payNo}`,
-                userId: req.user ? req.user.id : null
+                documentNo: payNo, description: `دفعية للمورد ${payNo}`
             });
+
+            // Create JE: Dr SYS_AP, Cr SYS_CASH
+            const accAP = await getSystemAccountAsync(txRequest, 'SYS_AP');
+            const accCash = await getSystemAccountAsync(txRequest, 'SYS_CASH');
+            if (accAP && accCash) {
+                const payLines = [
+                    { account_id: accAP, debit: amount, credit: 0, description: `سداد للمورد ${payNo}` },
+                    { account_id: accCash, debit: 0, credit: amount, description: `صرف نقدية ${payNo}` }
+                ];
+                await postJournalEntryAsync(
+                    txRequest, pDate, `سداد للمورد ${payNo}`, payLines,
+                    'supplier_payment', null, req.user ? req.user.id : null,
+                    { module: 'purchases', action: 'payment', document: payNo, isSystem: true }
+                );
+            }
         }
 
         await recalcSupplierBalanceAsync(txRequest, supplier_id);

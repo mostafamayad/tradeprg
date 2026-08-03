@@ -294,7 +294,7 @@ router.post('/returns', asyncHandler(async (req, res) => {
 
         } else {
             // ── MANUAL (free) return: no invoice linked ──
-            // Validate inventory with UPDLOCK/HOLDLOCK
+            // Validate inventory with UPDLOCK (no HOLDLOCK needed — point query on PK)
             for (const it of items) {
                 const chkReq = transaction.request();
                 const pRand = Math.random().toString(36).substring(2, 7);
@@ -302,8 +302,8 @@ router.post('/returns', asyncHandler(async (req, res) => {
                 chkReq.input(`chk_sid_${pRand}`, sql.Int, store_id);
                 const chkRes = await chkReq.query(`
                     SELECT ISNULL(ib.quantity, 0) as qty
-                    FROM products p WITH (UPDLOCK, HOLDLOCK)
-                    LEFT JOIN inventory_balances ib WITH (UPDLOCK, HOLDLOCK) ON ib.product_id = p.id AND ib.store_id = @chk_sid_${pRand}
+                    FROM products p WITH (UPDLOCK)
+                    LEFT JOIN inventory_balances ib WITH (UPDLOCK) ON ib.product_id = p.id AND ib.store_id = @chk_sid_${pRand}
                     WHERE p.id = @chk_pid_${pRand}
                 `);
                 if (!chkRes.recordset[0]) {

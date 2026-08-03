@@ -5,6 +5,22 @@ const { sql } = require('../database/mssql_db');
  */
 
 /**
+ * Check whether a posting date falls in a closed fiscal period.
+ * Central lock: enforced here so EVERY posting path (sales, purchases,
+ * inventory, treasury, AR/AP, checks, reversals) is blocked, not only manual JEs.
+ * Throws with a clear Arabic error when the period is closed.
+ */
+async function assertDateOpenAsync(date) {
+    const fiscalRepo = require('../repositories/fiscalPeriodRepository');
+    const isClosed = await fiscalRepo.isDateInClosedPeriod(date);
+    if (isClosed) {
+        const err = new Error('لا يمكن الترحيل في فترة مالية مغلقة');
+        err.code = 'CLOSED_PERIOD';
+        throw err;
+    }
+}
+
+/**
  * Generate Next Journal Entry Number
  * Must be run within an existing transaction.
  */
@@ -42,9 +58,10 @@ async function nextJournalNoAsync(txRequest) {
  * Retrieve Account ID by System Code
  */
 async function getSystemAccountAsync(txRequest, systemCode) {
-    txRequest.input(`gsys_code_${systemCode}`, sql.NVarChar, systemCode);
+    const gx = Math.random().toString(36).substring(2, 9);
+    txRequest.input(`gsys_code_${systemCode}_${gx}`, sql.NVarChar, systemCode);
     const res = await txRequest.query(`
-        SELECT id FROM chart_of_accounts WHERE system_code = @gsys_code_${systemCode}
+        SELECT id FROM chart_of_accounts WHERE system_code = @gsys_code_${systemCode}_${gx}
     `);
     if (!res.recordset[0]) {
         console.error(`[AccountingEngine] Missing system account: ${systemCode}. Run chart_of_accounts seeding from server startup.`);
@@ -64,7 +81,8 @@ const REQUIRED_SYSTEM_ACCOUNTS = [
     { code: '2',  name: 'الخصوم',                        type: 'liability' },
     { code: '3',  name: 'حقوق الملكية',                  type: 'equity' },
     { code: '4',  name: 'الإيرادات',                     type: 'revenue' },
-    { code: '5',  name: 'المصروفات',                     type: 'expense' },
+    { code: '5',  name: 'تكلفة المبيعات',                type: 'expense' },
+    { code: '6',  name: 'المصروفات',                     type: 'expense' },
 
     // ── Level 2: Sub-categories ──
     { code: '11', name: 'الأصول المتداولة',              type: 'asset',   parent: '1' },
@@ -73,7 +91,12 @@ const REQUIRED_SYSTEM_ACCOUNTS = [
     { code: '22', name: 'الخصوم طويلة الأجل',            type: 'liability', parent: '2' },
     { code: '31', name: 'رأس المال',                     type: 'equity',  parent: '3' },
     { code: '42', name: 'إيرادات أخرى',                  type: 'revenue', parent: '4' },
-    { code: '55', name: 'مصروفات عامة وإدارية',           type: 'expense', parent: '5' },
+    { code: '61', name: 'مصروفات البيع والتوزيع',         type: 'expense', parent: '6' },
+    { code: '62', name: 'المصروفات العمومية والإدارية',   type: 'expense', parent: '6' },
+    { code: '63', name: 'المصروفات التشغيلية',            type: 'expense', parent: '6' },
+    { code: '64', name: 'المصروفات المالية',              type: 'expense', parent: '6' },
+    { code: '65', name: 'خسائر وانخفاضات',                type: 'expense', parent: '6' },
+    { code: '66', name: 'الإهلاك والإطفاء',               type: 'expense', parent: '6' },
 
     // ── Level 3: System accounts (have system_code) ──
     { code: '111', name: 'النقدية بالخزينة',              type: 'asset',      parent: '11', sys: 'SYS_CASH' },
@@ -87,13 +110,15 @@ const REQUIRED_SYSTEM_ACCOUNTS = [
     { code: '212', name: 'ضريبة القيمة المضافة (مخرجات)',  type: 'liability',  parent: '21', sys: 'SYS_VAT_OUTPUT' },
     { code: '32',  name: 'الأرباح المحتجزة',              type: 'equity',     parent: '3',  sys: 'SYS_RETAINED_EARNINGS' },
     { code: '41',  name: 'إيرادات المبيعات',              type: 'revenue',    parent: '4',  sys: 'SYS_SALES' },
+    { code: '412', name: 'مردودات المبيعات',              type: 'revenue',    parent: '41', sys: 'SYS_SALES_RETURNS' },
+    { code: '413', name: 'الخصومات المسموح بها',          type: 'revenue',    parent: '41', sys: 'SYS_SALES_DISCOUNT' },
     { code: '43',  name: 'زيادة وتسويات المخزون',          type: 'revenue',    parent: '4',  sys: 'SYS_INVENTORY_SURPLUS' },
     { code: '44',  name: 'مردودات المشتريات',             type: 'revenue',    parent: '4',  sys: 'SYS_PURCHASE_RETURNS' },
     { code: '51',  name: 'تكلفة البضاعة المباعة (COGS)',   type: 'expense',    parent: '5',  sys: 'SYS_COGS' },
     { code: '52',  name: 'مشتريات',                       type: 'expense',    parent: '5',  sys: 'SYS_PURCHASES' },
-    { code: '53',  name: 'مصروفات التشغيل',               type: 'expense',    parent: '5',  sys: 'SYS_EXPENSE' },
-    { code: '54',  name: 'خسائر توالف مخزون',              type: 'expense',    parent: '5',  sys: 'SYS_INVENTORY_SHORTAGE' },
-    { code: '56',  name: 'مردودات المبيعات',              type: 'expense',    parent: '5',  sys: 'SYS_SALES_RETURNS' },
+    { code: '53',  name: 'مصروفات التشغيل',               type: 'expense',    parent: '6',  sys: 'SYS_EXPENSE' },
+    { code: '54',  name: 'خسائر توالف مخزون',              type: 'expense',    parent: '6',  sys: 'SYS_INVENTORY_SHORTAGE' },
+    { code: '55',  name: 'مصروفات عامة وإدارية',           type: 'expense',    parent: '6' },
 ];
 
 /**
@@ -203,17 +228,31 @@ async function seedRequiredSystemAccountsAsync(pool) {
  * @param {number} refId - ID of the reference document
  * @param {number} userId - ID of the user creating the entry
  * @param {object} source - { module: string, action: string, document: string, isSystem: boolean }
+ * @param {number} supplierId - Sub-ledger supplier id (for AP attribution)
+ * @param {number} customerId - Sub-ledger customer id (for AR attribution)
  */
-async function postJournalEntryAsync(txRequest, date, description, lines, refType, refId, userId = null, source = {}) {
+async function postJournalEntryAsync(txRequest, date, description, lines, refType, refId, userId = null, source = {}, supplierId = null, customerId = null) {
     if (!lines || lines.length < 2) {
         throw new Error('القيد المحاسبي يجب أن يحتوي على طرفين (مدين ودائن) على الأقل.');
+    }
+
+    // Central fiscal-period lock — applied to all posting paths.
+    // Bypassed only by the privileged year-close flow (source.bypassPeriodLock)
+    // which intentionally posts closing entries then closes the periods itself.
+    if (date && !(source && source.bypassPeriodLock)) {
+        await assertDateOpenAsync(date);
     }
 
     // Parameter uniqueness suffix
     const px = Math.random().toString(36).substring(2, 9);
 
     // Double Posting Protection (Rule 3)
-    if (source.module && source.action && source.document) {
+    // Reversal/cancel actions are intentionally excluded: a document is legitimately
+    // reversed once per edit/delete cycle, so multiple *_cancel entries for the same
+    // document are expected (and guarded by reverseJournalEntryAsync's idempotency).
+    const isReversalAction = source.action === 'cancel'
+        || (typeof source.action === 'string' && source.action.endsWith('_cancel'));
+    if (!isReversalAction && source.module && source.action && source.document) {
         txRequest.input(`dp_mod_${px}`, sql.NVarChar, source.module);
         txRequest.input(`dp_act_${px}`, sql.NVarChar, source.action);
         txRequest.input(`dp_doc_${px}`, sql.NVarChar, source.document);
@@ -283,16 +322,20 @@ async function postJournalEntryAsync(txRequest, date, description, lines, refTyp
     txRequest.input(`je_sact_${px}`, sql.NVarChar, source.action || null);
     txRequest.input(`je_sdoc_${px}`, sql.NVarChar, source.document || null);
     txRequest.input(`je_issys_${px}`, sql.Int, source.isSystem ? 1 : 0);
+    txRequest.input(`je_sup_${px}`, sql.Int, supplierId || null);
+    txRequest.input(`je_cus_${px}`, sql.Int, customerId || null);
 
     const jeRes = await txRequest.query(`
         INSERT INTO journal_entries (
             entry_no, entry_date, description, reference_type, reference_id, 
-            total_debit, total_credit, created_by, source_module, source_action, source_document, is_system_generated
+            total_debit, total_credit, created_by, source_module, source_action, source_document, is_system_generated,
+            supplier_id, customer_id
         )
         OUTPUT INSERTED.id
         VALUES (
             @je_no_${px}, @je_date_${px}, @je_desc_${px}, @je_rtype_${px}, @je_rid_${px}, 
-            @je_tdebit_${px}, @je_tcredit_${px}, @je_uid_${px}, @je_smod_${px}, @je_sact_${px}, @je_sdoc_${px}, @je_issys_${px}
+            @je_tdebit_${px}, @je_tcredit_${px}, @je_uid_${px}, @je_smod_${px}, @je_sact_${px}, @je_sdoc_${px}, @je_issys_${px},
+            @je_sup_${px}, @je_cus_${px}
         )
     `);
     const entryId = jeRes.recordset[0].id;
@@ -361,10 +404,22 @@ async function reverseJournalEntryAsync(txRequest, originalEntryId, description,
     const rx = Math.random().toString(36).substring(2, 9);
     txRequest.input(`rev_orig_id_${rx}`, sql.Int, originalEntryId);
     
+    // Idempotency guard: if the entry is already reversed (or is itself a reversal),
+    // return the existing reversal entry id without creating a duplicate.
+    const guardRes = await txRequest.query(`
+        SELECT id, is_reversed, reversed_by, reversal_of_id FROM journal_entries
+        WHERE id = @rev_orig_id_${rx}
+    `);
+    const guardRow = guardRes.recordset[0];
+    if (!guardRow) throw new Error('القيد الأصلي غير موجود');
+    if (guardRow.reversal_of_id !== null) throw new Error('لا يمكن عكس قيد عكسي');
+    if (guardRow.is_reversed === 1 && guardRow.reversed_by) {
+        return guardRow.reversed_by;
+    }
+
     // Fetch original header
     const headRes = await txRequest.query(`SELECT * FROM journal_entries WHERE id = @rev_orig_id_${rx}`);
     const origHead = headRes.recordset[0];
-    if (!origHead) throw new Error('القيد الأصلي غير موجود');
 
     // Fetch original lines
     const linesRes = await txRequest.query(`SELECT * FROM journal_entry_lines WHERE entry_id = @rev_orig_id_${rx}`);
@@ -396,7 +451,9 @@ async function reverseJournalEntryAsync(txRequest, originalEntryId, description,
         origHead.reference_type,
         origHead.reference_id,
         userId,
-        source
+        source,
+        origHead.supplier_id,
+        origHead.customer_id
     );
 
     // Mark original entry as reversed
@@ -407,13 +464,24 @@ async function reverseJournalEntryAsync(txRequest, originalEntryId, description,
         WHERE id = @rev_orig_id_${rx}
     `);
 
+    // Bidirectional link: new entry points back to the original (audit chain)
+    txRequest.input(`rev_link_new_${rx}`, sql.Int, newEntryId);
+    txRequest.input(`rev_link_orig_${rx}`, sql.Int, originalEntryId);
+    await txRequest.query(`
+        UPDATE journal_entries SET reversal_of_id = @rev_link_orig_${rx}
+        WHERE id = @rev_link_new_${rx}
+    `);
+
     return newEntryId;
 }
 
 /**
  * Recalculate Supplier Balance
  * Must be run within an existing transaction or with a pool request.
- * Formula: opening_balance + SUM(invoices) - SUM(returns) - SUM(non-bounced payments)
+ * SINGLE SOURCE OF TRUTH: derived from the General Ledger (journal_entries on SYS_AP).
+ * Formula: opening_balance + SUM(credit - debit) over SYS_AP lines of non-reversed
+ * journal entries attributed to this supplier (je.supplier_id).
+ * Pending/issued cheques have NO journal entry → zero impact until posted.
  */
 async function recalcSupplierBalanceAsync(poolOrTxReq, supplierId) {
     const pRand = Math.random().toString(36).substring(2, 9);
@@ -423,30 +491,23 @@ async function recalcSupplierBalanceAsync(poolOrTxReq, supplierId) {
     const sRes = await request.query(`SELECT opening_balance FROM suppliers WHERE id = @rsb_sid_${pRand}`);
     if (!sRes.recordset[0]) return;
 
-    const purRes = await request.query(`SELECT COALESCE(SUM(grand_total), 0) as total FROM purchase_invoices WHERE supplier_id = @rsb_sid_${pRand} AND status NOT IN ('cancelled', 'deleted')`);
-    const retRes = await request.query(`SELECT COALESCE(SUM(grand_total), 0) as total FROM purchase_returns WHERE supplier_id = @rsb_sid_${pRand} AND status NOT IN ('cancelled', 'deleted')`);
+    const apAccId = await getSystemAccountAsync(request, 'SYS_AP');
+    request.input(`rsb_ap_${pRand}`, sql.Int, apAccId);
 
-    const payRes = await request.query(`
-        SELECT COALESCE(SUM(sub.amount), 0) as total FROM (
-            SELECT sp.amount FROM supplier_payments sp
-            LEFT JOIN checks ch ON ch.payment_id = sp.id
-            WHERE sp.supplier_id = @rsb_sid_${pRand} AND (ch.id IS NULL OR ch.status NOT IN ('bounced', 'cancelled'))
-            UNION ALL
-            SELECT ap.amount FROM ap_payments ap
-            LEFT JOIN ap_cheques ac ON ac.payment_id = ap.id
-            WHERE ap.supplier_id = @rsb_sid_${pRand} AND ap.status = 'active' AND (ac.id IS NULL OR ac.status NOT IN ('returned', 'cancelled'))
-            UNION ALL
-            SELECT CASE WHEN an.note_type='credit' THEN an.amount ELSE -an.amount END FROM ap_notes an
-            WHERE an.supplier_id = @rsb_sid_${pRand} AND an.status = 'active'
-        ) sub
+    const netRes = await request.query(`
+        SELECT COALESCE(SUM(jl.credit - jl.debit), 0) AS net
+        FROM journal_entry_lines jl
+        JOIN journal_entries je ON je.id = jl.entry_id
+        WHERE je.supplier_id = @rsb_sid_${pRand}
+          AND jl.account_id = @rsb_ap_${pRand}
+          AND (je.is_reversed IS NULL OR je.is_reversed = 0)
+          AND (je.reversal_of_id IS NULL)
+          AND (je.source_action IS NULL OR (je.source_action NOT LIKE '%_cancel' AND je.source_action <> 'cancel'))
     `);
 
     const opening = sRes.recordset[0].opening_balance || 0;
-    const purchases = purRes.recordset[0].total || 0;
-    const returns = retRes.recordset[0].total || 0;
-    const payments = payRes.recordset[0].total || 0;
-
-    const balance = opening + purchases - returns - payments;
+    const net = netRes.recordset[0].net || 0;
+    const balance = Math.round((opening + net) * 100) / 100;
 
     request.input(`rsb_bal_${pRand}`, sql.Decimal(18, 2), balance);
     await request.query(`UPDATE suppliers SET current_balance = @rsb_bal_${pRand} WHERE id = @rsb_sid_${pRand}`);

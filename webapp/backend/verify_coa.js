@@ -20,7 +20,8 @@ const { getPool, sql } = require('./database/mssql_db');
     const expected = ['SYS_CASH','SYS_BANK','SYS_AR','SYS_INVENTORY','SYS_VAT_INPUT',
         'SYS_DAMAGED_INVENTORY','SYS_AP','SYS_VAT_OUTPUT','SYS_RETAINED_EARNINGS',
         'SYS_SALES','SYS_INVENTORY_SURPLUS','SYS_PURCHASE_RETURNS',
-        'SYS_COGS','SYS_PURCHASES','SYS_EXPENSE','SYS_INVENTORY_SHORTAGE','SYS_SALES_RETURNS'];
+        'SYS_COGS','SYS_PURCHASES','SYS_EXPENSE','SYS_INVENTORY_SHORTAGE','SYS_SALES_RETURNS',
+        'SYS_SALES_DISCOUNT'];
     const missing = [];
     for (const code of expected) {
         const chk = await pool.request()

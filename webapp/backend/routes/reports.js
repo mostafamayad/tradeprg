@@ -162,7 +162,84 @@ router.get('/customer-statement/:id', asyncHandler(async (req, res) => {
     if (to)   reqF.input('to',   sql.NVarChar, to);
 
     const rowsRes = await reqF.query(finalQ);
-    const rows = rowsRes.recordset;
+    let rows = rowsRes.recordset;
+
+    // Fetch invoice details if requested
+    if (req.query.showDetails === 'true') {
+      const siIds = rows.filter(r => r.ref_type === 'sales_invoice').map(r => r.ref_id);
+      const srIds = rows.filter(r => r.ref_type === 'sales_return').map(r => r.ref_id);
+      
+      let itemsByRef = { sales_invoice: {}, sales_return: {} };
+      let metaByRef = { sales_invoice: {}, sales_return: {} };
+
+      if (siIds.length > 0) {
+        const invReq = pool.request();
+        const siIdsStr = siIds.join(',');
+        const invRows = (await invReq.query(`SELECT id, discount_amount, tax_amount FROM sales_invoices WHERE id IN (${siIdsStr})`)).recordset;
+        invRows.forEach(ir => {
+          metaByRef.sales_invoice[ir.id] = { tax_amount: num(ir.tax_amount), discount_amount: num(ir.discount_amount) };
+        });
+
+        const itemsRows = (await invReq.query(`
+          SELECT invoice_id, p.product_name, p.product_code, quantity, p.unit_name AS unit, unit_price, discount_amount AS discount, line_total AS total
+          FROM sales_invoice_items i
+          LEFT JOIN products p ON p.id = i.product_id
+          WHERE invoice_id IN (${siIdsStr})
+        `)).recordset;
+        itemsRows.forEach(it => {
+          if (!itemsByRef.sales_invoice[it.invoice_id]) itemsByRef.sales_invoice[it.invoice_id] = [];
+          itemsByRef.sales_invoice[it.invoice_id].push({
+            product_name: it.product_name,
+            product_code: it.product_code,
+            quantity: num(it.quantity),
+            unit: it.unit,
+            unit_price: num(it.unit_price),
+            discount: num(it.discount),
+            total: num(it.total)
+          });
+        });
+      }
+
+      if (srIds.length > 0) {
+        const retReq = pool.request();
+        const srIdsStr = srIds.join(',');
+        const retRows = (await retReq.query(`SELECT id, discount_amount, tax_amount FROM sales_returns WHERE id IN (${srIdsStr})`)).recordset;
+        retRows.forEach(rr => {
+          metaByRef.sales_return[rr.id] = { tax_amount: num(rr.tax_amount), discount_amount: num(rr.discount_amount) };
+        });
+
+        const itemsRows = (await retReq.query(`
+          SELECT return_id, p.product_name, p.product_code, quantity, p.unit_name AS unit, unit_price, ISNULL(discount_amount_snapshot, 0) AS discount, line_total AS total
+          FROM sales_return_items i
+          LEFT JOIN products p ON p.id = i.product_id
+          WHERE return_id IN (${srIdsStr})
+        `)).recordset;
+        itemsRows.forEach(it => {
+          if (!itemsByRef.sales_return[it.return_id]) itemsByRef.sales_return[it.return_id] = [];
+          itemsByRef.sales_return[it.return_id].push({
+            product_name: it.product_name,
+            product_code: it.product_code,
+            quantity: num(it.quantity),
+            unit: it.unit,
+            unit_price: num(it.unit_price),
+            discount: num(it.discount),
+            total: num(it.total)
+          });
+        });
+      }
+
+      rows = rows.map(r => {
+        if (r.ref_type === 'sales_invoice' || r.ref_type === 'sales_return') {
+          return {
+            ...r,
+            items: itemsByRef[r.ref_type][r.ref_id] || [],
+            tax_amount: metaByRef[r.ref_type][r.ref_id]?.tax_amount || 0,
+            discount_amount: metaByRef[r.ref_type][r.ref_id]?.discount_amount || 0
+          };
+        }
+        return r;
+      });
+    }
 
     let running = num(cust.opening_balance);
     const statement = rows.map(r => {
@@ -178,13 +255,21 @@ router.get('/customer-statement/:id', asyncHandler(async (req, res) => {
         description: r.description,
         created_by: r.created_by_name,
         ref_type: r.ref_type,
-        ref_id: r.ref_id
+        ref_id: r.ref_id,
+        items: r.items,
+        tax_amount: r.tax_amount,
+        discount_amount: r.discount_amount
       };
     });
 
     const totalDebit  = statement.reduce((s, r) => s + r.debit, 0);
     const totalCredit = statement.reduce((s, r) => s + r.credit, 0);
     const closing     = num(cust.opening_balance) + totalDebit - totalCredit;
+
+    // ── حساب الـ KPIs للعرض في الكروت ─────────────────────────────────────────
+    const totalSales       = statement.filter(r => r.ref_type === 'sales_invoice').reduce((s, r) => s + r.debit,  0);
+    const totalCollections = statement.filter(r => r.ref_type === 'collection').reduce((s, r) => s + r.credit, 0);
+    const totalReturns     = statement.filter(r => r.ref_type === 'sales_return').reduce((s, r) => s + r.credit, 0);
 
     res.json({
       success: true,
@@ -196,12 +281,26 @@ router.get('/customer-statement/:id', asyncHandler(async (req, res) => {
           phone: cust.phone,
           address: cust.address,
           credit_limit: num(cust.credit_limit),
-          current_balance: num(cust.current_balance)
+          current_balance: closing,              // الرصيد الحقيقي من الحركات
+          branch: cust.branch,
+          governorate: cust.governorate,
+          rep_name: null,
+          last_invoice_date: statement.filter(r => r.ref_type === 'sales_invoice').slice(-1)[0]?.date || null,
+          last_collection_date: statement.filter(r => r.ref_type === 'collection').slice(-1)[0]?.date || null
         },
         opening_balance: num(cust.opening_balance),
         total_debit: totalDebit,
         total_credit: totalCredit,
         closing_balance: closing,
+        kpis: {
+          current_balance: closing,
+          total_sales: totalSales,
+          total_collections: totalCollections,
+          total_returns: totalReturns,
+          transaction_count: statement.length,
+          opening_balance: num(cust.opening_balance),
+          closing_balance: closing
+        },
         rows: statement
       }
     });
@@ -786,7 +885,9 @@ router.get('/rep-performance', asyncHandler(async (req, res) => {
     // Sales returns don't have rep_id, so compute returns via customer invoice rep
     const repWhere = rep_id ? 'AND r.id = @rep_id' : '';
     const repWhereCount = rep_id ? 'AND id = @rep_id' : '';
-    const colWhere = rep_id ? 'cc.rep_id = @rep_id' : 'cc.rep_id IS NOT NULL';
+    let colWheres = rep_id ? 'cc.rep_id = @rep_id' : 'cc.rep_id IS NOT NULL';
+    if (from)   { rq.input('col_from', sql.NVarChar, from); colWheres += ` AND cc.collection_date >= @col_from`; }
+    if (to)     { rq.input('col_to',   sql.NVarChar, to);   colWheres += ` AND cc.collection_date <= @col_to`;   }
     const q = `
       WITH rep_sales AS (
         SELECT i.rep_id,
@@ -800,9 +901,11 @@ router.get('/rep-performance', asyncHandler(async (req, res) => {
       ),
       rep_collections AS (
         SELECT cc.rep_id,
-               COALESCE(SUM(cc.amount), 0) AS total_collections
+               COUNT(DISTINCT cc.id) AS collection_count,
+               COALESCE(SUM(cc.amount), 0) AS total_collections,
+               COALESCE(AVG(cc.amount), 0) AS avg_collection
         FROM customer_collections cc
-        WHERE ${colWhere}
+        WHERE ${colWheres}
         GROUP BY cc.rep_id
       )
       SELECT r.id, r.rep_code, r.rep_name, r.phone, r.target_amount, r.commission_rate,
@@ -812,6 +915,11 @@ router.get('/rep-performance', asyncHandler(async (req, res) => {
              COALESCE(rs.avg_invoice, 0) AS avg_invoice,
              0 AS total_returns,
              COALESCE(rc.total_collections, 0) AS total_collections,
+             COALESCE(rc.collection_count, 0) AS collection_count,
+             COALESCE(rc.avg_collection, 0) AS avg_collection,
+             CASE WHEN COALESCE(rs.total_sales, 0) > 0
+                  THEN (COALESCE(rc.total_collections, 0) / COALESCE(rs.total_sales, 0)) * 100
+                  ELSE 0 END AS collection_rate,
              CASE WHEN COALESCE(r.target_amount, 0) > 0
                   THEN (COALESCE(rs.total_sales, 0) / r.target_amount) * 100
                   ELSE 0 END AS achievement_pct,
@@ -842,10 +950,26 @@ router.get('/rep-performance', asyncHandler(async (req, res) => {
     `;
     const totals = (await rq.query(totQ)).recordset[0];
 
+    // Collection totals
+    let colTotWhere = '1=1';
+    if (from)   { colTotWhere += ` AND collection_date >= N'${from.replace(/'/g, "''")}'`; }
+    if (to)     { colTotWhere += ` AND collection_date <= N'${to.replace(/'/g, "''")}'`;   }
+    const colTotQ = `
+      SELECT COALESCE(SUM(amount), 0) AS total_collections,
+             COUNT(*) AS collection_count
+      FROM customer_collections
+      WHERE ${colTotWhere} AND rep_id IS NOT NULL
+    `;
+    const colTotals = (await rq.query(colTotQ)).recordset[0];
+
     res.json({
       success: true,
       data,
-      totals: { total_sales: num(totals.total_sales) },
+      totals: {
+        total_sales: num(totals.total_sales),
+        total_collections: num(colTotals.total_collections),
+        collection_count: num(colTotals.collection_count)
+      },
       pagination: { page: Number(page), per_page: Number(per_page), total: num(countRes.total), total_pages: Math.ceil(num(countRes.total) / Number(per_page)) }
     });
   } catch (err) {
@@ -2755,7 +2879,7 @@ router.get('/supplier-statement/:id', asyncHandler(async (req, res) => {
         const rowsRes = await reqF.query(finalQ);
         const rows = rowsRes.recordset;
 
-        let running = num(sup.opening_balance);
+        let running = op_bal;
         const statement = rows.map(r => {
             running += num(r.debit) - num(r.credit);
             return {
@@ -2773,8 +2897,8 @@ router.get('/supplier-statement/:id', asyncHandler(async (req, res) => {
         res.json({
             success: true,
             data: {
-                supplier: { id: sup.id, supplier_code: sup.supplier_code, supplier_name: sup.supplier_name, phone: sup.phone, address: sup.address, current_balance: num(sup.current_balance) },
-                opening_balance: num(sup.opening_balance),
+                supplier: { id: sup.id, supplier_code: sup.supplier_code, supplier_name: sup.supplier_name, phone: sup.phone, address: sup.address, current_balance: running },
+                opening_balance: op_bal,
                 total_debit: totalDebit, total_credit: totalCredit,
                 closing_balance: closing, rows: statement
             }
@@ -3882,8 +4006,267 @@ router.get('/inventory/valuation', asyncHandler(async (req, res) => {
   }
 }));
 
-module.exports = router;
+// ─── Customer Sales Summary (ملخص مبيعات العملاء) ──────────────────────────
+router.get('/customer-sales-filter-options', asyncHandler(async (req, res) => {
+  try {
+    const pool = await getPool();
+    const govRes = await pool.request().query(`SELECT DISTINCT governorate FROM customers WHERE governorate IS NOT NULL AND governorate != ''`);
+    const brRes = await pool.request().query(`SELECT DISTINCT branch FROM customers WHERE branch IS NOT NULL AND branch != ''`);
+    const ctRes = await pool.request().query(`SELECT DISTINCT customer_type FROM customers WHERE customer_type IS NOT NULL AND customer_type != ''`);
+    res.json({
+      success: true,
+      data: {
+        governorates: govRes.recordset.map(r => r.governorate),
+        branches: brRes.recordset.map(r => r.branch),
+        customer_types: ctRes.recordset.map(r => r.customer_type)
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'خطأ في جلب الفلاتر' });
+  }
+}));
+
+router.get('/customer-sales-summary', asyncHandler(async (req, res) => {
+  try {
+    const { from, to, governorate, branch, customer_type, customer_id, rep_id, sort, order } = req.query;
+    const pool = await getPool();
+    const rq = pool.request();
+
+    let cWhere = `c.is_active = 1`;
+    if (governorate) { cWhere += ` AND c.governorate = @gov`; rq.input('gov', sql.NVarChar, governorate); }
+    if (branch) { cWhere += ` AND c.branch = @branch`; rq.input('branch', sql.NVarChar, branch); }
+    if (customer_type) { cWhere += ` AND c.customer_type = @ctype`; rq.input('ctype', sql.NVarChar, customer_type); }
+    if (customer_id) { cWhere += ` AND c.id IN (${customer_id.split(',').map(n => Number(n)).filter(n => n).join(',')})`; }
+    if (rep_id) { cWhere += ` AND c.rep_id IN (${rep_id.split(',').map(n => Number(n)).filter(n => n).join(',')})`; }
+
+    // First get the customers
+    const custRes = await rq.query(`
+      SELECT c.id, c.customer_code, c.customer_name, c.branch, c.governorate, 
+             ISNULL(c.opening_balance, 0) as initial_opening_balance,
+             r.rep_name
+      FROM customers c
+      LEFT JOIN sales_reps r ON c.rep_id = r.id
+      WHERE ${cWhere}
+    `);
+    const customers = custRes.recordset;
+
+    if (customers.length === 0) {
+      return res.json({ success: true, data: [], totals: {} });
+    }
+
+    const cIds = customers.map(c => c.id).join(',');
+    
+    if (from) rq.input('from', sql.NVarChar, from);
+    if (to) rq.input('to', sql.NVarChar, to);
+
+    // Now get transaction summaries grouped by customer_id and reference_type
+    // We get BEFORE period (for opening balance adjustment) and DURING period
+    let q = `
+      SELECT 
+        je.customer_id,
+        je.reference_type,
+        SUM(CASE WHEN ${from ? 'je.entry_date < @from' : '1=0'} THEN jl.debit - jl.credit ELSE 0 END) as before_net,
+        SUM(CASE WHEN ${from ? 'je.entry_date >= @from' : '1=1'} ${to ? 'AND je.entry_date <= @to' : ''} THEN jl.debit ELSE 0 END) as period_debit,
+        SUM(CASE WHEN ${from ? 'je.entry_date >= @from' : '1=1'} ${to ? 'AND je.entry_date <= @to' : ''} THEN jl.credit ELSE 0 END) as period_credit,
+        COUNT(DISTINCT CASE WHEN je.reference_type = 'sales' AND ${from ? 'je.entry_date >= @from' : '1=1'} ${to ? 'AND je.entry_date <= @to' : ''} THEN je.id ELSE NULL END) as period_count,
+        MAX(CASE WHEN je.reference_type = 'sales' AND ${from ? 'je.entry_date >= @from' : '1=1'} ${to ? 'AND je.entry_date <= @to' : ''} THEN je.entry_date ELSE NULL END) as last_invoice_date,
+        MAX(CASE WHEN je.reference_type = 'collection' AND ${from ? 'je.entry_date >= @from' : '1=1'} ${to ? 'AND je.entry_date <= @to' : ''} THEN je.entry_date ELSE NULL END) as last_collection_date
+      FROM journal_entries je
+      JOIN journal_entry_lines jl ON je.id = jl.entry_id
+      JOIN chart_of_accounts a ON jl.account_id = a.id
+      WHERE je.customer_id IN (${cIds}) 
+        AND a.system_code = 'SYS_AR'
+        AND (je.is_reversed = 0 OR je.is_reversed IS NULL)
+      GROUP BY je.customer_id, je.reference_type
+    `;
+
+    const txRes = await rq.query(q);
+    const tx = txRes.recordset;
+
+    // Need to get tax and discount totals per customer for sales invoices during the period
+    let invWhere = `customer_id IN (${cIds}) AND status NOT IN ('cancelled', 'deleted')`;
+    if (from) invWhere += ` AND invoice_date >= @from`;
+    if (to) invWhere += ` AND invoice_date <= @to`;
+    
+    const invRes = await rq.query(`
+      SELECT customer_id, SUM(tax_amount) as total_tax, SUM(discount_amount) as total_discount
+      FROM sales_invoices WHERE ${invWhere} GROUP BY customer_id
+    `);
+    const invMap = {};
+    invRes.recordset.forEach(r => invMap[r.customer_id] = r);
+
+    const result = customers.map(c => {
+      const cTx = tx.filter(t => t.customer_id === c.id);
+      
+      const beforeNet = cTx.reduce((s, t) => s + num(t.before_net), 0);
+      const opening_balance = num(c.initial_opening_balance) + beforeNet;
+      
+      const salesRow = cTx.find(t => t.reference_type === 'sales') || {};
+      const returnRow = cTx.find(t => t.reference_type === 'sales_return') || {};
+      const collRow = cTx.find(t => t.reference_type === 'collection') || {};
+      
+      const period_gross = num(salesRow.period_debit);
+      const period_returns = num(returnRow.period_credit);
+      const period_collections = num(collRow.period_credit);
+      
+      const period_count = num(salesRow.period_count);
+      const last_invoice_date = salesRow.last_invoice_date;
+      const last_collection_date = collRow.last_collection_date;
+
+      const meta = invMap[c.id] || {};
+      const period_tax = num(meta.total_tax);
+      const period_discount = num(meta.total_discount);
+      
+      const net_sales = period_gross - period_returns;
+      
+      const allPeriodDebit = cTx.reduce((s, t) => s + num(t.period_debit), 0);
+      const allPeriodCredit = cTx.reduce((s, t) => s + num(t.period_credit), 0);
+      const closing_balance = opening_balance + allPeriodDebit - allPeriodCredit;
+      
+      return {
+        customer_id: c.id,
+        customer_code: c.customer_code,
+        customer_name: c.customer_name,
+        rep_name: c.rep_name,
+        branch: c.branch,
+        governorate: c.governorate,
+        opening_balance,
+        period_gross,
+        period_returns,
+        period_discount,
+        period_tax,
+        net_sales,
+        period_collections,
+        closing_balance,
+        period_count,
+        last_invoice_date,
+        last_collection_date,
+        balance_type: closing_balance > 0 ? 'مدين' : (closing_balance < 0 ? 'دائن' : 'متزن')
+      };
+    });
+
+    const totalGross = result.reduce((s, r) => s + r.period_gross, 0);
+    result.forEach(r => { r.contribution_pct = totalGross > 0 ? ((r.period_gross / totalGross) * 100).toFixed(1) : 0; });
+
+    const sKey = sort || 'gross_sales';
+    const sOrd = order === 'asc' ? 1 : -1;
+    result.sort((a, b) => {
+      let v1 = a[sKey];
+      let v2 = b[sKey];
+      if (sKey === 'gross_sales') { v1 = a.period_gross; v2 = b.period_gross; }
+      if (v1 < v2) return -1 * sOrd;
+      if (v1 > v2) return 1 * sOrd;
+      return 0;
+    });
+
+    res.json({
+      success: true,
+      data: result,
+      totals: {
+        customer_count: result.length,
+        invoice_count: result.reduce((s, r) => s + r.period_count, 0),
+        net_sales: result.reduce((s, r) => s + r.net_sales, 0),
+        return_total: result.reduce((s, r) => s + r.period_returns, 0)
+      }
+    });
+  } catch (err) {
+    console.error('customer-sales-summary error:', err);
+    res.status(500).json({ success: false, message: 'خطأ في جلب البيانات' });
+  }
+}));
+
 // ============================================================
-// END OF ENTERPRISE REPORTS MODULE
+// PAYMENT MATCHING STATUS REPORTS
 // ============================================================
 
+// GET /ar-matching-status
+router.get('/ar-matching-status', asyncHandler(async (req, res) => {
+  const { from, to, customer_id, status } = req.query;
+  const pool = await getPool();
+  const rq = pool.request();
+  let where = `si.status NOT IN ('cancelled','draft')`;
+  if (from) { where += ` AND si.invoice_date >= @from`; rq.input('from', sql.NVarChar, from); }
+  if (to)   { where += ` AND si.invoice_date <= @to`;   rq.input('to',   sql.NVarChar, to); }
+  if (customer_id) { where += ` AND si.customer_id = @cid`; rq.input('cid', sql.Int, parseInt(customer_id)); }
+  let having = '';
+  if (status === 'open')    having = 'HAVING ROUND(si.grand_total - ISNULL(SUM(ca.amount),0), 2) > 0';
+  if (status === 'closed')  having = 'HAVING ROUND(si.grand_total - ISNULL(SUM(ca.amount),0), 2) <= 0';
+  if (status === 'partial') having = 'HAVING ISNULL(SUM(ca.amount),0) > 0 AND ROUND(si.grand_total - ISNULL(SUM(ca.amount),0), 2) > 0';
+  const r = await rq.query(`
+    SELECT si.id, si.invoice_no,
+      CONVERT(varchar(10), si.invoice_date, 23) AS invoice_date,
+      c.customer_name, si.grand_total,
+      ISNULL(SUM(ca.amount),0) AS allocated_amount,
+      si.discount_amount AS discount_amount,
+      ROUND(si.grand_total - ISNULL(SUM(ca.amount),0), 2) AS remaining,
+      CASE
+        WHEN ROUND(si.grand_total - ISNULL(SUM(ca.amount),0), 2) <= 0 THEN N'مسدد بالكامل'
+        WHEN ISNULL(SUM(ca.amount),0) > 0 THEN N'مسدد جزئياً'
+        ELSE N'غير مسدد'
+      END AS match_status,
+      COUNT(ca.id) AS allocation_count
+    FROM sales_invoices si
+    JOIN customers c ON si.customer_id = c.id
+    LEFT JOIN customer_collections cc ON cc.customer_id = si.customer_id
+    LEFT JOIN collection_allocations ca ON ca.collection_id = cc.id AND ca.invoice_id = si.id
+    WHERE ${where}
+    GROUP BY si.id, si.invoice_no, si.invoice_date, c.customer_name, si.grand_total, si.discount_amount
+    ${having}
+    ORDER BY si.invoice_date DESC, si.invoice_no DESC
+  `);
+  const rows = r.recordset;
+  res.json({ success: true, data: rows, totals: {
+    count: rows.length,
+    grand_total: rows.reduce((s,r) => s+(Number(r.grand_total)||0),0),
+    allocated:   rows.reduce((s,r) => s+(Number(r.allocated_amount)||0),0),
+    discount:    rows.reduce((s,r) => s+(Number(r.discount_amount)||0),0),
+    remaining:   rows.reduce((s,r) => s+(Number(r.remaining)||0),0),
+  }});
+}));
+
+// GET /ap-matching-status
+router.get('/ap-matching-status', asyncHandler(async (req, res) => {
+  const { from, to, supplier_id, status } = req.query;
+  const pool = await getPool();
+  const rq = pool.request();
+  let where = `pi.status NOT IN ('cancelled','draft')`;
+  if (from) { where += ` AND pi.invoice_date >= @from`; rq.input('from', sql.NVarChar, from); }
+  if (to)   { where += ` AND pi.invoice_date <= @to`;   rq.input('to',   sql.NVarChar, to); }
+  if (supplier_id) { where += ` AND pi.supplier_id = @sid`; rq.input('sid', sql.Int, parseInt(supplier_id)); }
+  let having = '';
+  if (status === 'open')    having = 'HAVING ROUND(pi.grand_total - ISNULL(SUM(spa.allocated_amount),0), 2) > 0';
+  if (status === 'closed')  having = 'HAVING ROUND(pi.grand_total - ISNULL(SUM(spa.allocated_amount),0), 2) <= 0';
+  if (status === 'partial') having = 'HAVING ISNULL(SUM(spa.allocated_amount),0) > 0 AND ROUND(pi.grand_total - ISNULL(SUM(spa.allocated_amount),0), 2) > 0';
+  const r = await rq.query(`
+    SELECT pi.id, pi.invoice_no,
+      CONVERT(varchar(10), pi.invoice_date, 23) AS invoice_date,
+      s.supplier_name, pi.grand_total,
+      ISNULL(SUM(spa.allocated_amount),0) AS allocated_amount,
+      pi.discount_amount AS discount_amount,
+      ROUND(pi.grand_total - ISNULL(SUM(spa.allocated_amount),0), 2) AS remaining,
+      CASE
+        WHEN ROUND(pi.grand_total - ISNULL(SUM(spa.allocated_amount),0), 2) <= 0 THEN N'مسدد بالكامل'
+        WHEN ISNULL(SUM(spa.allocated_amount),0) > 0 THEN N'مسدد جزئياً'
+        ELSE N'غير مسدد'
+      END AS match_status,
+      COUNT(spa.id) AS allocation_count
+    FROM purchase_invoices pi
+    JOIN suppliers s ON pi.supplier_id = s.id
+    LEFT JOIN supplier_payments sp ON sp.supplier_id = pi.supplier_id
+    LEFT JOIN supplier_payment_allocations spa ON spa.payment_id = sp.id AND spa.invoice_id = pi.id
+    WHERE ${where}
+    GROUP BY pi.id, pi.invoice_no, pi.invoice_date, s.supplier_name, pi.grand_total, pi.discount_amount
+    ${having}
+    ORDER BY pi.invoice_date DESC, pi.invoice_no DESC
+  `);
+  const rows = r.recordset;
+  res.json({ success: true, data: rows, totals: {
+    count: rows.length,
+    grand_total: rows.reduce((s,r) => s+(Number(r.grand_total)||0),0),
+    allocated:   rows.reduce((s,r) => s+(Number(r.allocated_amount)||0),0),
+    discount:    rows.reduce((s,r) => s+(Number(r.discount_amount)||0),0),
+    remaining:   rows.reduce((s,r) => s+(Number(r.remaining)||0),0),
+  }});
+}));
+
+module.exports = router;

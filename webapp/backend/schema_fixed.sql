@@ -177,6 +177,7 @@ CREATE TABLE [dbo].[stock_count] (
         [store_id] INT NOT NULL,
         [status] NVARCHAR(255) DEFAULT 'in_progress',
         [notes] NVARCHAR(MAX),
+        [total_difference] DECIMAL(18,2) DEFAULT 0,
         [created_at] NVARCHAR(255) DEFAULT CONVERT(VARCHAR(19), GETDATE(), 120)
     );
 END

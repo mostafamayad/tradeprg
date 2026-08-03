@@ -544,40 +544,26 @@
         var entry = findEntryById(id);
         if (!entry) return;
         var lines = entry.lines || [];
-        var rows = [['رقم القيد: ' + (entry.entry_no || '#' + entry.id), '', '', '']];
-        rows.push(['التاريخ: ' + entry.entry_date, '', '', '']);
-        rows.push(['الوصف: ' + (entry.description || ''), '', '', '']);
-        rows.push(['', '', '', '']);
-        rows.push(['الحساب', 'البيان', 'مدين', 'دائن']);
+        var dataRows = [];
         for (var i = 0; i < lines.length; i++) {
             var l = lines[i];
             var accName = (l.account_code ? l.account_code + ' - ' + l.account_name : '#' + l.account_id);
-            rows.push([accName, l.description || '', l.debit ? r2(l.debit) : '', l.credit ? r2(l.credit) : '']);
-        }
-        rows.push(['', '', '', '']);
-        rows.push(['الإجمالي', '', r2(entry.total_debit), r2(entry.total_credit)]);
-
-        var csv = '\uFEFF';
-        for (var i = 0; i < rows.length; i++) {
-            var cols = [];
-            for (var j = 0; j < rows[i].length; j++) {
-                var val = String(rows[i][j] || '');
-                if (val.indexOf(',') >= 0 || val.indexOf('"') >= 0 || val.indexOf('\n') >= 0) {
-                    val = '"' + val.replace(/"/g, '""') + '"';
-                }
-                cols.push(val);
-            }
-            csv += cols.join(',') + '\r\n';
+            dataRows.push([accName, l.description || '', l.debit ? r2(l.debit) : 0, l.credit ? r2(l.credit) : 0]);
         }
 
-        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        var link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = (entry.entry_no || 'journal-' + entry.id) + '.csv';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
+        if (window.exportStyledExcel) {
+            window.exportStyledExcel({
+                filename: (entry.entry_no || 'journal-' + entry.id),
+                title: 'سند قيد يومية',
+                subtitle: 'رقم القيد: ' + (entry.entry_no || '#' + entry.id) + ' | التاريخ: ' + entry.entry_date + (entry.description ? ' | الوصف: ' + entry.description : ''),
+                headers: ['الحساب', 'البيان', 'مدين', 'دائن'],
+                data: dataRows,
+                totals: ['الإجمالي', '', r2(entry.total_debit) || 0, r2(entry.total_credit) || 0],
+                colWidths: [35, 40, 20, 20]
+            });
+        } else {
+            alert('مكتبة التصدير غير متوفرة');
+        }
     }
 
     function reverseJournal(journalId) {

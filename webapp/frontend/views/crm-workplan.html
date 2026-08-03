@@ -1,0 +1,64 @@
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 class="page-title">خطط سير المناديب والزيارات</h1>
+        <p class="page-subtitle">إعداد مسارات الزيارات اليومية وتتبع نشاط المناديب مع العملاء</p>
+    </div>
+    <button class="btn btn-primary">
+        <i class="fa-solid fa-route"></i> خطة سير جديدة
+    </button>
+</div>
+
+<div class="card">
+    <div class="table-actions">
+        <div class="search-box">
+            <i class="fa-solid fa-search"></i>
+            <input type="text" placeholder="اسم المندوب، المنطقة...">
+        </div>
+        <select style="width: 200px;">
+            <option value="">كل المناطق</option>
+            <option value="1">القاهرة الكبرى</option>
+            <option value="2">الإسكندرية</option>
+        </select>
+        <input type="date" title="تاريخ الخطة">
+    </div>
+    
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>المندوب</th>
+                    <th>المنطقة / خط السير</th>
+                    <th>تاريخ الخطة</th>
+                    <th>عدد العملاء المستهدفين</th>
+                    <th>تمت الزيارة</th>
+                    <th>حالة الخطة</th>
+                    <th>متابعة</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>محمد صبحي</td>
+                    <td>وسط البلد - الموسكي</td>
+                    <td>2026-06-21</td>
+                    <td>15 عميل</td>
+                    <td class="text-success">8 عملاء</td>
+                    <td><span class="badge" style="background: var(--warning-color);">جاري التنفيذ</span></td>
+                    <td class="actions-cell">
+                        <button class="icon-btn btn-view" title="تفاصيل الزيارات"><i class="fa-solid fa-list-check"></i></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>محمود سعد</td>
+                    <td>مدينة نصر - مصر الجديدة</td>
+                    <td>2026-06-20</td>
+                    <td>12 عميل</td>
+                    <td class="text-success">12 عميل</td>
+                    <td><span class="badge" style="background: var(--success-color);">مكتملة</span></td>
+                    <td class="actions-cell">
+                        <button class="icon-btn btn-view" title="تفاصيل الزيارات"><i class="fa-solid fa-list-check"></i></button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

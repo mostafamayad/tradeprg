@@ -119,7 +119,7 @@ router.post('/', asyncHandler(async (req, res) => {
                     { account_id: accAP, debit: 0, credit: amountValue, description: `إشعار خصم من المورد ${supplierName} بموجب ${noteNo}` }
                 ];
                 await postJournalEntryAsync(txReq, date, `إشعار خصم ${noteNo}`, jeLines, 'ap_note', noteId, req.user ? req.user.id : null,
-                    { module: 'ap_notes', action: 'create_debit_note', document: noteNo, isSystem: true });
+                    { module: 'ap_notes', action: 'create_debit_note', document: noteNo, isSystem: true }, supplier_id);
             } else {
                 // Credit Note: DR SYS_AP / CR Sales — decreases supplier balance (we owe less)
                 const accRevenue = await getSystemAccountAsync(txReq, 'SYS_SALES');
@@ -128,7 +128,7 @@ router.post('/', asyncHandler(async (req, res) => {
                     { account_id: accRevenue, debit: 0, credit: amountValue, description: `إشعار إضافة للمورد ${supplierName} بموجب ${noteNo}` }
                 ];
                 await postJournalEntryAsync(txReq, date, `إشعار إضافة ${noteNo}`, jeLines, 'ap_note', noteId, req.user ? req.user.id : null,
-                    { module: 'ap_notes', action: 'create_credit_note', document: noteNo, isSystem: true });
+                    { module: 'ap_notes', action: 'create_credit_note', document: noteNo, isSystem: true }, supplier_id);
             }
 
             // Recalculate supplier balance

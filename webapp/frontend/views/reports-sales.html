@@ -1,0 +1,83 @@
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 class="page-title">تقارير المبيعات والعملاء</h1>
+        <p class="page-subtitle">مركز التقارير الشامل لمتابعة حركة البيع، أرصدة العملاء، والضرائب</p>
+    </div>
+</div>
+
+<div class="form-grid">
+    <!-- Sales Reports Links -->
+    <div class="card">
+        <h3 class="card-title">كشوف وحسابات العملاء</h3>
+        <ul style="list-style: none; padding: 0; line-height: 2.5;">
+            <li><a href="#" class="text-primary" style="text-decoration: none;"><i class="fa-solid fa-file-invoice"></i> كشف حساب عميل مفصل</a></li>
+            <li><a href="#" class="text-primary" style="text-decoration: none;"><i class="fa-solid fa-scale-balanced"></i> أرصدة ومديونيات العملاء</a></li>
+            <li><a href="#" class="text-primary" style="text-decoration: none;"><i class="fa-solid fa-arrow-trend-down"></i> الأرصدة المتبقية وتأخيرات السداد</a></li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <h3 class="card-title">تحليلات وإحصائيات المبيعات</h3>
+        <ul style="list-style: none; padding: 0; line-height: 2.5;">
+            <li><a href="#" class="text-success" style="text-decoration: none;"><i class="fa-solid fa-chart-pie"></i> مبيعات الأصناف (الكميات والقيم)</a></li>
+            <li><a href="#" class="text-success" style="text-decoration: none;"><i class="fa-solid fa-calendar-days"></i> حركة المبيعات خلال فترة (يومي/شهري)</a></li>
+            <li><a href="#" class="text-success" style="text-decoration: none;"><i class="fa-solid fa-file-signature"></i> تقرير الضرائب للمبيعات (ضريبة القيمة المضافة)</a></li>
+        </ul>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 20px;">
+    <h3 class="card-title">عرض سريع: كشف حساب عميل</h3>
+    <div class="table-actions">
+        <select style="width: 250px;">
+            <option value="1">شركة العميل</option>
+            <option value="2">مؤسسة السلام</option>
+        </select>
+        <input type="date"> 
+        <span>إلى</span> 
+        <input type="date">
+        <button class="btn btn-primary"><i class="fa-solid fa-search"></i> عرض</button>
+        <button class="btn btn-outline"><i class="fa-solid fa-print"></i> طباعة</button>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>التاريخ</th>
+                    <th>نوع الحركة</th>
+                    <th>رقم المستند</th>
+                    <th>مدين (له)</th>
+                    <th>دائن (عليه)</th>
+                    <th>الرصيد</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>2026-06-01</td>
+                    <td>رصيد افتتاحي</td>
+                    <td>-</td>
+                    <td>0.00</td>
+                    <td>0.00</td>
+                    <td>0.00</td>
+                </tr>
+                <tr>
+                    <td>2026-06-05</td>
+                    <td>فاتورة مبيعات</td>
+                    <td>INV-00453</td>
+                    <td>10,000.00</td>
+                    <td>0.00</td>
+                    <td class="text-danger">10,000.00</td>
+                </tr>
+                <tr>
+                    <td>2026-06-10</td>
+                    <td>تحصيل نقدي</td>
+                    <td>REC-0012</td>
+                    <td>0.00</td>
+                    <td>5,000.00</td>
+                    <td class="text-danger">5,000.00</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

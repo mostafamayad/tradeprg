@@ -1,75 +1,75 @@
 {
-  "timestamp": "2026-07-17T04:45:24.277Z",
+  "timestamp": "2026-07-17T23:23:49.928Z",
   "endpoints": [
     {
       "endpoint": "/reps",
       "avgMs": 3,
       "maxMs": 3,
-      "payloadBytes": 26,
-      "rowCount": 0
+      "payloadBytes": 182,
+      "rowCount": 1
     },
     {
       "endpoint": "/reps/manage",
       "avgMs": 2,
       "maxMs": 3,
-      "payloadBytes": 26,
-      "rowCount": 0
+      "payloadBytes": 157,
+      "rowCount": 1
     },
     {
       "endpoint": "/reps/1",
-      "avgMs": 2,
+      "avgMs": 3,
       "maxMs": 3,
       "payloadBytes": 47,
       "rowCount": 0
     },
     {
       "endpoint": "/reps/1/statement",
-      "avgMs": 2,
-      "maxMs": 2,
+      "avgMs": 4,
+      "maxMs": 5,
       "payloadBytes": 47,
       "rowCount": 0
     },
     {
       "endpoint": "/reps/1/statement?from=2026-01-01&to=2026-12-31",
-      "avgMs": 2,
+      "avgMs": 3,
       "maxMs": 3,
       "payloadBytes": 47,
       "rowCount": 0
     },
     {
       "endpoint": "/customers",
-      "avgMs": 4,
+      "avgMs": 5,
       "maxMs": 5,
-      "payloadBytes": 81,
-      "rowCount": 0
+      "payloadBytes": 5706,
+      "rowCount": 3
     },
     {
       "endpoint": "/customers/1",
-      "avgMs": 3,
-      "maxMs": 6,
-      "payloadBytes": 46,
+      "avgMs": 18,
+      "maxMs": 19,
+      "payloadBytes": 1901,
       "rowCount": 0
     },
     {
       "endpoint": "/customers/1/statement",
-      "avgMs": 4,
-      "maxMs": 6,
-      "payloadBytes": 46,
+      "avgMs": 7,
+      "maxMs": 7,
+      "payloadBytes": 1498,
       "rowCount": 0
     },
     {
       "endpoint": "/suppliers",
-      "avgMs": 4,
-      "maxMs": 5,
-      "payloadBytes": 56,
-      "rowCount": 0
+      "avgMs": 3,
+      "maxMs": 3,
+      "payloadBytes": 299,
+      "rowCount": 1
     },
     {
       "endpoint": "/products",
-      "avgMs": 2,
-      "maxMs": 2,
-      "payloadBytes": 26,
-      "rowCount": 0
+      "avgMs": 3,
+      "maxMs": 3,
+      "payloadBytes": 352,
+      "rowCount": 1
     },
     {
       "endpoint": "/sales",
@@ -80,59 +80,59 @@
     },
     {
       "endpoint": "/collections",
-      "avgMs": 2,
+      "avgMs": 3,
       "maxMs": 3,
-      "payloadBytes": 26,
-      "rowCount": 0
+      "payloadBytes": 2416,
+      "rowCount": 7
     },
     {
       "endpoint": "/payments",
       "avgMs": 3,
       "maxMs": 3,
-      "payloadBytes": 26,
-      "rowCount": 0
+      "payloadBytes": 309,
+      "rowCount": 1
     },
     {
       "endpoint": "/dashboard/stats",
       "avgMs": 7,
-      "maxMs": 7,
-      "payloadBytes": 401,
+      "maxMs": 10,
+      "payloadBytes": 430,
       "rowCount": 0
     },
     {
       "endpoint": "/users",
       "avgMs": 2,
-      "maxMs": 2,
-      "payloadBytes": 193,
-      "rowCount": 1
+      "maxMs": 3,
+      "payloadBytes": 340,
+      "rowCount": 2
     },
     {
       "endpoint": "/settings",
-      "avgMs": 2,
+      "avgMs": 3,
       "maxMs": 3,
       "payloadBytes": 110,
       "rowCount": 0
     },
     {
       "endpoint": "/logs",
-      "avgMs": 12,
-      "maxMs": 13,
-      "payloadBytes": 17122,
+      "avgMs": 11,
+      "maxMs": 12,
+      "payloadBytes": 19930,
       "rowCount": 50
     },
     {
       "endpoint": "/inventory/balances",
-      "avgMs": 2,
-      "maxMs": 3,
-      "payloadBytes": 26,
-      "rowCount": 0
+      "avgMs": 3,
+      "maxMs": 4,
+      "payloadBytes": 258,
+      "rowCount": 1
     },
     {
       "endpoint": "/accounting/accounts",
-      "avgMs": 3,
+      "avgMs": 4,
       "maxMs": 4,
-      "payloadBytes": 8459,
-      "rowCount": 45
+      "payloadBytes": 10875,
+      "rowCount": 57
     }
   ]
 }

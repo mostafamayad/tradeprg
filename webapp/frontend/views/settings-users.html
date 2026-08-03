@@ -1,0 +1,54 @@
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 class="page-title">صلاحيات المستخدمين</h1>
+        <p class="page-subtitle">إدارة مستخدمي النظام وتحديد صلاحيات الرؤية والإضافة والتعديل لكل قسم</p>
+    </div>
+    <button class="btn btn-primary">
+        <i class="fa-solid fa-user-plus"></i> إضافة مستخدم
+    </button>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>اسم المستخدم</th>
+                    <th>الاسم بالكامل</th>
+                    <th>مجموعة الصلاحيات</th>
+                    <th>حالة الحساب</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>admin</td>
+                    <td>مدير النظام</td>
+                    <td>مسؤول عام (Full Access)</td>
+                    <td class="text-success">نشط</td>
+                    <td class="actions-cell">
+                        <button class="icon-btn btn-edit"><i class="fa-solid fa-pen-to-square"></i></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>ahmed_sales</td>
+                    <td>أحمد مبيعات</td>
+                    <td>مبيعات فقط (Sales Only)</td>
+                    <td class="text-success">نشط</td>
+                    <td class="actions-cell">
+                        <button class="icon-btn btn-edit"><i class="fa-solid fa-pen-to-square"></i></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>sara_acc</td>
+                    <td>سارة حسابات</td>
+                    <td>حسابات عامة</td>
+                    <td class="text-danger">موقوف</td>
+                    <td class="actions-cell">
+                        <button class="icon-btn btn-edit"><i class="fa-solid fa-pen-to-square"></i></button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

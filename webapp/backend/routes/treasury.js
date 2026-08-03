@@ -4,6 +4,7 @@
 
 const router = require('express').Router();
 const { getPool, sql } = require('../database/mssql_db');
+const { postJournalEntryAsync, getSystemAccountAsync } = require('../services/accountingEngine');
 const asyncHandler = require('../utils/asyncHandler');
 
 // ============================================================
@@ -47,10 +48,15 @@ router.get('/accounts', asyncHandler(async (req, res) => {
 router.post('/accounts', asyncHandler(async (req, res) => {
     const { account_name, account_type, bank_name, account_no, opening_balance } = req.body;
     if (!account_name) return res.status(400).json({ success: false, message: 'اسم الحساب مطلوب' });
+    let transaction;
     try {
         const pool = await getPool();
+        transaction = new sql.Transaction(pool);
+        await transaction.begin();
+        const txRequest = transaction.request();
+
         const ob = opening_balance || 0;
-        const result = await pool.request()
+        const result = await txRequest
             .input('account_name', sql.NVarChar, account_name)
             .input('account_type', sql.NVarChar, account_type || 'cash')
             .input('bank_name', sql.NVarChar, bank_name || null)
@@ -61,8 +67,31 @@ router.post('/accounts', asyncHandler(async (req, res) => {
                 OUTPUT INSERTED.id
                 VALUES (@account_name, @account_type, @bank_name, @account_no, @ob, @ob)
             `);
-        res.status(201).json({ success: true, id: result.recordset[0].id });
+        const accId = result.recordset[0].id;
+
+        // Create JE for opening balance
+        if (ob > 0) {
+            const accCash = await getSystemAccountAsync(txRequest, 'SYS_CASH');
+            const accRE = await getSystemAccountAsync(txRequest, 'SYS_RETAINED_EARNINGS');
+            const userId = req.user ? req.user.id : null;
+            if (accCash && accRE && userId) {
+                await postJournalEntryAsync(
+                    txRequest, new Date().toISOString().slice(0, 10),
+                    `رصيد افتتاحي لحساب خزينة ${account_name}`,
+                    [
+                        { account_id: accCash, debit: ob, credit: 0, description: 'رصيد افتتاحي خزينة' },
+                        { account_id: accRE, debit: 0, credit: ob, description: `مقابل رصيد افتتاحي ${account_name}` }
+                    ],
+                    'treasury_account', accId, userId,
+                    { module: 'treasury', action: 'create_account', document: 'ACC-' + accId, isSystem: true }
+                );
+            }
+        }
+
+        await transaction.commit();
+        res.status(201).json({ success: true, id: accId });
     } catch (err) {
+        if (transaction) await transaction.rollback();
         console.error('Treasury accounts POST error:', err);
         err.status = 500;
         err.message = 'خطأ في قاعدة البيانات';
@@ -137,6 +166,33 @@ router.post('/transactions', asyncHandler(async (req, res) => {
             UPDATE treasury_accounts SET current_balance = current_balance + @delta WHERE id = @balAccId
         `);
 
+        // Create Journal Entry for this manual treasury transaction
+        const accCash = await getSystemAccountAsync(txRequest, 'SYS_CASH');
+        const userId = req.user ? req.user.id : null;
+        if (accCash && userId) {
+            let jeLines;
+            if (trans_type === 'in') {
+                // Cash in: Dr SYS_CASH, Cr SYS_RETAINED_EARNINGS
+                const accRE = await getSystemAccountAsync(txRequest, 'SYS_RETAINED_EARNINGS');
+                jeLines = [
+                    { account_id: accCash, debit: amount, credit: 0, description: `إيداع خزينة ${transNo}` },
+                    { account_id: accRE, debit: 0, credit: amount, description: `مقابل إيداع خزينة ${transNo}` }
+                ];
+            } else {
+                // Cash out: Dr SYS_EXPENSE, Cr SYS_CASH
+                const accExp = await getSystemAccountAsync(txRequest, 'SYS_EXPENSE');
+                jeLines = [
+                    { account_id: accExp, debit: amount, credit: 0, description: `صرف خزينة ${transNo}` },
+                    { account_id: accCash, debit: 0, credit: amount, description: `مقابل صرف خزينة ${transNo}` }
+                ];
+            }
+            await postJournalEntryAsync(
+                txRequest, tDate, description || `حركة خزينة ${transNo}`, jeLines,
+                'treasury', result.recordset[0].id, userId,
+                { module: 'treasury', action: 'manual_transaction', document: transNo, isSystem: true }
+            );
+        }
+
         await transaction.commit();
         res.status(201).json({ success: true, message: 'تم تسجيل الحركة', id: result.recordset[0].id });
     } catch (err) {
@@ -195,8 +251,7 @@ router.post('/expenses', asyncHandler(async (req, res) => {
             `);
         const id = expResult.recordset[0].id;
 
-        // If linked to a treasury account: register an 'out' treasury transaction + debit balance
-        // Both inserts are inside the same transaction — either both succeed or both rollback
+        // If linked to a treasury account: register an 'out' treasury transaction + create JE
         if (treasury_id) {
             const transNo = await nextDocNoAsync(txRequest, 'treasury');
             txRequest.input('transNo', sql.NVarChar, transNo);
@@ -215,6 +270,21 @@ router.post('/expenses', asyncHandler(async (req, res) => {
             await txRequest.query(`
                 UPDATE treasury_accounts SET current_balance = current_balance - @expDelta WHERE id = @expAccId
             `);
+
+            // Create Journal Entry for the expense
+            const accCash = await getSystemAccountAsync(txRequest, 'SYS_CASH');
+            const userId = req.user ? req.user.id : null;
+            if (accCash && userId && account_id) {
+                const expLines = [
+                    { account_id: account_id, debit: amount, credit: 0, description: description || `مصروف ${expNo}` },
+                    { account_id: accCash, debit: 0, credit: amount, description: `صرف من الخزينة مقابل ${expNo}` }
+                ];
+                await postJournalEntryAsync(
+                    txRequest, eDate, description || `مصروف ${expNo}`, expLines,
+                    'expense', id, userId,
+                    { module: 'treasury', action: 'expense', document: expNo, isSystem: true }
+                );
+            }
         }
 
         await transaction.commit();

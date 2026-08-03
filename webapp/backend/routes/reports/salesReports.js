@@ -253,7 +253,9 @@ router.get('/rep-performance', asyncHandler(async (req, res) => {
     // Sales returns don't have rep_id, so compute returns via customer invoice rep
     const repWhere = rep_id ? 'AND r.id = @rep_id' : '';
     const repWhereCount = rep_id ? 'AND id = @rep_id' : '';
-    const colWhere = rep_id ? 'cc.rep_id = @rep_id' : 'cc.rep_id IS NOT NULL';
+    let colWheres = rep_id ? 'cc.rep_id = @rep_id' : 'cc.rep_id IS NOT NULL';
+    if (from)   { rq.input('col_from', sql.NVarChar, from); colWheres += ` AND cc.collection_date >= @col_from`; }
+    if (to)     { rq.input('col_to',   sql.NVarChar, to);   colWheres += ` AND cc.collection_date <= @col_to`;   }
     const q = `
       WITH rep_sales AS (
         SELECT i.rep_id,
@@ -267,9 +269,11 @@ router.get('/rep-performance', asyncHandler(async (req, res) => {
       ),
       rep_collections AS (
         SELECT cc.rep_id,
-               COALESCE(SUM(cc.amount), 0) AS total_collections
+               COUNT(DISTINCT cc.id) AS collection_count,
+               COALESCE(SUM(cc.amount), 0) AS total_collections,
+               COALESCE(AVG(cc.amount), 0) AS avg_collection
         FROM customer_collections cc
-        WHERE ${colWhere}
+        WHERE ${colWheres}
         GROUP BY cc.rep_id
       )
       SELECT r.id, r.rep_code, r.rep_name, r.phone, r.target_amount, r.commission_rate,
@@ -279,6 +283,11 @@ router.get('/rep-performance', asyncHandler(async (req, res) => {
              COALESCE(rs.avg_invoice, 0) AS avg_invoice,
              0 AS total_returns,
              COALESCE(rc.total_collections, 0) AS total_collections,
+             COALESCE(rc.collection_count, 0) AS collection_count,
+             COALESCE(rc.avg_collection, 0) AS avg_collection,
+             CASE WHEN COALESCE(rs.total_sales, 0) > 0
+                  THEN (COALESCE(rc.total_collections, 0) / COALESCE(rs.total_sales, 0)) * 100
+                  ELSE 0 END AS collection_rate,
              CASE WHEN COALESCE(r.target_amount, 0) > 0
                   THEN (COALESCE(rs.total_sales, 0) / r.target_amount) * 100
                   ELSE 0 END AS achievement_pct,

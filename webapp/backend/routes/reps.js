@@ -103,10 +103,17 @@ router.post('/', validate(repSchema), async (req, res) => {
 
         let code = rep_code;
         if (!code) {
-            const lastResult = await request.query('SELECT TOP 1 rep_code FROM sales_reps WITH (TABLOCKX, HOLDLOCK) ORDER BY id DESC');
-            const last = lastResult.recordset[0];
-            const lastNum = last && last.rep_code ? parseInt(last.rep_code.replace(/\D/g, '')) || 0 : 0;
-            code = 'R-' + String(lastNum + 1).padStart(4, '0');
+            const cntUpd = await request.query(`
+                UPDATE invoice_counters SET last_number = last_number + 1
+                OUTPUT INSERTED.last_number
+                WHERE counter_name = 'sales_reps'
+            `);
+            if (cntUpd.recordset[0]) {
+                code = `R-${String(cntUpd.recordset[0].last_number).padStart(4, '0')}`;
+            } else {
+                await request.query("INSERT INTO invoice_counters (counter_name, prefix, last_number) VALUES ('sales_reps', 'R', 1)");
+                code = 'R-0001';
+            }
         }
 
         const result = await request
@@ -310,7 +317,7 @@ router.get('/:id/statement', async (req, res) => {
         });
 
         const netSales = Math.round((totalSales - totalReturns) * 100) / 100;
-        const commission = Math.round((netSales * (parseFloat(rep.commission_rate) || 0) / 100) * 100) / 100;
+        const commission = Math.round((totalCollections * (parseFloat(rep.commission_rate) || 0) / 100) * 100) / 100;
         const lastBalance = movements.length > 0 ? movements[movements.length - 1].balance : 0;
 
         // Pagination
@@ -340,7 +347,7 @@ router.get('/:id/statement', async (req, res) => {
                     commission,
                     commissionRate: parseFloat(rep.commission_rate) || 0,
                     finalBalance: lastBalance,
-                    netPosition: Math.round((lastBalance - commission) * 100) / 100,
+                    netPosition: lastBalance,
                     openingBalance
                 },
                 pagination

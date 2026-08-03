@@ -112,7 +112,8 @@ router.post('/coa/seed', asyncHandler(async (req, res) => {
             { code: '2', name: 'الخصوم', type: 'liability' },
             { code: '3', name: 'حقوق الملكية', type: 'equity' },
             { code: '4', name: 'الإيرادات', type: 'revenue' },
-            { code: '5', name: 'المصروفات', type: 'expense' }
+            { code: '5', name: 'تكلفة المبيعات', type: 'expense' },
+            { code: '6', name: 'المصروفات', type: 'expense' }
         ];
 
         const insertedCats = {};
@@ -147,19 +148,28 @@ router.post('/coa/seed', asyncHandler(async (req, res) => {
             
             // Revenue
             { code: '41', name: 'إيرادات المبيعات', type: 'revenue', parent: '4', sys: 'SYS_SALES' },
+            { code: '412', name: 'مردودات المبيعات', type: 'revenue', parent: '41', sys: 'SYS_SALES_RETURNS' },
+            { code: '413', name: 'الخصومات المسموح بها', type: 'revenue', parent: '41', sys: 'SYS_SALES_DISCOUNT' },
             { code: '42', name: 'إيرادات أخرى', type: 'revenue', parent: '4' },
             { code: '43', name: 'زيادة وتسويات المخزون', type: 'revenue', parent: '4', sys: 'SYS_INVENTORY_SURPLUS' },
-            
-            // Expenses
+            { code: '44', name: 'مردودات المشتريات', type: 'revenue', parent: '4', sys: 'SYS_PURCHASE_RETURNS' },
+
+            // Cost of Sales
             { code: '51', name: 'تكلفة البضاعة المباعة (COGS)', type: 'expense', parent: '5', sys: 'SYS_COGS' },
             { code: '52', name: 'مشتريات', type: 'expense', parent: '5', sys: 'SYS_PURCHASES' },
-            { code: '53', name: 'مصروفات التشغيل', type: 'expense', parent: '5', sys: 'SYS_EXPENSE' },
-            { code: '54', name: 'خسائر توالف مخزون', type: 'expense', parent: '5', sys: 'SYS_INVENTORY_SHORTAGE' },
-            { code: '55', name: 'مصروفات عامة وإدارية', type: 'expense', parent: '5' },
-            
-            // Returns (Contra-Revenue/Contra-Expense handled as Expenses/Revenues respectively or separate)
-            { code: '56', name: 'مردودات المبيعات', type: 'expense', parent: '5', sys: 'SYS_SALES_RETURNS' },
-            { code: '44', name: 'مردودات المشتريات', type: 'revenue', parent: '4', sys: 'SYS_PURCHASE_RETURNS' }
+
+            // Expenses sub-groups
+            { code: '61', name: 'مصروفات البيع والتوزيع', type: 'expense', parent: '6' },
+            { code: '62', name: 'المصروفات العمومية والإدارية', type: 'expense', parent: '6' },
+            { code: '63', name: 'المصروفات التشغيلية', type: 'expense', parent: '6' },
+            { code: '64', name: 'المصروفات المالية', type: 'expense', parent: '6' },
+            { code: '65', name: 'خسائر وانخفاضات', type: 'expense', parent: '6' },
+            { code: '66', name: 'الإهلاك والإطفاء', type: 'expense', parent: '6' },
+
+            // Existing expense accounts (re-parented to '6')
+            { code: '53', name: 'مصروفات التشغيل', type: 'expense', parent: '6', sys: 'SYS_EXPENSE' },
+            { code: '54', name: 'خسائر توالف مخزون', type: 'expense', parent: '6', sys: 'SYS_INVENTORY_SHORTAGE' },
+            { code: '55', name: 'مصروفات عامة وإدارية', type: 'expense', parent: '6' }
         ];
 
         const insertedSubs = { ...insertedCats };
@@ -333,7 +343,7 @@ router.get('/journals', asyncHandler(async (req, res) => {
 
 // Manual Journal Entry (For testing / manual adjustments)
 router.post('/journals', asyncHandler(async (req, res) => {
-    const { date, description, lines } = req.body;
+    const { date, description, lines, supplier_id, customer_id } = req.body;
     
     if (!date || !description || !lines || lines.length === 0) {
         return res.status(400).json({ success: false, message: 'بيانات القيد غير مكتملة' });
@@ -361,7 +371,9 @@ router.post('/journals', asyncHandler(async (req, res) => {
             'manual_je',
             null,
             userId,
-            { module: 'accounting', action: 'manual_entry', document: `MANUAL_${Date.now()}`, isSystem: false }
+            { module: 'accounting', action: 'manual_entry', document: `MANUAL_${Date.now()}`, isSystem: false },
+            supplier_id || null,
+            customer_id || null
         );
 
         await transaction.commit();
@@ -516,11 +528,6 @@ router.post('/journals/:id/reverse', asyncHandler(async (req, res) => {
 
             const newEntryId = await reverseJournalEntryAsync(txReq, journalId, desc, userId);
 
-            // Also set reversal_of_id on the new entry for bidirectional linking
-            txReq.input('newId', sql.Int, newEntryId);
-            txReq.input('origId', sql.Int, journalId);
-            await txReq.query('UPDATE journal_entries SET reversal_of_id = @origId WHERE id = @newId');
-
             await transaction.commit();
 
             // Fetch the new entry number for response
@@ -596,7 +603,7 @@ router.get('/ledger/:accountId', asyncHandler(async (req, res) => {
 // Trial Balance (ميزان المراجعة) based on journal_entry_lines
 router.get('/trial-balance', asyncHandler(async (req, res) => {
     try {
-        const { from, to, accountType, includeZero } = req.query;
+        const { from, to, accountType, includeZero, show_zero_balances } = req.query;
         const pool = await getPool();
         const request = pool.request();
 
@@ -604,10 +611,13 @@ router.get('/trial-balance', asyncHandler(async (req, res) => {
         let periodWhere = ' WHERE 1=1';
 
         if (from) {
-            openingWhere = ' WHERE j.entry_date < @from';
-            periodWhere += ' AND j.entry_date >= @from';
+            openingWhere = ' WHERE j.entry_date < @from AND (j.is_reversed = 0 OR j.is_reversed IS NULL)';
+            periodWhere += ' AND (j.is_reversed = 0 OR j.is_reversed IS NULL) AND j.entry_date >= @from';
             request.input('from', sql.NVarChar, from);
+        } else {
+            periodWhere += ' AND (j.is_reversed = 0 OR j.is_reversed IS NULL)';
         }
+        
         if (to) {
             periodWhere += ' AND j.entry_date <= @to';
             request.input('to', sql.NVarChar, to);
@@ -616,7 +626,8 @@ router.get('/trial-balance', asyncHandler(async (req, res) => {
         const accTypeFilter = accountType ? ' AND a.account_type = @accType' : '';
         if (accountType) request.input('accType', sql.NVarChar, accountType);
 
-        const zeroFilter = includeZero === 'false' || includeZero === '0'
+        const showZero = includeZero === 'true' || includeZero === '1' || show_zero_balances === 'true' || show_zero_balances === '1';
+        const zeroFilter = !showZero
             ? ' AND (ISNULL(o.opening_debit, 0) + ISNULL(o.opening_credit, 0) + ISNULL(p.period_debit, 0) + ISNULL(p.period_credit, 0) <> 0)'
             : '';
 
@@ -1290,7 +1301,7 @@ router.get('/income-statement', asyncHandler(async (req, res) => {
         }
 
         const showZero = includeZero === 'true' || includeZero === '1';
-        const zeroFilter = showZero ? '' : ' AND (ISNULL(p.period_debit, 0) + ISNULL(p.period_credit, 0) <> 0)';
+        const zeroFilter = showZero ? '' : ' AND (a.parent_id IS NULL OR (ISNULL(p.period_debit, 0) + ISNULL(p.period_credit, 0) <> 0))';
 
         const sqlQuery = `
             WITH opening AS (
@@ -1349,54 +1360,78 @@ router.get('/income-statement', asyncHandler(async (req, res) => {
             };
         });
 
-        // Group by type
-        const byType = {};
-        for (let i = 0; i < rows.length; i++) {
-            const r = rows[i];
-            if (!byType[r.account_type]) byType[r.account_type] = [];
-            byType[r.account_type].push(r);
+        // Build hierarchy map from the rows
+        const accById = {};
+        const childrenOf = {};
+        rows.forEach(function (r) {
+            accById[r.account_id] = r;
+            if (!childrenOf[r.parent_id]) childrenOf[r.parent_id] = [];
+            childrenOf[r.parent_id].push(r);
+        });
+
+        // Walk up to find root parent for each account
+        var rootCache = {};
+        function findRoot(accId) {
+            if (rootCache[accId]) return rootCache[accId];
+            var acc = accById[accId];
+            if (!acc || !acc.parent_id || !accById[acc.parent_id]) {
+                rootCache[accId] = accId;
+                return accId;
+            }
+            var root = findRoot(acc.parent_id);
+            rootCache[accId] = root;
+            return root;
         }
 
-        // Config for revenue/expense subgroups
-        const revGroups = [
-            { match: function (c) { return c.indexOf('4.1') === 0 || c === '41' || (c.length > 2 && c.indexOf('41') === 0 && c !== '4'); }, name: 'إيرادات المبيعات' },
-            { match: function (c) { return c.indexOf('4.2') === 0 || c === '42' || (c.length > 2 && c.indexOf('42') === 0 && c !== '4'); }, name: 'إيرادات أخرى' },
-            { match: function (c) { return c.indexOf('43') === 0; }, name: 'مردودات المبيعات' },
-            { match: function (c) { return c.indexOf('44') === 0; }, name: 'مشتريات مرتجعة' }
-        ];
-        const expGroups = [
-            { match: function (c) { return c.indexOf('51') === 0; }, name: 'تكلفة البضاعة المباعة' },
-            { match: function (c) { return c.indexOf('52') === 0; }, name: 'المشتريات' },
-            { match: function (c) { return c.indexOf('53') === 0; }, name: 'مصروفات عمومية' },
-            { match: function (c) { return c.indexOf('54') === 0; }, name: 'نقص المخزون' },
-            { match: function (c) { return c.indexOf('55') === 0; }, name: 'مصروفات أخرى' },
-            { match: function (c) { return c.indexOf('56') === 0; }, name: 'مردودات المبيعات' }
-        ];
+        // Identify top-level root accounts (4=Revenue, 5=Cost of Sales, 6=Expenses)
+        var rootAccounts = {};
+        rows.forEach(function (r) {
+            if (r.account_code === '4' || r.account_code === '5' || r.account_code === '6') {
+                rootAccounts[r.account_code] = { id: r.account_id, name: r.account_name };
+            }
+        });
 
-        // Helper: compute net for an account given its type
+        // Categorize each account by its root parent
+        var byRoot = { '4': [], '5': [], '6': [] };
+        rows.forEach(function (r) {
+            var rootId = findRoot(r.account_id);
+            for (var code in rootAccounts) {
+                if (rootAccounts[code].id == rootId) {
+                    byRoot[code].push(r);
+                    break;
+                }
+            }
+        });
+
+        // Flatten dots from account codes for consistent matching (old='4.1' vs new='41')
+        function normCode(c) { return String(c || '').replace(/\./g, ''); }
+
+        // Helper: compute net balance for an account (revenue = credit-debit, expense = debit-credit)
         function netVal(ac, field, isExpense) {
             return Math.round((isExpense ? ac[field + '_debit'] - ac[field + '_credit'] : ac[field + '_credit'] - ac[field + '_debit']) * 100) / 100;
         }
 
-        // Helper: build section groups for revenue or expense
+        // Build section from a set of accounts, grouped by second-level parent
         function buildSection(accs, groups, isExpense) {
-            var secGroups = [];
+            var sectionGroups = groups.slice();
             var unassigned = [];
             for (var ai = 0; ai < accs.length; ai++) {
                 var ac = accs[ai];
-                var assigned = false;
-                for (var gi = 0; gi < groups.length; gi++) {
-                    if (groups[gi].match(ac.account_code)) {
-                        if (!groups[gi]._items) groups[gi]._items = [];
-                        groups[gi]._items.push(ac);
+            var assigned = false;
+            var acNorm = normCode(ac.account_code);
+            for (var gi = 0; gi < sectionGroups.length; gi++) {
+                if (sectionGroups[gi].match(acNorm)) {
+                        if (!sectionGroups[gi]._items) sectionGroups[gi]._items = [];
+                        sectionGroups[gi]._items.push(ac);
                         assigned = true;
                         break;
                     }
                 }
                 if (!assigned) unassigned.push(ac);
             }
-            for (var gi = 0; gi < groups.length; gi++) {
-                var grp = groups[gi];
+            var resultGroups = [];
+            for (var gi = 0; gi < sectionGroups.length; gi++) {
+                var grp = sectionGroups[gi];
                 var items = grp._items || [];
                 if (items.length === 0) continue;
                 var gPer = 0, gCls = 0;
@@ -1409,7 +1444,7 @@ router.get('/income-statement', asyncHandler(async (req, res) => {
                     gCls = Math.round((gCls + cn) * 100) / 100;
                     gAccs.push({ account_id: it.account_id, account_code: it.account_code, account_name: it.account_name, period: pn, closing: cn });
                 }
-                secGroups.push({ name: grp.name, accounts: gAccs, totals: { period: gPer, closing: gCls } });
+                resultGroups.push({ name: grp.name, accounts: gAccs, totals: { period: gPer, closing: gCls } });
             }
             if (unassigned.length > 0) {
                 var uPer = 0, uCls = 0;
@@ -1422,22 +1457,51 @@ router.get('/income-statement', asyncHandler(async (req, res) => {
                     uCls = Math.round((uCls + ucn) * 100) / 100;
                     uAccs.push({ account_id: ua.account_id, account_code: ua.account_code, account_name: ua.account_name, period: upn, closing: ucn });
                 }
-                secGroups.push({ name: 'أخرى', accounts: uAccs, totals: { period: uPer, closing: uCls } });
+                resultGroups.push({ name: 'أخرى', accounts: uAccs, totals: { period: uPer, closing: uCls } });
             }
             var secPer = 0, secCls = 0;
-            for (var sgi = 0; sgi < secGroups.length; sgi++) {
-                secPer = Math.round((secPer + secGroups[sgi].totals.period) * 100) / 100;
-                secCls = Math.round((secCls + secGroups[sgi].totals.closing) * 100) / 100;
+            for (var sgi = 0; sgi < resultGroups.length; sgi++) {
+                secPer = Math.round((secPer + resultGroups[sgi].totals.period) * 100) / 100;
+                secCls = Math.round((secCls + resultGroups[sgi].totals.closing) * 100) / 100;
             }
-            return { groups: secGroups, totals: { period: secPer, closing: secCls } };
+            return { groups: resultGroups, totals: { period: secPer, closing: secCls } };
         }
 
-        var revData = buildSection(byType['revenue'] || [], revGroups, false);
-        var expData = buildSection(byType['expense'] || [], expGroups, true);
+        // Revenue groups (root '4')
+        var revGroups = [
+            { match: function (c) { return c.indexOf('41') === 0 || c === '4'; }, name: 'إيرادات المبيعات' },
+            { match: function (c) { return c.indexOf('42') === 0; }, name: 'إيرادات أخرى' },
+            { match: function (c) { return c.indexOf('43') === 0; }, name: 'زيادة وتسويات المخزون' },
+            { match: function (c) { return c.indexOf('44') === 0; }, name: 'مردودات المشتريات' }
+        ];
+
+        // Cost of Sales groups (root '5')
+        var cogsGroups = [
+            { match: function (c) { return c.indexOf('51') === 0 || c === '5'; }, name: 'تكلفة البضاعة المباعة' },
+            { match: function (c) { return c.indexOf('52') === 0; }, name: 'المشتريات' }
+        ];
+
+        // Expense groups (root '6')
+        var expGroups = [
+            { match: function (c) { return c.indexOf('61') === 0 || c === '6'; }, name: 'مصروفات البيع والتوزيع' },
+            { match: function (c) { return c.indexOf('62') === 0; }, name: 'المصروفات العمومية والإدارية' },
+            { match: function (c) { return c.indexOf('63') === 0; }, name: 'المصروفات التشغيلية' },
+            { match: function (c) { return c.indexOf('64') === 0; }, name: 'المصروفات المالية' },
+            { match: function (c) { return c.indexOf('65') === 0; }, name: 'خسائر وانخفاضات' },
+            { match: function (c) { return c.indexOf('66') === 0; }, name: 'الإهلاك والإطفاء' },
+            { match: function (c) { return c.indexOf('53') === 0; }, name: 'مصروفات التشغيل' },
+            { match: function (c) { return c.indexOf('54') === 0; }, name: 'خسائر توالف مخزون' },
+            { match: function (c) { return c.indexOf('55') === 0; }, name: 'مصروفات عامة وإدارية' }
+        ];
+
+        var revData = buildSection(byRoot['4'] || [], revGroups, false);
+        var cogsData = buildSection(byRoot['5'] || [], cogsGroups, true);
+        var expData = buildSection(byRoot['6'] || [], expGroups, true);
 
         var totalRevenue = revData.totals.closing;
+        var totalCogs = cogsData.totals.closing;
         var totalExpenses = expData.totals.closing;
-        var netIncome = Math.round((totalRevenue - totalExpenses) * 100) / 100;
+        var netIncome = Math.round((totalRevenue - totalCogs - totalExpenses) * 100) / 100;
 
         res.json({
             success: true,
@@ -1445,10 +1509,12 @@ router.get('/income-statement', asyncHandler(async (req, res) => {
             from: from || null,
             to: to || null,
             revenue: { name: 'الإيرادات', groups: revData.groups, totals: revData.totals },
+            costOfSales: { name: 'تكلفة المبيعات', groups: cogsData.groups, totals: cogsData.totals },
             expenses: { name: 'المصروفات', groups: expData.groups, totals: expData.totals },
             netIncome: netIncome,
             totals: {
                 totalRevenue: totalRevenue,
+                totalCostOfSales: totalCogs,
                 totalExpenses: totalExpenses,
                 netIncome: netIncome
             }

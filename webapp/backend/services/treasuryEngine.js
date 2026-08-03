@@ -4,10 +4,11 @@
 // Used by: Treasury, Sales, Purchases, Collections, CRM, AR/AP modules.
 
 const { sql } = require('../database/mssql_db');
-const { postJournalEntryAsync, getSystemAccountAsync } = require('./accountingEngine');
 
 /**
- * Create a treasury transaction with automatic Journal Entry posting.
+ * Create a treasury transaction.
+ * NOTE: Journal Entry is NOT created here — calling modules are responsible
+ * for posting their own JEs with correct chart_of_accounts IDs.
  * @param {object} txRequest - mssql transaction request
  * @param {object} params
  * @param {string} params.transNo - document number
@@ -19,12 +20,10 @@ const { postJournalEntryAsync, getSystemAccountAsync } = require('./accountingEn
  * @param {number} [params.relatedId] - related document ID
  * @param {string} [params.documentNo] - related document number
  * @param {string} [params.description] - description
- * @param {number} [params.userId] - user ID for JE
- * @param {object} [params.jeMeta] - additional JE metadata (module, action, isSystem)
  * @returns {Promise<number>} new treasury transaction ID
  */
 async function createTreasuryTransactionAsync(txRequest, params) {
-    const { transNo, transDate, transType, amount, accountId, relatedType, relatedId, documentNo, description, userId, jeMeta, skipJE } = params;
+    const { transNo, transDate, transType, amount, accountId, relatedType, relatedId, documentNo, description } = params;
     const sfx = Math.random().toString(36).substring(2, 9);
 
     txRequest.input(`tt_no_${sfx}`, sql.NVarChar, transNo);
@@ -51,39 +50,16 @@ async function createTreasuryTransactionAsync(txRequest, params) {
         UPDATE treasury_accounts SET current_balance = current_balance ${balOp} @tt_bal_${sfx} WHERE id = @tt_acct_${sfx}
     `);
 
-    // Post Journal Entry if user context is available and skipJE is not set
-    if (userId && !skipJE) {
-        const accSYS = transType === 'in' ? 'SYS_CASH' : 'SYS_EXPENSE';
-        const sysAccId = await getSystemAccountAsync(txRequest, accSYS);
-        if (sysAccId) {
-            const lines = transType === 'in'
-                ? [
-                    { account_id: accountId, debit: amount, credit: 0, description: description || `إيداع ${transNo}` },
-                    { account_id: sysAccId, debit: 0, credit: amount, description: description || `مقابل إيداع ${transNo}` }
-                  ]
-                : [
-                    { account_id: sysAccId, debit: amount, credit: 0, description: description || `صرف ${transNo}` },
-                    { account_id: accountId, debit: 0, credit: amount, description: description || `مقابل صرف ${transNo}` }
-                  ];
-
-            await postJournalEntryAsync(
-                txRequest, transDate, description || `حركة خزينة ${transNo}`, lines,
-                'treasury', ttId, userId,
-                jeMeta || { module: 'treasury', action: 'create', document: transNo, isSystem: true }
-            );
-        }
-    }
-
     return ttId;
 }
 
 /**
- * Reverse a treasury transaction (create offsetting entry + reverse JE).
+ * Reverse a treasury transaction (create offsetting entry).
+ * NOTE: Journal Entry reversal must be handled by the calling module.
  * @param {object} txRequest - mssql transaction request
  * @param {number} treasuryId - treasury transaction ID
- * @param {number} [userId] - user ID for JE
  */
-async function reverseTreasuryTransactionAsync(txRequest, treasuryId, userId, options = {}) {
+async function reverseTreasuryTransactionAsync(txRequest, treasuryId) {
     const sfx = Math.random().toString(36).substring(2, 9);
     txRequest.input(`tt_id_${sfx}`, sql.Int, treasuryId);
 
@@ -101,10 +77,7 @@ async function reverseTreasuryTransactionAsync(txRequest, treasuryId, userId, op
         relatedType: 'reversal',
         relatedId: treasuryId,
         documentNo: t.trans_no,
-        description: `عكس ${t.description || t.trans_no}`,
-        userId,
-        jeMeta: { module: 'treasury', action: 'reverse', document: t.trans_no, isSystem: true },
-        skipJE: options.skipJE
+        description: `عكس ${t.description || t.trans_no}`
     });
 }
 

@@ -32,6 +32,12 @@ async function createPool(dbOverride) {
             database: dbToUse,
             user: process.env.MSSQL_USER,
             password: process.env.MSSQL_PASSWORD,
+            pool: {
+                max: parseInt(process.env.MSSQL_POOL_MAX) || 10,
+                min: parseInt(process.env.MSSQL_POOL_MIN) || 2,
+                acquireTimeoutMillis: parseInt(process.env.MSSQL_POOL_ACQUIRE_TIMEOUT) || 15000,
+                idleTimeoutMillis: parseInt(process.env.MSSQL_POOL_IDLE_TIMEOUT) || 60000
+            },
             options: {
                 encrypt: false,
                 trustServerCertificate: true,
@@ -47,8 +53,8 @@ async function createPool(dbOverride) {
         'ODBC Driver 17 for SQL Server',
         'SQL Server Native Client 11.0',
         'ODBC Driver 13 for SQL Server',
-        'SQL Server', // Built-in Windows fallback
-        'ODBC Driver 18 for SQL Server' // Put 18 last because it often hangs on local connections
+        'SQL Server',
+        'ODBC Driver 18 for SQL Server'
     ];
 
     const fs = require('fs');
@@ -60,14 +66,28 @@ async function createPool(dbOverride) {
             const msg1 = `[MSSQL] Attempting to connect using driver: ${driver}...`;
             console.log(msg1);
             fs.appendFileSync(logFile, msg1 + '\n');
-            
+
             const localServer = server.replace(/^localhost/i, '.');
-            const connStr = `Driver={${driver}};Server=${localServer};Database=${dbToUse};Trusted_Connection=yes;Encrypt=no;TrustServerCertificate=yes;Connection Timeout=3;`;
+            // Use proper config object (not connectionString) so mssql uses msnodesqlv8 driver correctly
             const testPool = new sql.ConnectionPool({
-                connectionString: connStr
+                server: localServer,
+                database: dbToUse,
+                driver: driver,
+                options: {
+                    trustedConnection: true,
+                    enableArithAbort: true,
+                    trustServerCertificate: true,
+                    encrypt: false
+                },
+                pool: {
+                    max: parseInt(process.env.MSSQL_POOL_MAX) || 10,
+                    min: 2,
+                    acquireTimeoutMillis: parseInt(process.env.MSSQL_POOL_ACQUIRE_TIMEOUT) || 15000,
+                    idleTimeoutMillis: parseInt(process.env.MSSQL_POOL_IDLE_TIMEOUT) || 60000
+                }
             });
             await testPool.connect();
-            
+
             const msg2 = `[MSSQL] Successfully connected using driver: ${driver}`;
             console.log(msg2);
             fs.appendFileSync(logFile, msg2 + '\n');
@@ -75,7 +95,8 @@ async function createPool(dbOverride) {
         } catch (e) {
             fs.appendFileSync(logFile, `[MSSQL] Failed with driver ${driver}: ${e.message}\n`);
             lastError = e;
-            if (e.message.includes('Data source name not found') || e.message.includes('Provider cannot be found')) {
+            if (e.message.includes('Data source name not found') || e.message.includes('Provider cannot be found') ||
+                e.message.includes('Invalid connection string attribute') || e.message.includes('does not exist')) {
                 continue;
             }
             throw e;
@@ -415,6 +436,7 @@ async function initializeDatabase() {
             healthState.retryCount = attempt + 1;
             healthState.lastError = err.message;
             console.error(`[MSSQL] Initialization attempt ${attempt + 1}/${backoff.length} failed: ${err.message}`);
+            console.error(`[MSSQL DEBUG] Stack: ${err.stack ? err.stack.substring(0, 600) : 'no stack'}`);
             if (pool) { try { pool.close(); } catch (e) { /* ignore */ } pool = null; }
         }
     }
@@ -487,8 +509,11 @@ function closeTenantPool(dbName) {
     }
 }
 
-// Start async initialization, but don't block exports
-const initPromise = initializeDatabase();
+// Start async initialization after event loop tick — allows all modules to load first
+// This prevents race conditions with msnodesqlv8 global connection state
+const initPromise = new Promise((resolve) => {
+    setImmediate(() => resolve(initializeDatabase()));
+});
 
 module.exports = {
     sql,

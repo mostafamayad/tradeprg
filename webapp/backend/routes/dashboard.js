@@ -29,7 +29,7 @@ router.get('/stats', asyncHandler(async (req, res) => {
         ] = await Promise.all([
             // Sales
             pool.request().input('t1', sql.NVarChar, today).query(`SELECT COALESCE(SUM(grand_total), 0) as v FROM sales_invoices WHERE invoice_date = @t1 AND status NOT IN ('cancelled', 'deleted')`),
-            pool.request().query(`SELECT COALESCE(SUM(grand_total), 0) as v FROM sales_invoices WHERE CAST(invoice_date AS DATE) >= DATEADD(day, -7, GETDATE()) AND status NOT IN ('cancelled', 'deleted')`),
+            pool.request().query(`SELECT COALESCE(SUM(grand_total), 0) as v FROM sales_invoices WHERE TRY_CAST(invoice_date AS DATE) >= DATEADD(day, -7, GETDATE()) AND status NOT IN ('cancelled', 'deleted')`),
             pool.request().query(`SELECT COALESCE(SUM(grand_total), 0) as v FROM sales_invoices WHERE LEFT(invoice_date, 7) = LEFT(CONVERT(NVarChar(10), GETDATE(), 120), 7) AND status NOT IN ('cancelled', 'deleted')`),
             pool.request().input('t2', sql.NVarChar, today).query(`SELECT COUNT(*) as v FROM sales_invoices WHERE invoice_date = @t2 AND status NOT IN ('cancelled', 'deleted')`),
             // Purchases
@@ -148,7 +148,7 @@ router.get('/alerts', asyncHandler(async (req, res) => {
                        SUM(i.grand_total - i.amount_paid) as overdue_amount
                 FROM sales_invoices i
                 JOIN customers c ON i.customer_id = c.id
-                WHERE i.status NOT IN ('cancelled', 'deleted') AND CAST(i.invoice_date AS DATE) < DATEADD(day, -60, GETDATE())
+                WHERE i.status NOT IN ('cancelled', 'deleted') AND TRY_CAST(i.invoice_date AS DATE) < DATEADD(day, -60, GETDATE())
                   AND (i.grand_total - i.amount_paid) > 0
                 GROUP BY c.id, c.customer_name
                 ORDER BY overdue_amount DESC
@@ -178,7 +178,7 @@ router.get('/chart/sales', asyncHandler(async (req, res) => {
             .query(`
                 SELECT invoice_date as date, SUM(grand_total) as total, COUNT(*) as count
                 FROM sales_invoices
-                WHERE status NOT IN ('cancelled', 'deleted') AND CAST(invoice_date AS DATE) >= DATEADD(day, -@days, GETDATE())
+                WHERE status NOT IN ('cancelled', 'deleted') AND TRY_CAST(invoice_date AS DATE) >= DATEADD(day, -@days, GETDATE())
                 GROUP BY invoice_date
                 ORDER BY invoice_date
             `);

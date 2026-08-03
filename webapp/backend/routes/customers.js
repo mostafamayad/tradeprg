@@ -24,31 +24,11 @@ const asyncHandler = require('../utils/asyncHandler');
 const { getPool, sql } = require('../database/mssql_db');
 const accountingEngine = require('../services/accountingEngine');
 const logActivity = require('../middleware/logger');
+const { requirePermission } = require('../middleware/permissions');
 
 // ── Recalculate customer balance (existing formula preserved) ──
 async function recalcCustomerBalanceAsync(poolOrTxReq, customerId) {
-    const pRand = Math.random().toString(36).substring(2, 9);
-    const request = typeof poolOrTxReq.request === 'function' ? poolOrTxReq.request() : poolOrTxReq;
-    request.input(`rcb_id_${pRand}`, sql.Int, customerId);
-
-    const cRes = await request.query(`SELECT opening_balance FROM customers WHERE id = @rcb_id_${pRand}`);
-    const c = cRes.recordset[0];
-    if (!c) return;
-
-    const salesRes = await request.query(`SELECT COALESCE(SUM(grand_total), 0) as total FROM sales_invoices WHERE customer_id = @rcb_id_${pRand} AND status != 'cancelled'`);
-    const returnsRes = await request.query(`SELECT COALESCE(SUM(grand_total), 0) as total FROM sales_returns WHERE customer_id = @rcb_id_${pRand} AND status != 'cancelled'`);
-    const collRes = await request.query(`
-        SELECT COALESCE(SUM(cc.amount), 0) as total 
-        FROM customer_collections cc
-        LEFT JOIN checks ch ON ch.collection_id = cc.id
-        WHERE cc.customer_id = @rcb_id_${pRand} AND (ch.id IS NULL OR ch.status NOT IN ('bounced', 'cancelled'))
-    `);
-
-    const balance = (c.opening_balance || 0) + (salesRes.recordset[0].total || 0) - (returnsRes.recordset[0].total || 0) - (collRes.recordset[0].total || 0);
-
-    request.input(`rcb_bal_${pRand}`, sql.Decimal(18, 2), balance);
-    await request.query(`UPDATE customers SET current_balance = @rcb_bal_${pRand} WHERE id = @rcb_id_${pRand}`);
-    return balance;
+    return accountingEngine.recalcCustomerBalanceAsync(poolOrTxReq, customerId);
 }
 
 // ── Log customer activity ──
@@ -124,7 +104,7 @@ router.get('/groups/list', asyncHandler(async (req, res) => {
 }));
 
 // ── Export customers as CSV ──
-router.get('/export/csv', asyncHandler(async (req, res) => {
+router.get('/export/csv', requirePermission('customers.export'), asyncHandler(async (req, res) => {
     try {
         const pool = await getPool();
         const r = await pool.request().query(`
@@ -194,7 +174,7 @@ router.get('/export/csv', asyncHandler(async (req, res) => {
 }));
 
 // ── Import customers from CSV ──
-router.post('/import', async (req, res) => {
+router.post('/import', requirePermission('customers.create'), async (req, res) => {
     try {
         const { csv } = req.body;
         if (!csv) return res.status(400).json({ success: false, message: 'البيانات مطلوبة (csv)' });
@@ -888,7 +868,7 @@ router.patch('/:id/active', async (req, res) => {
 });
 
 // ── Block / Unblock customer ──
-router.patch('/:id/block', async (req, res) => {
+router.patch('/:id/block', requirePermission('customers.block'), async (req, res) => {
     const { block, reason } = req.body;
     try {
         const pool = await getPool();

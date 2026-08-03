@@ -260,7 +260,7 @@ router.post('/invoices', async (req, res) => {
             
             const stock = await txRequest.query(`
                 SELECT ib.quantity, p.product_name, p.cost_price 
-                FROM products p WITH (UPDLOCK)
+                FROM products p
                 LEFT JOIN inventory_balances ib WITH (UPDLOCK) ON p.id = ib.product_id AND ib.store_id = @chk_sid_${i}
                 WHERE p.id = @chk_pid_${i}
             `);
@@ -303,7 +303,7 @@ router.post('/invoices', async (req, res) => {
         
         if (payment_type === 'credit' || remaining > 0) {
             txRequest.input('cl_cid', sql.Int, customer_id);
-            const custRes = await txRequest.query('SELECT credit_limit, current_balance FROM customers WITH (UPDLOCK) WHERE id = @cl_cid');
+            const custRes = await txRequest.query('SELECT credit_limit, current_balance FROM customers WHERE id = @cl_cid');
             const cust = custRes.recordset[0];
             if (cust && cust.credit_limit > 0) {
                 const newBalance = (cust.current_balance || 0) + remaining;
@@ -463,26 +463,31 @@ router.post('/invoices', async (req, res) => {
             );
         }
 
-        await recalcCustomerBalanceAsync(txRequest, customer_id);
-
-        // Log customer activity
-        if (customer_id) {
-            const pLog = Math.random().toString(36).substring(2, 9);
-            txRequest.input(`cal_cid_${pLog}`, sql.Int, customer_id);
-            txRequest.input(`cal_type_${pLog}`, sql.NVarChar, 'invoice_created');
-            txRequest.input(`cal_desc_${pLog}`, sql.NVarChar, `تم إنشاء فاتورة مبيعات ${invoiceNo} بقيمة ${grandTotal}`);
-            txRequest.input(`cal_rt_${pLog}`, sql.NVarChar, 'sales_invoice');
-            txRequest.input(`cal_ri_${pLog}`, sql.Int, invoiceId);
-            txRequest.input(`cal_rn_${pLog}`, sql.NVarChar, invoiceNo);
-            txRequest.input(`cal_amt_${pLog}`, sql.Decimal(18,4), grandTotal || 0);
-            txRequest.input(`cal_uid_${pLog}`, sql.Int, req.user ? req.user.id : null);
-            await txRequest.query(`
-                INSERT INTO customer_activity_log (customer_id, activity_type, description, reference_type, reference_id, reference_no, amount, created_by)
-                VALUES (@cal_cid_${pLog}, @cal_type_${pLog}, @cal_desc_${pLog}, @cal_rt_${pLog}, @cal_ri_${pLog}, @cal_rn_${pLog}, @cal_amt_${pLog}, @cal_uid_${pLog})
-            `);
-        }
-
         await transaction.commit();
+
+        // Non-critical operations — moved OUTSIDE the main transaction
+        // to reduce lock duration without affecting data integrity.
+        if (customer_id) {
+            try {
+                await recalcCustomerBalanceAsync(pool, customer_id);
+            } catch (ecal) { console.error('Balance recalculation error (non-fatal):', ecal.message); }
+            try {
+                const pLog = Math.random().toString(36).substring(2, 9);
+                const logReq = pool.request();
+                logReq.input(`cal_cid_${pLog}`, sql.Int, customer_id);
+                logReq.input(`cal_type_${pLog}`, sql.NVarChar, 'invoice_created');
+                logReq.input(`cal_desc_${pLog}`, sql.NVarChar, `تم إنشاء فاتورة مبيعات ${invoiceNo} بقيمة ${grandTotal}`);
+                logReq.input(`cal_rt_${pLog}`, sql.NVarChar, 'sales_invoice');
+                logReq.input(`cal_ri_${pLog}`, sql.Int, invoiceId);
+                logReq.input(`cal_rn_${pLog}`, sql.NVarChar, invoiceNo);
+                logReq.input(`cal_amt_${pLog}`, sql.Decimal(18,4), grandTotal || 0);
+                logReq.input(`cal_uid_${pLog}`, sql.Int, req.user ? req.user.id : null);
+                await logReq.query(`
+                    INSERT INTO customer_activity_log (customer_id, activity_type, description, reference_type, reference_id, reference_no, amount, created_by)
+                    VALUES (@cal_cid_${pLog}, @cal_type_${pLog}, @cal_desc_${pLog}, @cal_rt_${pLog}, @cal_ri_${pLog}, @cal_rn_${pLog}, @cal_amt_${pLog}, @cal_uid_${pLog})
+                `);
+            } catch (elog) { console.error('Activity log error (non-fatal):', elog.message); }
+        }
         await logActivity(req, 'CREATE', 'sales', invoiceNo, `فاتورة مبيعات ${invoiceNo}`, null, { invoice_no: invoiceNo, customer_id, grand_total: grandTotal, items_count: items.length, payment_type }, 'SUCCESS', null);
         res.status(201).json({ success: true, message: 'تم حفظ الفاتورة بنجاح', invoiceNo, invoiceId, grandTotal, remaining });
     } catch (err) {
@@ -876,7 +881,7 @@ router.put('/invoices/:id', async (req, res) => {
             
             const stock = await txRequest.query(`
                 SELECT ib.quantity, p.product_name, p.cost_price 
-                FROM products p WITH (UPDLOCK)
+                FROM products p
                 LEFT JOIN inventory_balances ib WITH (UPDLOCK) ON p.id = ib.product_id AND ib.store_id = @chk_sid_${i}
                 WHERE p.id = @chk_pid_${i}
             `);

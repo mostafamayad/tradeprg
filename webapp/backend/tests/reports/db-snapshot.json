@@ -1,40 +1,40 @@
 {
-  "timestamp": "2026-07-17T04:45:23.526Z",
+  "timestamp": "2026-07-17T23:23:49.220Z",
   "tableCounts": {
-    "sales_reps": 0,
-    "customers": 0,
-    "suppliers": 0,
-    "products": 0,
+    "sales_reps": 1,
+    "customers": 3,
+    "suppliers": 1,
+    "products": 1,
     "stores": 3,
-    "sales_invoices": 0,
-    "sales_invoice_items": 0,
-    "customer_collections": 0,
-    "collection_allocations": 0,
+    "sales_invoices": 4,
+    "sales_invoice_items": 4,
+    "customer_collections": 7,
+    "collection_allocations": 1,
     "sales_returns": 0,
     "sales_return_items": 0,
-    "purchase_invoices": 0,
-    "purchase_invoice_items": 0,
+    "purchase_invoices": 1,
+    "purchase_invoice_items": 1,
     "purchase_returns": 0,
     "purchase_return_items": 0,
-    "users": 1,
+    "users": 2,
     "settings": 0,
     "activity_logs": 0,
     "company_info": 1,
     "branches": 0,
     "categories": 0,
-    "inventory_balances": 0,
-    "stock_movements": 0,
+    "inventory_balances": 1,
+    "stock_movements": 5,
     "stock_transfers": 0,
     "stock_transfer_items": 0,
     "damaged_stock": 0,
     "stock_count": 0,
     "stock_count_items": 0,
     "stock_adjustments": 0,
-    "journal_entries": 0,
-    "journal_entry_lines": 0,
-    "chart_of_accounts": 45,
+    "journal_entries": 23,
+    "journal_entry_lines": 46,
+    "chart_of_accounts": 57,
     "treasury_accounts": 1,
-    "treasury_transactions": 0,
+    "treasury_transactions": 9,
     "expenses": 0,
     "salary_slips": 0,
     "emp_loans": 0,
@@ -43,26 +43,26 @@
     "customer_visits": 0,
     "rep_targets": 0,
     "rep_settlements": 0,
-    "invoice_counters": 24,
+    "invoice_counters": 26,
     "customer_groups": 0,
-    "customer_activity_log": 0,
+    "customer_activity_log": 15,
     "customer_attachments": 0,
     "return_reasons": 0,
     "sales_return_audit": 0
   },
   "tableSums": {
-    "sales_invoices.grand_total": 0,
-    "customer_collections.amount": 0,
+    "sales_invoices.grand_total": 1320,
+    "customer_collections.amount": 2170,
     "sales_returns.grand_total": 0,
-    "purchase_invoices.grand_total": 0
+    "purchase_invoices.grand_total": 6000
   },
   "lastIds": {
-    "sales_invoices": 0,
-    "customer_collections": 0,
+    "sales_invoices": 9004,
+    "customer_collections": 3607,
     "sales_returns": 0,
-    "customers": 0,
-    "sales_reps": 0,
-    "products": 0
+    "customers": 1503,
+    "sales_reps": 5,
+    "products": 1
   },
   "indexes": {
     "IX_sales_invoices_rep_id_status": false,
@@ -126,6 +126,48 @@
       "applied_at": "2026-07-16T02:30:51.743Z",
       "duration_ms": 0,
       "checksum": "8726e277a99a190f99a2830fb5b0b215"
+    },
+    {
+      "version": 9,
+      "name": "009_commission_schema",
+      "applied_at": "2026-07-17T20:35:28.143Z",
+      "duration_ms": 116,
+      "checksum": "11200843b9efdb0e2e126639977066e1"
+    },
+    {
+      "version": 10,
+      "name": "010_commission_indexes",
+      "applied_at": "2026-07-17T20:35:28.253Z",
+      "duration_ms": 105,
+      "checksum": "9af9ff55f487f14bd5b7c89a83c902ae"
+    },
+    {
+      "version": 11,
+      "name": "011_commission_coa",
+      "applied_at": "2026-07-17T20:35:28.280Z",
+      "duration_ms": 24,
+      "checksum": "c63fe0c3587aa8848e641a053853fe40"
+    },
+    {
+      "version": 12,
+      "name": "012_commission_seed",
+      "applied_at": "2026-07-17T20:35:28.293Z",
+      "duration_ms": 10,
+      "checksum": "7803c7435174d4d1ba480b52bd13812c"
+    },
+    {
+      "version": 13,
+      "name": "013_commission_permissions",
+      "applied_at": "2026-07-18T00:07:03.677Z",
+      "duration_ms": 16,
+      "checksum": "cc6900f171e8527933d1f41b7196d557"
+    },
+    {
+      "version": 15,
+      "name": "015_coa_restructure",
+      "applied_at": "2026-07-17T23:42:09.860Z",
+      "duration_ms": 35,
+      "checksum": "93ba2d279c937802508ac740e3c1087a"
     }
   ]
 }
