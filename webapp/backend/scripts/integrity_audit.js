@@ -53,6 +53,14 @@ async function Q(sqlText) {
   return r.recordset;
 }
 
+// Canonical "active journal entry" predicate. Must stay in sync with
+// services/balanceService.js and services/accountingEngine.js:
+// excludes reversed entries, reversal copies (reversal_of_id), and
+// cancellation actions (*_cancel / cancel).
+const ACTIVE_JE = `(je.is_reversed IS NULL OR je.is_reversed = 0)
+    AND (je.reversal_of_id IS NULL)
+    AND (je.source_action IS NULL OR (je.source_action NOT LIKE '%_cancel' AND je.source_action <> 'cancel'))`;
+
 // Each check: { id, group, title, run() -> { count, sample } }
 const checks = [];
 
@@ -161,7 +169,7 @@ defCheck('ar_customer_vs_gl', 'Subledger vs GL', 'فرق رصيد العميل (
                 FROM journal_entry_lines jl
                 JOIN journal_entries je ON je.id = jl.entry_id
                 JOIN chart_of_accounts ca ON ca.id = jl.account_id
-                WHERE ca.system_code = 'SYS_AR' AND ISNULL(je.is_reversed,0) = 0
+                WHERE ca.system_code = 'SYS_AR' AND ${ACTIVE_JE}
                   AND je.customer_id = c.id) g
    WHERE ABS(ISNULL(c.current_balance,0) - ISNULL(g.gl_balance,0)) > ${TOL_MONEY}
       OR ABS(ISNULL(c.current_balance,0)
@@ -193,7 +201,7 @@ defCheck('ap_supplier_vs_gl', 'Subledger vs GL', 'فرق رصيد المورد (
                 FROM journal_entry_lines jl
                 JOIN journal_entries je ON je.id = jl.entry_id
                 JOIN chart_of_accounts ca ON ca.id = jl.account_id
-                WHERE ca.system_code = 'SYS_AP' AND ISNULL(je.is_reversed,0) = 0
+                WHERE ca.system_code = 'SYS_AP' AND ${ACTIVE_JE}
                   AND je.supplier_id = s.id) g
    WHERE ABS(ISNULL(s.current_balance,0) - ISNULL(g.gl_balance,0)) > ${TOL_MONEY}
       OR ABS(ISNULL(s.current_balance,0)
@@ -236,7 +244,7 @@ defCheck('ar_total_vs_gl', 'Subledger vs GL', 'إجمالي أرصدة العم�
        (SELECT ROUND(SUM(jl.debit - jl.credit),2) FROM journal_entry_lines jl
           JOIN journal_entries je ON je.id = jl.entry_id
           JOIN chart_of_accounts ca ON ca.id = jl.account_id
-          WHERE ca.system_code = 'SYS_AR' AND ISNULL(je.is_reversed,0) = 0) AS total_gl_ar
+          WHERE ca.system_code = 'SYS_AR' AND ${ACTIVE_JE}) AS total_gl_ar
    ) t
    WHERE ABS(total_current_balance - total_gl_ar) > ${TOL_MONEY}`,
   ['total_current_balance', 'total_gl_ar', 'diff']);
@@ -250,7 +258,7 @@ defCheck('ap_total_vs_gl', 'Subledger vs GL', 'إجمالي أرصدة المو�
        (SELECT ROUND(SUM(jl.credit - jl.debit),2) FROM journal_entry_lines jl
           JOIN journal_entries je ON je.id = jl.entry_id
           JOIN chart_of_accounts ca ON ca.id = jl.account_id
-          WHERE ca.system_code = 'SYS_AP' AND ISNULL(je.is_reversed,0) = 0) AS total_gl_ap
+          WHERE ca.system_code = 'SYS_AP' AND ${ACTIVE_JE}) AS total_gl_ap
    ) t
    WHERE ABS(total_current_balance - total_gl_ap) > ${TOL_MONEY}`,
   ['total_current_balance', 'total_gl_ap', 'diff']);
@@ -268,7 +276,7 @@ defCheck('coa_balance_vs_gl', 'COA / Trial Balance', 'فرق current_balance ل�
                    CASE WHEN ca.account_type IN ('liability','equity','revenue') THEN -1 ELSE 1 END AS gl_balance
                 FROM journal_entry_lines jl
                 JOIN journal_entries je ON je.id = jl.entry_id
-                WHERE jl.account_id = ca.id AND ISNULL(je.is_reversed,0) = 0) g
+                WHERE jl.account_id = ca.id AND ${ACTIVE_JE}) g
    WHERE ABS(ISNULL(ca.current_balance,0) - ISNULL(g.gl_balance,0)) > ${TOL_MONEY}`,
   ['id', 'account_code', 'account_name', 'account_type', 'coa_balance', 'gl_balance', 'diff']);
 
@@ -280,11 +288,11 @@ defCheck('tb_balance', 'COA / Trial Balance', 'عدم توازن ميزان ال
        (SELECT ROUND(SUM(jl.debit - jl.credit),2) FROM journal_entry_lines jl
           JOIN journal_entries je ON je.id = jl.entry_id
           JOIN chart_of_accounts ca ON ca.id = jl.account_id
-          WHERE ca.account_type IN ('asset','expense') AND ISNULL(je.is_reversed,0)=0) AS assets_expenses,
+          WHERE ca.account_type IN ('asset','expense') AND ${ACTIVE_JE}) AS assets_expenses,
        (SELECT ROUND(SUM(jl.credit - jl.debit),2) FROM journal_entry_lines jl
           JOIN journal_entries je ON je.id = jl.entry_id
           JOIN chart_of_accounts ca ON ca.id = jl.account_id
-          WHERE ca.account_type IN ('liability','equity','revenue') AND ISNULL(je.is_reversed,0)=0) AS liab_equity_rev
+          WHERE ca.account_type IN ('liability','equity','revenue') AND ${ACTIVE_JE}) AS liab_equity_rev
    ) t
    WHERE ABS(assets_expenses - liab_equity_rev) > ${TOL_MONEY}`,
   ['assets_expenses', 'liab_equity_rev', 'diff']);
@@ -332,14 +340,19 @@ defCheck('inv_balance_after_mismatch', 'Inventory', 'سلسلة balance_after ف
   ['id', 'store_id', 'product_id', 'move_date', 'move_type', 'document_no', 'recorded_balance', 'expected_balance', 'diff']);
 
 defCheck('inv_value_vs_gl', 'Inventory', 'قيمة المخزون (أرصدة × تكلفة) مقابل SYS_INVENTORY في GL',
-  `SELECT
-     (SELECT ROUND(SUM(ib.quantity * p.cost_price),2) FROM inventory_balances ib
-        JOIN products p ON p.id = ib.product_id) AS stock_value,
-     (SELECT ROUND(SUM(jl.debit - jl.credit),2) FROM journal_entry_lines jl
-        JOIN journal_entries je ON je.id = jl.entry_id
-        JOIN chart_of_accounts ca ON ca.id = jl.account_id
-        WHERE ca.system_code = 'SYS_INVENTORY' AND ISNULL(je.is_reversed,0) = 0) AS gl_inventory`,
-  ['stock_value', 'gl_inventory']);
+  `SELECT stock_value, gl_inventory,
+          ROUND(ABS(stock_value - gl_inventory),2) AS diff
+   FROM (
+     SELECT
+       (SELECT ROUND(SUM(ib.quantity * p.cost_price),2) FROM inventory_balances ib
+          JOIN products p ON p.id = ib.product_id) AS stock_value,
+       (SELECT ROUND(SUM(jl.debit - jl.credit),2) FROM journal_entry_lines jl
+          JOIN journal_entries je ON je.id = jl.entry_id
+          JOIN chart_of_accounts ca ON ca.id = jl.account_id
+          WHERE ca.system_code = 'SYS_INVENTORY' AND ${ACTIVE_JE}) AS gl_inventory
+   ) t
+   WHERE ABS(stock_value - gl_inventory) > ${TOL_MONEY}`,
+  ['stock_value', 'gl_inventory', 'diff']);
 
 defCheck('inv_zero_cost_with_stock', 'Inventory', 'أصناف تكلفتها ≤ صفر ولها رصيد موجب',
   `SELECT p.id, p.product_code, p.product_name, ROUND(p.cost_price,2) AS cost_price,
@@ -350,11 +363,14 @@ defCheck('inv_zero_cost_with_stock', 'Inventory', 'أصناف تكلفتها ≤
   ['id', 'product_code', 'product_name', 'cost_price', 'total_qty']);
 
 defCheck('inv_deleted_sales_still_out', 'Inventory', 'فواتير بيع محذوفة ما زال لها صرف مخزون (out)',
-  `SELECT DISTINCT si.id, si.invoice_no, si.status
+  `SELECT si.id, si.invoice_no, si.status,
+          ROUND(SUM(ISNULL(sm.qty_in,0) - ISNULL(sm.qty_out,0)),4) AS net_moved
    FROM sales_invoices si
-   JOIN stock_movements sm ON sm.reference_id = si.id AND sm.move_type IN ('out','cancellation')
-   WHERE si.status = 'deleted'`,
-  ['id', 'invoice_no', 'status']);
+   JOIN stock_movements sm ON sm.reference_id = si.id
+   WHERE si.status = 'deleted'
+   GROUP BY si.id, si.invoice_no, si.status
+   HAVING ABS(SUM(ISNULL(sm.qty_in,0) - ISNULL(sm.qty_out,0))) > ${TOL_QTY}`,
+  ['id', 'invoice_no', 'status', 'net_moved']);
 
 // ================================================================
 // GROUP E — Document → GL accountability
@@ -364,29 +380,29 @@ defCheck('doc_sales_invoice_no_je', 'Document Accountability', 'فواتير ب�
    FROM sales_invoices si
    WHERE si.status NOT IN ('cancelled','deleted','draft')
      AND NOT EXISTS (SELECT 1 FROM journal_entries je
-                     WHERE je.source_document = si.invoice_no AND ISNULL(je.is_reversed,0) = 0)`,
+                     WHERE je.source_document = si.invoice_no AND ${ACTIVE_JE})`,
   ['id', 'invoice_no', 'invoice_date', 'grand_total', 'status']);
 
 defCheck('doc_sales_invoice_multiple_je', 'Document Accountability', 'فواتير بيع بعدد قيود نشطة غير متوقع (2 = إثبات + COGS)',
   `SELECT si.id, si.invoice_no, si.invoice_date, si.grand_total,
           (SELECT COUNT(*) FROM journal_entries je
-           WHERE je.source_document = si.invoice_no AND ISNULL(je.is_reversed,0) = 0) AS active_je_count
+           WHERE je.source_document = si.invoice_no AND ${ACTIVE_JE}) AS active_je_count
    FROM sales_invoices si
    WHERE si.status NOT IN ('cancelled','deleted','draft')
      AND (SELECT COUNT(*) FROM journal_entries je
-          WHERE je.source_document = si.invoice_no AND ISNULL(je.is_reversed,0) = 0) NOT IN (2, 4)
+          WHERE je.source_document = si.invoice_no AND ${ACTIVE_JE}) NOT IN (2, 4)
      AND (SELECT COUNT(*) FROM journal_entries je
-          WHERE je.source_document = si.invoice_no AND ISNULL(je.is_reversed,0) = 0) > 0`,
+          WHERE je.source_document = si.invoice_no AND ${ACTIVE_JE}) > 0`,
   ['id', 'invoice_no', 'invoice_date', 'grand_total', 'active_je_count']);
 
 defCheck('doc_deleted_sales_invoice_active_je', 'Document Accountability', 'فواتير بيع محذوفة ما زال لها قيود نشطة',
   `SELECT si.id, si.invoice_no, si.status,
           (SELECT COUNT(*) FROM journal_entries je
-           WHERE je.source_document = si.invoice_no AND ISNULL(je.is_reversed,0) = 0) AS active_je_count
+           WHERE je.source_document = si.invoice_no AND ${ACTIVE_JE}) AS active_je_count
    FROM sales_invoices si
    WHERE si.status = 'deleted'
      AND EXISTS (SELECT 1 FROM journal_entries je
-                 WHERE je.source_document = si.invoice_no AND ISNULL(je.is_reversed,0) = 0)`,
+                 WHERE je.source_document = si.invoice_no AND ${ACTIVE_JE})`,
   ['id', 'invoice_no', 'status', 'active_je_count']);
 
 defCheck('doc_purchase_invoice_no_je', 'Document Accountability', 'فواتير شراء سارية بلا أي قيد',
@@ -394,27 +410,27 @@ defCheck('doc_purchase_invoice_no_je', 'Document Accountability', 'فواتير 
    FROM purchase_invoices pi
    WHERE pi.status NOT IN ('cancelled','deleted','draft')
      AND NOT EXISTS (SELECT 1 FROM journal_entries je
-                     WHERE je.source_document = pi.invoice_no AND ISNULL(je.is_reversed,0) = 0)`,
+                     WHERE je.source_document = pi.invoice_no AND ${ACTIVE_JE})`,
   ['id', 'invoice_no', 'invoice_date', 'grand_total', 'status']);
 
 defCheck('doc_purchase_invoice_multiple_je', 'Document Accountability', 'فواتير شراء بعدد قيود نشطة غير متوقع',
   `SELECT pi.id, pi.invoice_no, pi.invoice_date, pi.grand_total,
           (SELECT COUNT(*) FROM journal_entries je
-           WHERE je.source_document = pi.invoice_no AND ISNULL(je.is_reversed,0) = 0) AS active_je_count
+           WHERE je.source_document = pi.invoice_no AND ${ACTIVE_JE}) AS active_je_count
    FROM purchase_invoices pi
    WHERE pi.status NOT IN ('cancelled','deleted','draft')
      AND (SELECT COUNT(*) FROM journal_entries je
-          WHERE je.source_document = pi.invoice_no AND ISNULL(je.is_reversed,0) = 0) > 1`,
+          WHERE je.source_document = pi.invoice_no AND ${ACTIVE_JE}) > 1`,
   ['id', 'invoice_no', 'invoice_date', 'grand_total', 'active_je_count']);
 
 defCheck('doc_deleted_purchase_invoice_active_je', 'Document Accountability', 'فواتير شراء محذوفة ما زال لها قيود نشطة',
   `SELECT pi.id, pi.invoice_no, pi.status,
           (SELECT COUNT(*) FROM journal_entries je
-           WHERE je.source_document = pi.invoice_no AND ISNULL(je.is_reversed,0) = 0) AS active_je_count
+           WHERE je.source_document = pi.invoice_no AND ${ACTIVE_JE}) AS active_je_count
    FROM purchase_invoices pi
    WHERE pi.status = 'deleted'
      AND EXISTS (SELECT 1 FROM journal_entries je
-                 WHERE je.source_document = pi.invoice_no AND ISNULL(je.is_reversed,0) = 0)`,
+                 WHERE je.source_document = pi.invoice_no AND ${ACTIVE_JE})`,
   ['id', 'invoice_no', 'status', 'active_je_count']);
 
 defCheck('doc_approved_sales_return_no_je', 'Document Accountability', 'مرتجعات بيع معتمدة بلا قيد',
@@ -423,7 +439,7 @@ defCheck('doc_approved_sales_return_no_je', 'Document Accountability', 'مرتج
    WHERE ISNULL(sr.workflow_status,'approved') = 'approved'
      AND ISNULL(sr.status,'posted') NOT IN ('cancelled','reversed')
      AND NOT EXISTS (SELECT 1 FROM journal_entries je
-                     WHERE je.source_document = sr.return_no AND ISNULL(je.is_reversed,0) = 0)`,
+                     WHERE je.source_document = sr.return_no AND ${ACTIVE_JE})`,
   ['id', 'return_no', 'return_date', 'grand_total', 'workflow_status', 'status']);
 
 defCheck('doc_approved_purchase_return_no_je', 'Document Accountability', 'مرتجعات شراء سارية بلا قيد',
@@ -431,7 +447,7 @@ defCheck('doc_approved_purchase_return_no_je', 'Document Accountability', 'مر�
    FROM purchase_returns pr
    WHERE ISNULL(pr.status,'posted') NOT IN ('cancelled','deleted')
      AND NOT EXISTS (SELECT 1 FROM journal_entries je
-                     WHERE je.source_document = pr.return_no AND ISNULL(je.is_reversed,0) = 0)`,
+                     WHERE je.source_document = pr.return_no AND ${ACTIVE_JE})`,
   ['id', 'return_no', 'return_date', 'grand_total', 'status']);
 
 defCheck('doc_ar_payment_no_je', 'Document Accountability', 'سندات قبض (AR) سارية بلا قيد (الشيكات معروفة)',
@@ -439,7 +455,7 @@ defCheck('doc_ar_payment_no_je', 'Document Accountability', 'سندات قبض (
    FROM ar_payments ap
    WHERE ISNULL(ap.status,'active') NOT IN ('reversed','cancelled')
      AND NOT EXISTS (SELECT 1 FROM journal_entries je
-                     WHERE je.source_document = ap.payment_no AND ISNULL(je.is_reversed,0) = 0)`,
+                     WHERE je.source_document = ap.payment_no AND ${ACTIVE_JE})`,
   ['id', 'payment_no', 'payment_date', 'amount', 'payment_method', 'status']);
 
 defCheck('doc_ap_payment_no_je', 'Document Accountability', 'سندات صرف (AP) سارية بلا قيد',
@@ -447,7 +463,7 @@ defCheck('doc_ap_payment_no_je', 'Document Accountability', 'سندات صرف (
    FROM ap_payments ap
    WHERE ISNULL(ap.status,'active') NOT IN ('reversed','cancelled')
      AND NOT EXISTS (SELECT 1 FROM journal_entries je
-                     WHERE je.source_document = ap.payment_no AND ISNULL(je.is_reversed,0) = 0)`,
+                     WHERE je.source_document = ap.payment_no AND ${ACTIVE_JE})`,
   ['id', 'payment_no', 'payment_date', 'amount', 'payment_method', 'status']);
 
 // ================================================================
@@ -470,7 +486,7 @@ defCheck('trs_transaction_no_je', 'Treasury', 'معاملات خزينة بلا 
   `SELECT tt.id, tt.trans_no, tt.trans_date, tt.trans_type, tt.amount, tt.account_id, tt.document_no
    FROM treasury_transactions tt
    WHERE NOT EXISTS (SELECT 1 FROM journal_entries je
-                     WHERE je.source_document = tt.document_no AND ISNULL(je.is_reversed,0) = 0)`,
+                     WHERE je.source_document = tt.document_no AND ${ACTIVE_JE})`,
   ['id', 'trans_no', 'trans_date', 'trans_type', 'amount', 'document_no']);
 
 // ================================================================
