@@ -97,7 +97,7 @@ jobs:
       - name: Run Phase 1 integration suite (14 checks)
         run: node tests/phase1/integration.js
 
-      - name: Run integrity audit (gate: 0 issues / 0 errors)
+      - name: "Run integrity audit (gate: 0 issues / 0 errors)"
         run: node scripts/integrity_audit.js --json ci-audit.json
 
       - name: Upload reports on failure
