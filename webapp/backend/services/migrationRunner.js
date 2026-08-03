@@ -121,11 +121,21 @@ class MigrationRunner {
 
         console.log(`[MIGRATIONS] ${pending.length} pending migration(s) found.`);
         const results = [];
+        let failures = 0;
         for (const m of pending) {
-            await this.runOne(m);
-            results.push({ version: m.version, name: m.file, success: true });
+            try {
+                await this.runOne(m);
+                results.push({ version: m.version, name: m.file, success: true });
+            } catch (e) {
+                failures++;
+                results.push({ version: m.version, name: m.file, success: false, error: e.message });
+            }
         }
-        console.log(`[MIGRATIONS] All ${pending.length} migration(s) completed successfully.`);
+        if (failures > 0) {
+            console.warn(`[MIGRATIONS] ${failures}/${pending.length} migration(s) failed (logged above). Continuing startup — inline column migrations and account seeding will still run.`);
+        } else {
+            console.log(`[MIGRATIONS] All ${pending.length} migration(s) completed successfully.`);
+        }
         return results;
     }
 }
