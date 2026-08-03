@@ -72,34 +72,24 @@ jobs:
 
       - name: Configure backend for CI database
         run: |
-          @"
-          MSSQL_USE_WINDOWS_AUTH=false
-          MSSQL_SERVER=localhost
-          MSSQL_DATABASE=TradePro
-          MSSQL_USER=sa
-          MSSQL_PASSWORD=TradePro_CI_2026!
-          PORT=3000
-          "@ | Set-Content -Path .env -Encoding UTF8
-        shell: pwsh
+          printf 'MSSQL_USE_WINDOWS_AUTH=false\nMSSQL_SERVER=localhost\nMSSQL_DATABASE=TradePro\nMSSQL_USER=sa\nMSSQL_PASSWORD=TradePro_CI_2026!\nPORT=3000\n' > .env
+          cat .env
+        shell: bash
 
       - name: Start server (auto-creates database + schema)
         run: |
-          node server.js > server.out.log 2>&1 &
-          $ready = $false
-          for ($i = 0; $i -lt 60; $i++) {
-            Start-Sleep -Seconds 2
-            try {
-              $r = Invoke-WebRequest -Uri http://localhost:3000/health -UseBasicParsing -TimeoutSec 5
-              if ($r.StatusCode -eq 200) { $ready = $true; break }
-            } catch { }
-          }
-          if (-not $ready) {
-            Write-Host "Server did not become healthy. Log tail:"
-            Get-Content server.out.log -Tail 40 -ErrorAction SilentlyContinue
-            exit 1
-          }
-          Write-Host "Server healthy."
-        shell: pwsh
+          nohup node server.js > server.out.log 2>&1 &
+          for i in $(seq 1 60); do
+            sleep 2
+            if curl -sf http://localhost:3000/health > /dev/null 2>&1; then
+              echo "Server healthy."
+              exit 0
+            fi
+          done
+          echo "Server did not become healthy. Log tail:"
+          tail -40 server.out.log || true
+          exit 1
+        shell: bash
 
       - name: Seed CI baseline
         run: node scripts/ci_seed.js
