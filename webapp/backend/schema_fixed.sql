@@ -282,7 +282,7 @@ IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[in
 BEGIN
     
 CREATE TABLE [dbo].[invoice_counters] (
-        [id] INT PRIMARY KEY,
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
         [counter_name] NVARCHAR(255) NOT NULL UNIQUE,
         [prefix] NVARCHAR(255) DEFAULT '',
         [last_number] INT DEFAULT 0
