@@ -266,22 +266,30 @@ async function ensureProducts(pool) {
     console.log('  ~ products baseline present (ids 1..' + PRODUCTS.length + ')');
     return;
   }
+  // Fresh empty table: rely on identity assignment (ids 1..N in insert order)
+  // instead of SET IDENTITY_INSERT, which is unreliable under some drivers.
   const tx = new sql.Transaction(pool);
   await tx.begin();
   try {
     const req = tx.request();
-    await req.query(`SET IDENTITY_INSERT products ON`);
     for (const p of PRODUCTS) {
-      await req.query(`INSERT INTO products (id, product_code, product_name, cost_price, sell_price, is_active)
-        VALUES (${p.id}, N'${p.code}', N'${p.name}', ${p.cost}, ${p.sell}, 1)`);
+      await req.query(`INSERT INTO products (product_code, product_name, cost_price, sell_price, is_active)
+        VALUES (N'${p.code}', N'${p.name}', ${p.cost}, ${p.sell}, 1)`);
     }
-    await req.query(`SET IDENTITY_INSERT products OFF`);
     await tx.commit();
   } catch (e) {
     try { await tx.rollback(); } catch (rb) {}
     throw e;
   }
-  console.log('  + products seeded (ids 1..' + PRODUCTS.length + ')');
+  const got = await q(pool, `SELECT id, product_code FROM products ORDER BY id`);
+  for (let i = 0; i < PRODUCTS.length; i++) {
+    const row = got[i];
+    if (!row || String(row.product_code).trim() !== String(PRODUCTS[i].code).trim()) {
+      throw new Error(`products identity mismatch after seed: row ${i + 1} = ${JSON.stringify(row)} (expected code '${PRODUCTS[i].code}').`);
+    }
+    PRODUCTS[i].id = row.id;
+  }
+  console.log('  + products seeded (ids ' + PRODUCTS.map(p => p.id).join(',') + ')');
 }
 
 async function ensureCustomers(pool) {
@@ -292,20 +300,23 @@ async function ensureCustomers(pool) {
     console.log('  ~ customers baseline present (id 2 = C-0002)');
     return;
   }
+  // Fresh empty table: identity assigns ids 1,2 in insert order (no IDENTITY_INSERT).
   const tx = new sql.Transaction(pool);
   await tx.begin();
   try {
     const req = tx.request();
-    await req.query(`SET IDENTITY_INSERT customers ON`);
-    await req.query(`INSERT INTO customers (id, customer_code, customer_name, customer_type, is_active, current_balance, opening_balance)
-      VALUES (1, N'C-0001', N'زبون تجريبي CI', 'retail', 1, 0, 0)`);
-    await req.query(`INSERT INTO customers (id, customer_code, customer_name, customer_type, is_active, current_balance, opening_balance)
-      VALUES (2, N'C-0002', N'الحج متولي سعيد', 'retail', 1, 0, 0)`);
-    await req.query(`SET IDENTITY_INSERT customers OFF`);
+    await req.query(`INSERT INTO customers (customer_code, customer_name, customer_type, is_active, current_balance, opening_balance)
+      VALUES (N'C-0001', N'زبون تجريبي CI', 'retail', 1, 0, 0)`);
+    await req.query(`INSERT INTO customers (customer_code, customer_name, customer_type, is_active, current_balance, opening_balance)
+      VALUES (N'C-0002', N'الحج متولي سعيد', 'retail', 1, 0, 0)`);
     await tx.commit();
   } catch (e) {
     try { await tx.rollback(); } catch (rb) {}
     throw e;
+  }
+  const got = await q(pool, `SELECT id, customer_code FROM customers ORDER BY id`);
+  if (!got[1] || String(got[1].customer_code).trim() !== 'C-0002') {
+    throw new Error('customers identity mismatch after seed: expected id 2 = C-0002.');
   }
   console.log('  + customers seeded (id 2 = C-0002)');
 }
