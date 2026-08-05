@@ -151,7 +151,8 @@ defCheck('ar_customer_vs_gl', 'Subledger vs GL', 'فرق رصيد العميل (
           ROUND(ISNULL(g.gl_balance,0), 2) AS gl_balance,
           ROUND(ISNULL(c.opening_balance,0)
               + ISNULL(s.sales,0) - ISNULL(rt.returns,0)
-              - ISNULL(lc.legacy_coll,0) - ISNULL(ap.ar_pay,0), 2) AS operational_balance,
+              - ISNULL(lc.legacy_coll,0) - ISNULL(ap.ar_pay,0)
+              - ISNULL(d.disc,0), 2) AS operational_balance,
           ROUND(ABS(ISNULL(c.current_balance,0) - ISNULL(g.gl_balance,0)), 2) AS diff_cur_gl
    FROM customers c
    OUTER APPLY (SELECT SUM(CAST(grand_total AS DECIMAL(18,2))) AS sales
@@ -165,6 +166,10 @@ defCheck('ar_customer_vs_gl', 'Subledger vs GL', 'فرق رصيد العميل (
    OUTER APPLY (SELECT SUM(amount) AS ar_pay
                 FROM ar_payments WHERE customer_id = c.id
                 AND ISNULL(status,'active') NOT IN ('reversed','cancelled')) ap
+   OUTER APPLY (SELECT SUM(COALESCE(apa.discount_amount,0)) AS disc
+                FROM ar_payment_allocations apa
+                JOIN sales_invoices si ON si.id = apa.invoice_id
+                WHERE si.customer_id = c.id) d
    OUTER APPLY (SELECT SUM(jl.debit - jl.credit) AS gl_balance
                 FROM journal_entry_lines jl
                 JOIN journal_entries je ON je.id = jl.entry_id
@@ -174,7 +179,8 @@ defCheck('ar_customer_vs_gl', 'Subledger vs GL', 'فرق رصيد العميل (
    WHERE ABS(ISNULL(c.current_balance,0) - ISNULL(g.gl_balance,0)) > ${TOL_MONEY}
       OR ABS(ISNULL(c.current_balance,0)
            - (ISNULL(c.opening_balance,0) + ISNULL(s.sales,0) - ISNULL(rt.returns,0)
-              - ISNULL(lc.legacy_coll,0) - ISNULL(ap.ar_pay,0))) > ${TOL_MONEY}`,
+              - ISNULL(lc.legacy_coll,0) - ISNULL(ap.ar_pay,0)
+              - ISNULL(d.disc,0))) > ${TOL_MONEY}`,
   ['id', 'customer_code', 'customer_name', 'current_balance', 'gl_balance', 'operational_balance', 'diff_cur_gl']);
 
 defCheck('ap_supplier_vs_gl', 'Subledger vs GL', 'فرق رصيد المورد (current_balance مقابل GL مقابل تشغيلي)',

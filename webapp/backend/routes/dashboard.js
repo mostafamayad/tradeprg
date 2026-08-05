@@ -50,8 +50,8 @@ router.get('/stats', asyncHandler(async (req, res) => {
             pool.request().query(`SELECT COUNT(DISTINCT ib.product_id) as v FROM inventory_balances ib JOIN products p ON ib.product_id = p.id WHERE ib.quantity <= p.min_stock AND ib.quantity > 0`),
             pool.request().query(`SELECT COUNT(*) as v FROM products p WHERE p.is_active = 1 AND NOT EXISTS (SELECT 1 FROM inventory_balances ib WHERE ib.product_id = p.id AND ib.quantity > 0)`),
             // Collections
-            pool.request().input('t4', sql.NVarChar, today).query(`SELECT COALESCE(SUM(amount), 0) as v FROM customer_collections WHERE collection_date = @t4 AND amount > 0`),
-            pool.request().query(`SELECT COALESCE(SUM(amount), 0) as v FROM customer_collections WHERE LEFT(collection_date, 7) = LEFT(CONVERT(NVarChar(10), GETDATE(), 120), 7) AND amount > 0`)
+            pool.request().input('t4', sql.NVarChar, today).query(`SELECT COALESCE(SUM(amount), 0) as v FROM ar_payments WHERE payment_date = @t4 AND status = 'active'`),
+            pool.request().query(`SELECT COALESCE(SUM(amount), 0) as v FROM ar_payments WHERE LEFT(payment_date, 7) = LEFT(CONVERT(NVarChar(10), GETDATE(), 120), 7) AND status = 'active'`)
         ]);
 
         const stats = {
@@ -97,11 +97,11 @@ router.get('/recent', asyncHandler(async (req, res) => {
                 ORDER BY i.id DESC
             `),
             pool.request().query(`
-                SELECT TOP 10 cc.id, cc.collection_no, cc.collection_date, cc.amount, c.customer_name, cc.payment_method
-                FROM customer_collections cc
-                LEFT JOIN customers c ON cc.customer_id = c.id
-                WHERE cc.amount > 0
-                ORDER BY cc.id DESC
+                SELECT TOP 10 ap.id, ap.payment_no AS collection_no, ap.payment_date AS collection_date, ap.amount, c.customer_name, ap.payment_method
+                FROM ar_payments ap
+                LEFT JOIN customers c ON ap.customer_id = c.id
+                WHERE ap.status = 'active'
+                ORDER BY ap.id DESC
             `),
             pool.request().query(`
                 SELECT TOP 10 pi.id, pi.invoice_no, pi.invoice_date, pi.grand_total, s.supplier_name

@@ -9,7 +9,7 @@
 
 const router = require('express').Router();
 const { getPool, sql } = require('../database/mssql_db');
-const { postJournalEntryAsync, getSystemAccountAsync, reverseJournalEntryAsync, recalcCustomerBalanceAsync } = require('../services/accountingEngine');
+const { postJournalEntryAsync, getSystemAccountAsync, reverseJournalEntryAsync, recalcCustomerBalanceAsync, recalcTreasuryBalanceAsync } = require('../services/accountingEngine');
 const logActivity = require('../middleware/logger');
 const asyncHandler = require('../utils/asyncHandler');
 
@@ -58,11 +58,15 @@ async function refreshInvoiceStatusAsync(txRequest, invoiceId) {
     const retRes = await txRequest.query(`SELECT COALESCE(SUM(grand_total),0) as total FROM sales_returns WHERE invoice_id = @ris_id_${srfx} AND status != 'cancelled'`);
     const returnsTotal = retRes.recordset[0].total || 0;
 
-    const remaining = Math.max(0, num(inv.grand_total) - num(inv.amount_paid) - num(returnsTotal));
+    // Single source of truth: ar_payment_allocations.net_amount
+    const allocRes = await txRequest.query(`SELECT COALESCE(SUM(apa.net_amount),0) as total FROM ar_payment_allocations apa WHERE apa.invoice_id = @ris_id_${srfx}`);
+    const allocPaid = allocRes.recordset[0].total || 0;
+
+    const remaining = Math.max(0, num(inv.grand_total) - num(allocPaid) - num(returnsTotal));
     let status = 'pending';
     if (remaining <= 0) {
         status = 'paid';
-    } else if (num(inv.amount_paid) > 0 || num(returnsTotal) > 0) {
+    } else if (num(allocPaid) > 0 || num(returnsTotal) > 0) {
         status = 'partial';
     }
 
@@ -103,7 +107,7 @@ async function postTreasuryInAsync(txRequest, { date, amount, customerId, docume
 
     await txRequest.query(`UPDATE treasury_accounts SET current_balance = current_balance + @pt_amt_${pfx} WHERE id = @pt_acc_${pfx}`);
 
-    return transNo;
+    return { transNo, accountId: treasury.id };
 }
 
 async function allocateCollectionAsync(txRequest, customerId, collectionId, amount, applyToInvoices = null) {
@@ -121,9 +125,12 @@ async function allocateCollectionAsync(txRequest, customerId, collectionId, amou
             txRequest.input(`al_invid_${sf}`, sql.Int, id);
             txRequest.input(`al_cid_${sf}`, sql.Int, customerId);
             const invRes = await txRequest.query(`
-                SELECT id, grand_total, amount_paid, remaining 
-                FROM sales_invoices 
-                WHERE id = @al_invid_${sf} AND customer_id = @al_cid_${sf} AND status != 'cancelled'
+                SELECT si.id, si.grand_total, si.amount_paid,
+                    si.grand_total
+                    - COALESCE((SELECT SUM(apa.net_amount) FROM ar_payment_allocations apa WHERE apa.invoice_id = si.id), 0)
+                    - COALESCE((SELECT SUM(sr.grand_total) FROM sales_returns sr WHERE sr.invoice_id = si.id AND sr.status NOT IN ('cancelled','deleted')), 0) AS remaining
+                FROM sales_invoices si
+                WHERE si.id = @al_invid_${sf} AND si.customer_id = @al_cid_${sf} AND si.status != 'cancelled'
             `);
             const inv = invRes.recordset[0];
             if (inv) {
@@ -134,10 +141,16 @@ async function allocateCollectionAsync(txRequest, customerId, collectionId, amou
     } else {
         txRequest.input(`al_cid_all_${pfx}`, sql.Int, customerId);
         const invRes = await txRequest.query(`
-            SELECT id, grand_total, amount_paid, remaining
-            FROM sales_invoices
-            WHERE customer_id = @al_cid_all_${pfx} AND status != 'cancelled' AND remaining > 0
-            ORDER BY invoice_date ASC, id ASC
+            SELECT * FROM (
+                SELECT si.id, si.invoice_date, si.grand_total, si.amount_paid,
+                    si.grand_total
+                    - COALESCE((SELECT SUM(apa.net_amount) FROM ar_payment_allocations apa WHERE apa.invoice_id = si.id), 0)
+                    - COALESCE((SELECT SUM(sr.grand_total) FROM sales_returns sr WHERE sr.invoice_id = si.id AND sr.status NOT IN ('cancelled','deleted')), 0) AS remaining
+                FROM sales_invoices si
+                WHERE si.customer_id = @al_cid_all_${pfx} AND si.status != 'cancelled'
+            ) t
+            WHERE t.remaining > 0
+            ORDER BY t.invoice_date ASC, t.id ASC
         `);
         invoices = invRes.recordset;
     }
@@ -156,8 +169,8 @@ async function allocateCollectionAsync(txRequest, customerId, collectionId, amou
         txRequest.input(`al_amt_${sf}`, sql.Decimal(18,2), applyAmount);
 
         await txRequest.query(`
-            INSERT INTO collection_allocations (collection_id, invoice_id, amount)
-            VALUES (@al_colid_${sf}, @al_invid_ap_${sf}, @al_amt_${sf})
+            INSERT INTO ar_payment_allocations (payment_id, invoice_id, allocated_amount, discount_amount, net_amount)
+            VALUES (@al_colid_${sf}, @al_invid_ap_${sf}, @al_amt_${sf}, 0, @al_amt_${sf})
         `);
 
         await txRequest.query(`
@@ -242,11 +255,15 @@ router.get('/:id', asyncHandler(async (req, res) => {
         const pool = await getPool();
         const request = pool.request();
         request.input('id', sql.Int, req.params.id);
-        const dataRes = await request.query(`SELECT cc.*, c.customer_name, c.customer_code, c.phone, c.address, r.rep_name
-            FROM customer_collections cc
-            LEFT JOIN customers c ON cc.customer_id = c.id
-            LEFT JOIN sales_reps r ON cc.rep_id = r.id
-            WHERE cc.id = @id`);
+        const dataRes = await request.query(`SELECT ap.id, ap.payment_no AS collection_no, ap.payment_date AS collection_date,
+                    ap.customer_id, ap.amount, ap.payment_method, ap.check_no, ap.check_date, ap.bank_name, ap.notes,
+                    ap.status AS payment_status, ap.created_by, ap.created_at,
+                    c.rep_id AS rep_id,
+                    c.customer_name, c.customer_code, c.phone, c.address, r.rep_name
+            FROM ar_payments ap
+            LEFT JOIN customers c ON ap.customer_id = c.id
+            LEFT JOIN sales_reps r ON c.rep_id = r.id
+            WHERE ap.id = @id`);
         const row = dataRes.recordset[0];
         if (!row) return res.status(404).json({ success: false, message: 'التحصيل غير موجود' });
         res.json({ success: true, data: row });
@@ -259,6 +276,8 @@ router.get('/:id', asyncHandler(async (req, res) => {
 }));
 
 // ── Get Customer Statement (كشف حساب) ──────────────────────
+// SINGLE SOURCE OF TRUTH: built exclusively from the General Ledger
+// (journal_entries on SYS_AR attributed to the customer via je.customer_id).
 router.get('/customer/:id/statement', asyncHandler(async (req, res) => {
     try {
         const { from, to } = req.query;
@@ -271,47 +290,115 @@ router.get('/customer/:id/statement', asyncHandler(async (req, res) => {
         const customer = custRes.recordset[0];
         if (!customer) return res.status(404).json({ success: false, message: 'العميل غير موجود' });
 
-        let sqlQuery = `SELECT invoice_date as date, invoice_no as doc_no, N'فاتورة مبيعات' as type,
-                          grand_total as debit, 0 as credit, notes, id as ref_id, 'sales' as ref_type
-                   FROM sales_invoices WHERE customer_id = @cid AND status != 'cancelled'`;
-        if (from) { sqlQuery += ` AND invoice_date >= @from`; request.input('from', sql.NVarChar, from); }
-        if (to) { sqlQuery += ` AND invoice_date <= @to`; request.input('to', sql.NVarChar, to); }
+        const { getSystemAccountAsync } = require('../services/accountingEngine');
+        const arAccId = await getSystemAccountAsync(request, 'SYS_AR');
+        request.input('arAccId', sql.Int, arAccId);
 
-        sqlQuery += ` UNION ALL
-                 SELECT return_date as date, return_no as doc_no, N'مرتجع مبيعات' as type,
-                        0 as debit, grand_total as credit, return_reason as notes, id, 'sales_return'
-                 FROM sales_returns WHERE customer_id = @cid AND status != 'cancelled'`;
-        if (from) { sqlQuery += ` AND return_date >= @from`; }
-        if (to) { sqlQuery += ` AND return_date <= @to`; }
+        const GL_SELECT = `
+            SELECT je.entry_date AS date,
+                   CASE WHEN je.reference_type = 'manual_je' OR je.reference_type IS NULL
+                        THEN je.entry_no
+                        ELSE COALESCE(NULLIF(je.source_document, ''), je.entry_no)
+                   END AS doc_no,
+                   je.reference_type, je.reference_id, je.id AS je_id,
+                   jl.debit, jl.credit,
+                   ISNULL(jl.description, je.description) AS notes
+            FROM journal_entry_lines jl
+            JOIN journal_entries je ON je.id = jl.entry_id
+            WHERE jl.account_id = @arAccId
+              AND je.customer_id = @cid
+              AND (je.is_reversed IS NULL OR je.is_reversed = 0)
+              AND (je.reversal_of_id IS NULL)
+              AND (je.source_action IS NULL OR (je.source_action NOT LIKE '%_cancel' AND je.source_action <> 'cancel'))
+        `;
 
-        sqlQuery += ` UNION ALL
-                 SELECT collection_date as date, collection_no as doc_no,
-                        CASE WHEN amount >= 0 THEN N'تحصيل من العميل' ELSE N'رصيد افتتاحي' END as type,
-                        0 as debit, ABS(amount) as credit, notes, id, 'collection'
-                 FROM customer_collections WHERE customer_id = @cid`;
-        if (from) { sqlQuery += ` AND collection_date >= @from`; }
-        if (to) { sqlQuery += ` AND collection_date <= @to`; }
+        let opening = customer.opening_balance || 0;
+        if (from) {
+            const openReq = pool.request();
+            openReq.input('cid', sql.Int, Number(customerId));
+            openReq.input('arAccId', sql.Int, arAccId);
+            openReq.input('from', sql.NVarChar, from);
+            const openRows = (await openReq.query(GL_SELECT + ' AND je.entry_date < @from')).recordset;
+            opening += openRows.reduce((s, r) => s + ((r.debit || 0) - (r.credit || 0)), 0);
+        }
 
-        sqlQuery += ` ORDER BY date ASC, ref_id ASC`;
+        const periodReq = pool.request();
+        periodReq.input('cid', sql.Int, Number(customerId));
+        periodReq.input('arAccId', sql.Int, arAccId);
+        if (from) periodReq.input('from', sql.NVarChar, from);
+        if (to)   periodReq.input('to',   sql.NVarChar, to);
+        let periodSql = GL_SELECT;
+        if (from) periodSql += ' AND je.entry_date >= @from';
+        if (to)   periodSql += ' AND je.entry_date <= @to';
+        periodSql += ' ORDER BY je.entry_date ASC, je.created_at ASC, je.entry_no ASC';
+        const rows = (await periodReq.query(periodSql)).recordset;
 
-        const rowsRes = await request.query(sqlQuery);
-        const rows = rowsRes.recordset;
+        function mapType(raw, action) {
+            if (action && String(action).toLowerCase().endsWith('_cancel')) return 'قيد عكسي';
+            switch (raw) {
+                case 'sales_invoice':       return 'فاتورة مبيعات';
+                case 'sales_return':        return 'مرتجع مبيعات';
+                case 'customer_collection':
+                case 'collection':          return 'تحصيل من العميل';
+                case 'ar_payment':          return 'سند تحصيل';
+                case 'ar_note':             return 'إشعار';
+                case 'crm_settlement':      return 'تسوية';
+                default:                    return 'قيد يومية';
+            }
+        }
+        function mapRefType(raw) {
+            switch (raw) {
+                case 'sales_invoice':        return 'sales_invoice';
+                case 'sales_return':         return 'sales_return';
+                case 'customer_collection':
+                case 'ar_payment':           return 'collection';
+                default:                     return 'journal_entry';
+            }
+        }
 
-        let running = customer.opening_balance || 0;
+        let running = opening;
         const statement = rows.map(r => {
             running += (r.debit || 0) - (r.credit || 0);
-            return { ...r, balance: running };
+            return {
+                date: r.date,
+                doc_no: r.doc_no,
+                type: mapType(r.reference_type, r.source_action),
+                debit: r.debit || 0,
+                credit: r.credit || 0,
+                notes: r.notes || '',
+                ref_id: r.reference_id != null ? r.reference_id : r.je_id,
+                ref_type: mapRefType(r.reference_type),
+                balance: running
+            };
         });
+
+        // ── Drill-down: allocation detail for AR payments ──
+        // Single source: ar_payment_allocations (net_amount = allocated_amount + discount_amount)
+        const allocRes = await pool.request().input('acid', sql.Int, Number(customerId)).query(`
+            SELECT apa.payment_id, apa.invoice_id, si.invoice_no,
+                   apa.allocated_amount, apa.discount_amount, apa.net_amount
+            FROM ar_payment_allocations apa
+            JOIN sales_invoices si ON apa.invoice_id = si.id
+            JOIN ar_payments ap ON apa.payment_id = ap.id
+            WHERE ap.customer_id = @acid AND ap.status = 'active'
+        `);
+        const allocByPay = {};
+        for (const a of allocRes.recordset) {
+            (allocByPay[a.payment_id] = allocByPay[a.payment_id] || []).push(a);
+        }
+        const enriched = statement.map(r =>
+            r.ref_type === 'collection' ? { ...r, allocations: allocByPay[r.ref_id] || [] } : r
+        );
 
         res.json({
             success: true,
             data: {
                 customer,
-                opening_balance: customer.opening_balance || 0,
+                opening_balance: opening,
                 total_debit: statement.reduce((s, r) => s + (r.debit || 0), 0),
                 total_credit: statement.reduce((s, r) => s + (r.credit || 0), 0),
-                current_balance: customer.current_balance || 0,
-                rows: statement
+                current_balance: running,
+                rows: enriched
             }
         });
     } catch (err) {
@@ -344,7 +431,7 @@ router.post('/', asyncHandler(async (req, res) => {
         if (collection_no) {
             const checkReq = pool.request();
             checkReq.input('cno', sql.NVarChar, collection_no);
-            const existingRes = await checkReq.query('SELECT id FROM customer_collections WHERE collection_no = @cno');
+            const existingRes = await checkReq.query('SELECT id FROM ar_payments WHERE payment_no = @cno');
             if (existingRes.recordset.length > 0) {
                 await logActivity(req, 'CREATE', 'collections', collection_no, 'تسجيل تحصيل', null, null, 'FAILED', 'رقم السند مسجل مسبقاً');
                 return res.status(400).json({ success: false, code: 'DUPLICATE_COLLECTION_NO', message: 'رقم السند مسجل مسبقاً' });
@@ -373,11 +460,10 @@ router.post('/', asyncHandler(async (req, res) => {
         const txReq = tx.request();
 
         try {
-            const colNo = collection_no || await nextDocNoAsync(txReq, 'collections');
+            const colNo = collection_no || await nextDocNoAsync(txReq, 'ar_payments');
             
             txReq.input('c_colNo', sql.NVarChar, colNo);
             txReq.input('c_cid', sql.Int, customer_id);
-            txReq.input('c_rid', sql.Int, rep_id || null);
             txReq.input('c_date', sql.NVarChar, date);
             txReq.input('c_amt', sql.Decimal(18,2), amountValue);
             txReq.input('c_meth', sql.NVarChar, method);
@@ -387,10 +473,10 @@ router.post('/', asyncHandler(async (req, res) => {
             txReq.input('c_notes', sql.NVarChar, notes || '');
 
             const insertRes = await txReq.query(`
-                INSERT INTO customer_collections
-                (collection_no, customer_id, rep_id, collection_date, amount, payment_method, check_no, check_date, bank_name, notes)
+                INSERT INTO ar_payments
+                (payment_no, customer_id, payment_date, amount, payment_method, check_no, check_date, bank_name, notes, status)
                 OUTPUT INSERTED.id
-                VALUES (@c_colNo, @c_cid, @c_rid, @c_date, @c_amt, @c_meth, @c_chkno, @c_chkdate, @c_bank, @c_notes)
+                VALUES (@c_colNo, @c_cid, @c_date, @c_amt, @c_meth, @c_chkno, @c_chkdate, @c_bank, @c_notes, 'active')
             `);
             const collectionId = insertRes.recordset[0].id;
 
@@ -398,12 +484,12 @@ router.post('/', asyncHandler(async (req, res) => {
             if (method === 'check' && check_no) {
                 txReq.input('chk_colid', sql.Int, collectionId);
                 await txReq.query(`
-                    INSERT INTO checks (check_no, check_date, due_date, amount, direction, status, customer_id, bank_name, collection_id, notes)
-                    VALUES (@c_chkno, COALESCE(@c_chkdate, @c_date), COALESCE(@c_chkdate, NULL), @c_amt, 'inward', 'pending', @c_cid, @c_bank, @chk_colid, @c_notes)
+                    INSERT INTO ar_cheques (cheque_no, cheque_date, bank_name, amount, customer_id, payment_id, status, notes)
+                    VALUES (@c_chkno, COALESCE(@c_chkdate, @c_date), @c_bank, @c_amt, @c_cid, @chk_colid, 'received', @c_notes)
                 `);
             }
 
-            await postTreasuryInAsync(txReq, {
+            const treasuryResult = await postTreasuryInAsync(txReq, {
                 date,
                 amount: amountValue,
                 customerId: customer_id,
@@ -413,9 +499,8 @@ router.post('/', asyncHandler(async (req, res) => {
             });
 
             await allocateCollectionAsync(txReq, customer_id, collectionId, amountValue, apply_to_invoices);
-            await recalcCustomerBalanceAsync(txReq, customer_id);
 
-            // --- ACCOUNTING INTEGRATION: Customer Collection ---
+            // --- ACCOUNTING INTEGRATION: AR Payment ---
             if (method !== 'check') {
                 const accAR = await getSystemAccountAsync(txReq, 'SYS_AR');
                 const accCash = await getSystemAccountAsync(txReq, method === 'transfer' ? 'SYS_BANK' : 'SYS_CASH');
@@ -425,10 +510,19 @@ router.post('/', asyncHandler(async (req, res) => {
                 ];
                 await postJournalEntryAsync(
                     txReq, date, `سداد دفعة بسند قبض ${colNo}`, colLines,
-                    'customer_collection', collectionId, req.user ? req.user.id : null,
-                    { module: 'collections', action: 'create_collection', document: colNo, isSystem: true }
+                    'ar_payment', collectionId, req.user ? req.user.id : null,
+                    { module: 'ar_payments', action: 'create_payment', document: colNo, isSystem: true },
+                    null, customer_id
                 );
             }
+
+            // Recalculate treasury balance (AFTER journal entry so GL-derived balance includes it)
+            if (treasuryResult && treasuryResult.accountId) {
+                await recalcTreasuryBalanceAsync(txReq, treasuryResult.accountId);
+            }
+
+            // Recalculate customer balance (AFTER journal entry so GL-derived balance includes it)
+            await recalcCustomerBalanceAsync(txReq, customer_id);
 
             // Log customer activity
             if (customer_id) {
@@ -436,7 +530,7 @@ router.post('/', asyncHandler(async (req, res) => {
                 txReq.input(`cal_cid_${pLog}`, sql.Int, customer_id);
                 txReq.input(`cal_type_${pLog}`, sql.NVarChar, 'collection_created');
                 txReq.input(`cal_desc_${pLog}`, sql.NVarChar, `تم تسجيل تحصيل ${colNo} بقيمة ${amountValue}`);
-                txReq.input(`cal_rt_${pLog}`, sql.NVarChar, 'customer_collection');
+                txReq.input(`cal_rt_${pLog}`, sql.NVarChar, 'ar_payment');
                 txReq.input(`cal_ri_${pLog}`, sql.Int, collectionId);
                 txReq.input(`cal_rn_${pLog}`, sql.NVarChar, colNo);
                 txReq.input(`cal_amt_${pLog}`, sql.Decimal(18,4), amountValue || 0);

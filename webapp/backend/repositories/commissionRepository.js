@@ -566,10 +566,11 @@ class CommissionRepository {
         const pool = await getPool();
         const r = await pool.request()
             .input('collectionId', sql.Int, collectionId)
-            .query(`SELECT ca.*, si.invoice_no, si.grand_total AS invoice_total
-                    FROM collection_allocations ca
-                    JOIN sales_invoices si ON ca.invoice_id = si.id
-                    WHERE ca.collection_id = @collectionId`);
+            .query(`SELECT apa.*, si.invoice_no, si.invoice_date,
+                           si.grand_total AS invoice_total, apa.allocated_amount AS amount
+                    FROM ar_payment_allocations apa
+                    JOIN sales_invoices si ON apa.invoice_id = si.id
+                    WHERE apa.payment_id = @collectionId`);
         return r.recordset;
     }
 
@@ -648,10 +649,12 @@ class CommissionRepository {
         const r = await pool.request()
             .input('repId', sql.Int, repId)
             .input('period', sql.NVarChar, period)
-            .query(`SELECT ISNULL(SUM(amount), 0) AS mtd_collections
-                    FROM customer_collections
-                    WHERE rep_id = @repId
-                    AND LEFT(collection_date, 7) = @period`);
+            .query(`SELECT ISNULL(SUM(ap.amount), 0) AS mtd_collections
+                    FROM ar_payments ap
+                    LEFT JOIN customers c ON ap.customer_id = c.id
+                    WHERE c.rep_id = @repId
+                    AND ap.status = 'active'
+                    AND LEFT(ap.payment_date, 7) = @period`);
         return r.recordset[0].mtd_collections;
     }
 

@@ -52,7 +52,7 @@ async function getARAgingDetail(filters = {}) {
                COALESCE(SUM(CASE WHEN DATEDIFF(DAY, i.invoice_date, GETDATE()) BETWEEN 61 AND 90 THEN i.grand_total - i.amount_paid ELSE 0 END), 0) AS age_61_90,
                COALESCE(SUM(CASE WHEN DATEDIFF(DAY, i.invoice_date, GETDATE()) > 90 THEN i.grand_total - i.amount_paid ELSE 0 END), 0) AS age_90_plus,
                MAX(i.invoice_date) AS last_invoice_date,
-               COALESCE((SELECT TOP 1 cc.collection_date FROM customer_collections cc WHERE cc.customer_id = c.id AND cc.amount > 0 ORDER BY cc.collection_date DESC), NULL) AS last_collection_date
+               COALESCE((SELECT TOP 1 ap.payment_date FROM ar_payments ap WHERE ap.customer_id = c.id AND ap.status = 'active' ORDER BY ap.payment_date DESC), NULL) AS last_collection_date
         FROM sales_invoices i
         JOIN customers c ON i.customer_id = c.id
         WHERE i.status NOT IN ('cancelled', 'deleted')
@@ -217,9 +217,9 @@ async function getCollectionEfficiency(from, to) {
 
     const result = await ctx.request.query(`
         SELECT
-            COALESCE((SELECT SUM(amount) FROM customer_collections WHERE 1=1
-                ${from ? 'AND collection_date >= @from' : ''}
-                ${to ? 'AND collection_date <= @to' : ''}
+            COALESCE((SELECT SUM(amount) FROM ar_payments WHERE status = 'active'
+                ${from ? 'AND payment_date >= @from' : ''}
+                ${to ? 'AND payment_date <= @to' : ''}
             ), 0) AS collections_total,
             COALESCE((SELECT SUM(grand_total - amount_paid) FROM sales_invoices WHERE status NOT IN ('cancelled', 'deleted')
                 AND (grand_total - amount_paid) > 0

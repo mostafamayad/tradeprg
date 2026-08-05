@@ -1,3 +1,6 @@
+// LEGACY - DO NOT USE
+// Replaced by the Allocation Engine (routes/collections.js). Not mounted in server.js, not imported anywhere.
+// Kept as archive only; excluded from Single Source Compliance.
 // ============================================================
 // ROUTE: Sales Collections (Payments from Customers)
 // ============================================================

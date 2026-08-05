@@ -401,12 +401,12 @@ async function initializeDatabase() {
                 }
 
                 const counters = ['sales', 'purchases', 'collections', 'supplier_payments', 'sales_returns', 'purchase_returns', 'treasury',
-                          'transfer', 'damaged', 'adjustment', 'count', 'journal', 'expense'];
+                          'transfer', 'damaged', 'adjustment', 'count', 'journal', 'expense', 'ar_payments'];
                 const prefixes = {
                     sales: 'INV', purchases: 'PUR', collections: 'REC', supplier_payments: 'PAY',
                     sales_returns: 'SRT', purchase_returns: 'PRT', treasury: 'TRS',
                     transfer: 'TRF', damaged: 'DMG', adjustment: 'ADJ', count: 'CNT', journal: 'JV',
-                    expense: 'EXP'
+                    expense: 'EXP', ar_payments: 'ARP'
                 };
                 for (const c of counters) {
                     const checkCount = await pool.request()

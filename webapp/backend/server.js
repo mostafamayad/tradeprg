@@ -306,6 +306,19 @@ app.listen(PORT, '0.0.0.0', async () => {
                 ALTER TABLE chart_of_accounts ADD system_code NVARCHAR(50) NULL;
             END
         `);
+        // treasury_accounts: system_code (Step 4 — GL mapping: SYS_CASH / SYS_BANK)
+        await pool.request().query(`
+            IF COL_LENGTH('treasury_accounts', 'system_code') IS NULL
+            BEGIN
+                ALTER TABLE treasury_accounts ADD system_code NVARCHAR(50) NULL;
+            END
+        `);
+        // backfill treasury system_code (separate batch: cannot reference a column added in the same batch)
+        await pool.request().query(`
+            UPDATE treasury_accounts
+            SET system_code = CASE WHEN account_type = 'bank' THEN 'SYS_BANK' ELSE 'SYS_CASH' END
+            WHERE system_code IS NULL;
+        `);
         // journal_entries: reversal tracking
         await pool.request().query(`
             IF COL_LENGTH('journal_entries', 'is_reversed') IS NULL
@@ -364,6 +377,24 @@ app.listen(PORT, '0.0.0.0', async () => {
                 ALTER TABLE sales_return_items ADD expiry_date DATE NULL;
             IF COL_LENGTH('sales_return_items', 'serial_no') IS NULL
                 ALTER TABLE sales_return_items ADD serial_no NVARCHAR(100) NULL;
+        `);
+        // ── Phase 2: ar_payment_allocations single-source columns (discount/net) ──
+        await pool.request().query(`
+            IF COL_LENGTH('ar_payment_allocations', 'discount_amount') IS NULL
+            BEGIN
+                ALTER TABLE ar_payment_allocations ADD discount_amount DECIMAL(18,4) NOT NULL DEFAULT 0;
+            END
+            IF COL_LENGTH('ar_payment_allocations', 'net_amount') IS NULL
+            BEGIN
+                ALTER TABLE ar_payment_allocations ADD net_amount DECIMAL(18,4) NOT NULL DEFAULT 0;
+            END
+            IF COL_LENGTH('ar_payment_allocations', 'created_at') IS NULL
+            BEGIN
+                ALTER TABLE ar_payment_allocations ADD created_at DATETIME DEFAULT GETDATE();
+                ALTER TABLE ar_payment_allocations ADD created_by INT NULL;
+            END
+            UPDATE ar_payment_allocations SET net_amount = allocated_amount
+            WHERE net_amount = 0 AND allocated_amount > 0;
         `);
         // sales_return_audit: index on return_id
         await pool.request().query(`
@@ -452,6 +483,21 @@ app.listen(PORT, '0.0.0.0', async () => {
                     ('DAMAGED','المنتج تالف'),('WRONG_ITEM','خطأ في الشحن'),('CUSTOMER_REFUSED','العميل رفض المنتج'),
                     ('EXPIRED','انتهاء صلاحية'),('INVOICE_ERR','خطأ في الفاتورة'),('OTHER','أخرى');
             END
+        `);
+        // purchase_invoices: invoice_type + vat rate (mirrors sales_invoices)
+        await pool.request().query(`
+            IF COL_LENGTH('purchase_invoices', 'invoice_type') IS NULL
+            BEGIN
+                ALTER TABLE purchase_invoices ADD invoice_type NVARCHAR(255) DEFAULT 'normal';
+            END
+            UPDATE purchase_invoices SET invoice_type = 'normal' WHERE invoice_type IS NULL OR invoice_type = 'null'
+        `);
+        await pool.request().query(`
+            IF COL_LENGTH('purchase_invoices', 'vat_rate') IS NULL
+            BEGIN
+                ALTER TABLE purchase_invoices ADD vat_rate DECIMAL(18,4) DEFAULT 0;
+            END
+            UPDATE purchase_invoices SET vat_rate = 0 WHERE vat_rate IS NULL
         `);
         // sales_invoices: ERP return tracking
         await pool.request().query(`

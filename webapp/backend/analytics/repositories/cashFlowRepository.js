@@ -18,6 +18,17 @@ function whereDate(from, to, col) {
     return clauses.length ? 'WHERE ' + clauses.join(' AND ') : '';
 }
 
+// Canonical active-JE predicate (isolation: excludes reversed/cancelled entries).
+// Pass the SQL alias used for journal_entries, e.g. activeJECond('je').
+function activeJECond(al) {
+    return `(${al}.is_reversed IS NULL OR ${al}.is_reversed = 0)`
+        + ` AND (${al}.reversal_of_id IS NULL)`
+        + ` AND (${al}.source_action IS NULL OR (${al}.source_action NOT LIKE '%_cancel' AND ${al}.source_action <> 'cancel'))`;
+}
+
+// System code(s) treated as cash/bank — the source of truth for cash flow.
+const GL_CASH_SYSTEM_CODES = ['SYS_CASH', 'SYS_BANK'];
+
 /**
  * Customer Collections — operating cash inflow.
  * @param {string} [from] - Start date (YYYY-MM-DD)
@@ -29,11 +40,13 @@ async function getCollections(from, to) {
     inp(ctx, 'from', sql.NVarChar, from);
     inp(ctx, 'to', sql.NVarChar, to);
     const result = await ctx.request.query(`
-        SELECT cc.collection_date AS date, cc.amount, c.customer_name, cc.payment_method
-        FROM customer_collections cc
-        LEFT JOIN customers c ON cc.customer_id = c.id
-        ${whereDate(from, to, 'cc.collection_date')}
-        ORDER BY cc.collection_date
+        SELECT ap.payment_date AS date, ap.amount, c.customer_name, ap.payment_method
+        FROM ar_payments ap
+        LEFT JOIN customers c ON ap.customer_id = c.id
+        WHERE ap.status = 'active'
+        ${from ? 'AND ap.payment_date >= @from' : ''}
+        ${to ? 'AND ap.payment_date <= @to' : ''}
+        ORDER BY ap.payment_date
     `);
     return result.recordset;
 }
@@ -98,113 +111,163 @@ async function getSalaryPayments(from, to) {
 }
 
 /**
- * Treasury Transactions — all movements across all treasury accounts.
- * trans_type = 'in' (inflow) or 'out' (outflow).
+ * GL Cash Movements — every debit/credit line touching a GL cash/bank account.
+ * Sources all cash flow classification from the journal (SYS_CASH/SYS_BANK),
+ * replacing the old treasury_transactions table. Uses the canonical active-JE
+ * predicate so reversed/cancelled entries are excluded.
  * @param {string} [from] - Start date
  * @param {string} [to] - End date
- * @returns {Promise<Array>} [{date, amount, trans_type, account_name, description}]
+ * @returns {Promise<Array>} [{date, debit, credit, account_id, system_code, reference_type}]
  */
-async function getTreasuryTransactions(from, to) {
+async function getGlCashMovements(from, to) {
     const ctx = await init(req());
     inp(ctx, 'from', sql.NVarChar, from);
     inp(ctx, 'to', sql.NVarChar, to);
+    const codes = GL_CASH_SYSTEM_CODES.map(c => `'${c}'`).join(',');
     const result = await ctx.request.query(`
-        SELECT tt.trans_date AS date, tt.amount, tt.trans_type, ta.account_name, tt.description
-        FROM treasury_transactions tt
-        LEFT JOIN treasury_accounts ta ON tt.account_id = ta.id
-        ${whereDate(from, to, 'tt.trans_date')}
-        ORDER BY tt.trans_date
+        SELECT je.entry_date AS date, jl.debit, jl.credit, jl.account_id,
+               a.system_code, je.reference_type
+        FROM journal_entry_lines jl
+        JOIN journal_entries je ON je.id = jl.entry_id
+        JOIN chart_of_accounts a ON a.id = jl.account_id
+        ${whereDate(from, to, 'je.entry_date')}
+          AND a.system_code IN (${codes})
+          AND ${activeJECond('je')}
+        ORDER BY je.entry_date, je.id
     `);
     return result.recordset;
 }
 
 /**
- * Treasury Accounts — current balance of all cash/bank accounts.
- * @returns {Promise<Array>} [{id, account_name, account_type, current_balance}]
- */
-async function getTreasuryBalances() {
-    const ctx = await init(req());
-    const result = await ctx.request.query(`
-        SELECT id, account_name, account_type, current_balance
-        FROM treasury_accounts
-        ORDER BY account_name
-    `);
-    return result.recordset;
-}
-
-/**
- * Daily Cash Balance — computed from treasury transactions.
- * Uses a running sum to compute the balance at each day's end.
+ * GL Cash/Bank Balances — opening, closing, net, inflow and outflow per cash
+ * account, all computed from the journal instead of treasury_accounts.current_balance.
  * @param {string} [from] - Start date
  * @param {string} [to] - End date
- * @returns {Promise<Array>} [{date, balance}]
+ * @returns {Promise<Array>} [{account_name, account_type, system_code, opening, closing, net, inflow, outflow}]
+ */
+async function getGlBalances(from, to) {
+    const ctx = await init(req());
+    const hasFrom = from && from !== 'undefined' && from !== '';
+    const hasTo = to && to !== 'undefined' && to !== '';
+    if (hasFrom) ctx.request.input('from', sql.NVarChar, from);
+    if (hasTo) ctx.request.input('to', sql.NVarChar, to);
+
+    const openCond = hasFrom ? 'je.entry_date < @from' : '1 = 0';
+    const closeCond = hasTo ? 'je.entry_date <= @to' : '1 = 1';
+    const periodParts = [];
+    if (hasFrom) periodParts.push('je.entry_date >= @from');
+    if (hasTo) periodParts.push('je.entry_date <= @to');
+    const periodCond = periodParts.length ? periodParts.join(' AND ') : '1 = 0';
+
+    const codes = GL_CASH_SYSTEM_CODES.map(c => `'${c}'`).join(',');
+    const result = await ctx.request.query(`
+        SELECT a.system_code, a.account_name, a.account_type,
+               COALESCE(SUM(CASE WHEN ${openCond} THEN jl.debit - jl.credit ELSE 0 END), 0) AS opening,
+               COALESCE(SUM(CASE WHEN ${closeCond} THEN jl.debit - jl.credit ELSE 0 END), 0) AS closing,
+               COALESCE(SUM(CASE WHEN ${periodCond} THEN jl.debit - jl.credit ELSE 0 END), 0) AS net,
+               COALESCE(SUM(CASE WHEN ${periodCond} THEN jl.debit ELSE 0 END), 0) AS inflow,
+               COALESCE(SUM(CASE WHEN ${periodCond} THEN jl.credit ELSE 0 END), 0) AS outflow
+        FROM journal_entry_lines jl
+        JOIN journal_entries je ON je.id = jl.entry_id
+        JOIN chart_of_accounts a ON a.id = jl.account_id
+        WHERE a.system_code IN (${codes})
+          AND ${activeJECond('je')}
+        GROUP BY a.system_code, a.account_name, a.account_type
+        ORDER BY a.system_code
+    `);
+    return result.recordset;
+}
+
+/**
+ * Daily Cash Balance — computed from GL cash/bank movements.
+ * Uses a running sum over journal cash lines to compute the balance at each
+ * day's end (starting from the GL opening balance before the period).
+ * @param {string} [from] - Start date
+ * @param {string} [to] - End date
+ * @returns {Promise<Array>} [{date, net_change, balance}]
  */
 async function getDailyCashBalance(from, to) {
     const ctx = await init(req());
-    inp(ctx, 'from', sql.NVarChar, from);
-    inp(ctx, 'to', sql.NVarChar, to);
-    const whereClause = whereDate(from, to, 'tt.trans_date');
+    const hasFrom = from && from !== 'undefined' && from !== '';
+    const hasTo = to && to !== 'undefined' && to !== '';
+    if (hasFrom) ctx.request.input('from', sql.NVarChar, from);
+    if (hasTo) ctx.request.input('to', sql.NVarChar, to);
+
+    const openCond = hasFrom ? 'je.entry_date < @from' : '1 = 0';
+    const periodParts = [];
+    if (hasFrom) periodParts.push('je.entry_date >= @from');
+    if (hasTo) periodParts.push('je.entry_date <= @to');
+    const periodWhere = periodParts.length ? 'AND ' + periodParts.join(' AND ') : '';
+
+    const codes = GL_CASH_SYSTEM_CODES.map(c => `'${c}'`).join(',');
     const result = await ctx.request.query(`
-WITH daily AS (
-    SELECT CAST(tt.trans_date AS DATE) AS date,
-           SUM(CASE WHEN tt.trans_type = 'in' THEN tt.amount ELSE -tt.amount END) AS net_change
-    FROM treasury_transactions tt
-    ${whereClause}
-    GROUP BY CAST(tt.trans_date AS DATE)
-)
-SELECT date, net_change,
-       SUM(net_change) OVER(ORDER BY date ROWS UNBOUNDED PRECEDING) AS balance
-FROM daily
-ORDER BY date
+        SELECT CAST(je.entry_date AS DATE) AS date,
+               SUM(jl.debit - jl.credit) AS net_change,
+               SUM(CASE WHEN ${openCond} THEN jl.debit - jl.credit ELSE 0 END) AS opening
+        FROM journal_entry_lines jl
+        JOIN journal_entries je ON je.id = jl.entry_id
+        JOIN chart_of_accounts a ON a.id = jl.account_id
+        WHERE a.system_code IN (${codes})
+          AND ${activeJECond('je')}
+          ${periodWhere}
+        GROUP BY CAST(je.entry_date AS DATE)
+        ORDER BY date
     `);
-    return result.recordset;
+
+    const opening = result.recordset.length ? parseFloat(result.recordset[0].opening || 0) : 0;
+    let running = opening;
+    return result.recordset.map(r => {
+        running += parseFloat(r.net_change || 0);
+        return {
+            date: r.date,
+            net_change: parseFloat(r.net_change || 0),
+            balance: running
+        };
+    });
 }
 
 /**
- * Monthly Cash Flow Summary — aggregated by month.
+ * Monthly Cash Flow Summary — aggregated by month from GL cash/bank lines.
  * @param {string} [from] - Start date
  * @param {string} [to] - End date
  * @returns {Promise<{inflow: number, outflow: number, net: number, months: Array}>}
  */
 async function getMonthlyCashFlow(from, to) {
-    const [collections, payments, expenses, salaries] = await Promise.all([
-        getCollections(from, to),
-        getSupplierPayments(from, to),
-        getExpenses(from, to),
-        getSalaryPayments(from, to)
-    ]);
+    const ctx = await init(req());
+    inp(ctx, 'from', sql.NVarChar, from);
+    inp(ctx, 'to', sql.NVarChar, to);
+    const codes = GL_CASH_SYSTEM_CODES.map(c => `'${c}'`).join(',');
+    const result = await ctx.request.query(`
+        SELECT CONVERT(VARCHAR(7), je.entry_date, 120) AS month,
+               SUM(jl.debit) AS inflow,
+               SUM(jl.credit) AS outflow
+        FROM journal_entry_lines jl
+        JOIN journal_entries je ON je.id = jl.entry_id
+        JOIN chart_of_accounts a ON a.id = jl.account_id
+        ${whereDate(from, to, 'je.entry_date')}
+          AND a.system_code IN (${codes})
+          AND ${activeJECond('je')}
+        GROUP BY CONVERT(VARCHAR(7), je.entry_date, 120)
+        ORDER BY month
+    `);
 
-    const inflowByMonth = {};
-    const outflowByMonth = {};
-
-    const monthKey = (d) => (d || '').slice(0, 7);
-
-    collections.forEach(c => {
-        const m = monthKey(c.date);
-        inflowByMonth[m] = (inflowByMonth[m] || 0) + parseFloat(c.amount || 0);
-    });
-
-    [...payments, ...expenses, ...salaries].forEach(t => {
-        const m = monthKey(t.date);
-        outflowByMonth[m] = (outflowByMonth[m] || 0) + parseFloat(t.amount || 0);
-    });
-
-    const allMonths = new Set([...Object.keys(inflowByMonth), ...Object.keys(outflowByMonth)]);
-    const months = Array.from(allMonths).sort().map(m => ({
-        month: m,
-        inflow: inflowByMonth[m] || 0,
-        outflow: outflowByMonth[m] || 0,
-        net: (inflowByMonth[m] || 0) - (outflowByMonth[m] || 0)
+    const months = (result.recordset || []).map(m => ({
+        month: m.month,
+        inflow: parseFloat(m.inflow || 0),
+        outflow: parseFloat(m.outflow || 0),
+        net: parseFloat(m.inflow || 0) - parseFloat(m.outflow || 0)
     }));
 
-    const totalInflow = Object.values(inflowByMonth).reduce((s, v) => s + v, 0);
-    const totalOutflow = Object.values(outflowByMonth).reduce((s, v) => s + v, 0);
+    const totalInflow = months.reduce((s, m) => s + m.inflow, 0);
+    const totalOutflow = months.reduce((s, m) => s + m.outflow, 0);
 
     return { inflow: totalInflow, outflow: totalOutflow, net: totalInflow - totalOutflow, months };
 }
 
 /**
- * Cash Flow Forecast — simple projection using historical averages.
+ * Cash Flow Forecast — simple projection using historical GL averages.
+ * Current cash is the GL closing balance of cash/bank accounts (not the stored
+ * treasury current_balance column).
  * @param {number} [lookbackMonths=6] - Months of history to average
  * @param {number} [forecastMonths=3] - Months to project
  * @returns {Promise<{avgMonthlyInflow, avgMonthlyOutflow, avgBurn, runway, forecast: Array}>}
@@ -219,8 +282,8 @@ async function getCashFlowForecast(lookbackMonths, forecastMonths) {
     const from = fromDate.toISOString().slice(0, 10);
 
     const summary = await getMonthlyCashFlow(from, to);
-    const balances = await getTreasuryBalances();
-    const currentCash = balances.reduce((s, a) => s + parseFloat(a.current_balance || 0), 0);
+    const balances = await getGlBalances(null, to);
+    const currentCash = balances.reduce((s, a) => s + parseFloat(a.closing || 0), 0);
 
     const monthsWithData = summary.months.filter(m => m.inflow > 0 || m.outflow > 0);
     const avgInflow = monthsWithData.length > 0
@@ -259,8 +322,8 @@ module.exports = {
     getSupplierPayments,
     getExpenses,
     getSalaryPayments,
-    getTreasuryTransactions,
-    getTreasuryBalances,
+    getGlCashMovements,
+    getGlBalances,
     getDailyCashBalance,
     getMonthlyCashFlow,
     getCashFlowForecast

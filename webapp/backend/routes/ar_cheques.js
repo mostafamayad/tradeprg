@@ -5,7 +5,7 @@ const express = require('express');
 const router = express.Router();
 const { getPool, sql } = require('../database/mssql_db');
 const asyncHandler = require('../utils/asyncHandler');
-const { postJournalEntryAsync, getSystemAccountAsync, recalcCustomerBalanceAsync } = require('../services/accountingEngine');
+const { postJournalEntryAsync, getSystemAccountAsync, recalcCustomerBalanceAsync, recalcTreasuryBalanceAsync } = require('../services/accountingEngine');
 const logActivity = require('../middleware/logger');
 
 // ============================================================
@@ -33,11 +33,7 @@ async function refreshInvoiceStatusAsync(txRequest, invoiceId) {
     const retRes = await txRequest.query(`SELECT COALESCE(SUM(grand_total),0) as total FROM sales_returns WHERE invoice_id = @ris_id_${srfx} AND status NOT IN ('cancelled', 'deleted')`);
     const returnsTotal = retRes.recordset[0].total || 0;
     const allocRes = await txRequest.query(`
-        SELECT COALESCE(SUM(sub.amount), 0) as total FROM (
-            SELECT COALESCE(SUM(ca.amount), 0) as amount FROM collection_allocations ca WHERE ca.invoice_id = @ris_id_${srfx}
-            UNION ALL
-            SELECT COALESCE(SUM(apa.allocated_amount), 0) as amount FROM ar_payment_allocations apa WHERE apa.invoice_id = @ris_id_${srfx}
-        ) sub
+        SELECT COALESCE(SUM(apa.net_amount), 0) as total FROM ar_payment_allocations apa WHERE apa.invoice_id = @ris_id_${srfx}
     `);
     const totalPaid = allocRes.recordset[0].total || 0;
     const remaining = Math.max(0, num(inv.grand_total) - totalPaid - num(returnsTotal));
@@ -170,7 +166,8 @@ router.patch('/:id/deposit', asyncHandler(async (req, res) => {
                 `إيداع شيك ${ch.cheque_no}`,
                 jeLines, 'ar_cheque', ch.id,
                 req.user ? req.user.id : null,
-                { module: 'ar_cheques', action: 'deposit', document: ch.cheque_no, isSystem: true }
+                { module: 'ar_cheques', action: 'deposit', document: ch.cheque_no, isSystem: true },
+                null, ch.customer_id
             );
 
             // 2. Update cheque status
@@ -258,6 +255,8 @@ router.patch('/:id/collect', asyncHandler(async (req, res) => {
                     VALUES (@tr_tn_${sfx}, @tr_tdate_${sfx}, 'in', @tr_amt_${sfx}, @tr_tid_${sfx}, 'ar_cheque', @tr_chid_${sfx}, @tr_chid_${sfx}, @tr_desc_${sfx})
                 `);
                 await txReq.query(`UPDATE treasury_accounts SET current_balance = current_balance + @tr_amt_${sfx} WHERE id = @tr_tid_${sfx}`);
+
+                await recalcTreasuryBalanceAsync(txReq, treasuryId);
             }
 
             // 3. Update cheque status
@@ -330,7 +329,8 @@ router.patch('/:id/return', asyncHandler(async (req, res) => {
                     `عكس إيداع شيك ${ch.cheque_no}`,
                     revJeLines, 'ar_cheque', ch.id,
                     req.user ? req.user.id : null,
-                    { module: 'ar_cheques', action: 'return_deposit', document: ch.cheque_no, isSystem: true }
+                    { module: 'ar_cheques', action: 'return_deposit', document: ch.cheque_no, isSystem: true },
+                    null, ch.customer_id
                 );
             }
 

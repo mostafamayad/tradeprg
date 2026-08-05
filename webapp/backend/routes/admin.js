@@ -67,37 +67,109 @@ async function verifyAdminPassword(userId, password) {
 
 // ─── Integrity check ───
 
+// Canonical "active journal entry" predicate. Must stay in sync with
+// services/accountingEngine.js, services/balanceService.js and
+// scripts/integrity_audit.js: excludes reversed entries, reversal copies
+// (reversal_of_id), and cancellation actions (*_cancel / cancel).
+const ACTIVE_JE = `(je.is_reversed IS NULL OR je.is_reversed = 0)
+    AND (je.reversal_of_id IS NULL)
+    AND (je.source_action IS NULL OR (je.source_action NOT LIKE '%_cancel' AND je.source_action <> 'cancel'))`;
+
 async function verifyIntegrity() {
     const pool = await getPool();
     const results = {};
+
+    // 1. Journal entries: total debit == total credit (canonical active predicate)
     const jeRes = await pool.request().query(`
         SELECT ISNULL(SUM(total_debit), 0) as total_debit, ISNULL(SUM(total_credit), 0) as total_credit
-        FROM journal_entries WHERE is_reversed IS NULL OR is_reversed = 0
+        FROM journal_entries je WHERE ${ACTIVE_JE}
     `);
     const je = jeRes.recordset[0];
     results.journalBalance = parseFloat(je.total_debit).toFixed(2) === parseFloat(je.total_credit).toFixed(2);
+
+    // 2. Customer cached balance vs operational subledger (sales - returns - collections)
     const custRes = await pool.request().query(`
         SELECT COUNT(*) as cnt, ISNULL(SUM(diff), 0) as total_diff FROM (
             SELECT ABS(c.current_balance - (
                 COALESCE(c.opening_balance,0) +
                 ISNULL((SELECT SUM(grand_total) FROM sales_invoices WHERE customer_id = c.id AND status NOT IN ('cancelled','deleted')), 0) -
                 ISNULL((SELECT SUM(grand_total) FROM sales_returns WHERE customer_id = c.id AND status NOT IN ('cancelled','deleted')), 0) -
-                ISNULL((SELECT SUM(amount) FROM customer_collections WHERE customer_id = c.id), 0)
+                ISNULL((SELECT SUM(sub.amount) FROM (
+                    SELECT ap.amount FROM ar_payments ap
+                    LEFT JOIN ar_cheques ac ON ac.payment_id = ap.id
+                    WHERE ap.customer_id = c.id AND ap.status = 'active' AND (ac.id IS NULL OR ac.status NOT IN ('returned','cancelled'))
+                    UNION ALL
+                    SELECT CASE WHEN an.note_type='debit' THEN an.amount ELSE -an.amount END FROM ar_notes an
+                    WHERE an.customer_id = c.id AND an.status = 'active'
+                ) sub), 0)
             )) as diff FROM customers c
         ) sub
     `);
     results.customersBalanced = parseFloat(custRes.recordset[0]?.total_diff || 0) < 0.01;
+
+    // 3. Customer cached balance vs GL (SYS_AR per customer) — NEW
+    const custGlRes = await pool.request().query(`
+        SELECT COUNT(*) as cnt, ISNULL(SUM(diff), 0) as total_diff FROM (
+            SELECT ABS(c.current_balance - (
+                COALESCE(c.opening_balance,0) + ISNULL(g.gl_net,0)
+            )) as diff
+            FROM customers c
+            OUTER APPLY (
+                SELECT SUM(jl.debit - jl.credit) AS gl_net
+                FROM journal_entry_lines jl
+                JOIN journal_entries je ON je.id = jl.entry_id
+                JOIN chart_of_accounts ca ON ca.id = jl.account_id
+                WHERE ca.system_code = 'SYS_AR' AND je.customer_id = c.id
+                  AND ${ACTIVE_JE}
+            ) g
+        ) sub
+        WHERE diff > 0.01
+    `);
+    const custGl = custGlRes.recordset[0];
+    results.customersGlBalanced = parseFloat(custGl?.total_diff || 0) < 0.01;
+    results.customersGlDiffCount = custGl?.cnt || 0;
+    results.customersGlTotalDiff = Math.round(parseFloat(custGl?.total_diff || 0) * 100) / 100;
+
+    // 4. Supplier cached balance vs operational subledger (purchases - returns - payments)
     const supRes = await pool.request().query(`
         SELECT COUNT(*) as cnt, ISNULL(SUM(diff), 0) as total_diff FROM (
             SELECT ABS(s.current_balance - (
                 COALESCE(s.opening_balance,0) +
                 ISNULL((SELECT SUM(grand_total) FROM purchase_invoices WHERE supplier_id = s.id AND status NOT IN ('cancelled','deleted')), 0) -
                 ISNULL((SELECT SUM(grand_total) FROM purchase_returns WHERE supplier_id = s.id AND status NOT IN ('cancelled','deleted')), 0) -
-                ISNULL((SELECT SUM(amount) FROM supplier_payments WHERE supplier_id = s.id), 0)
+                ISNULL((SELECT SUM(ap.amount) FROM ap_payments ap
+                    LEFT JOIN ap_cheques ac ON ac.payment_id = ap.id
+                    WHERE ap.supplier_id = s.id AND ap.status = 'active'
+                      AND (ac.id IS NULL OR ac.status NOT IN ('returned','cancelled'))), 0)
             )) as diff FROM suppliers s
         ) sub
     `);
     results.suppliersBalanced = parseFloat(supRes.recordset[0]?.total_diff || 0) < 0.01;
+
+    // 5. Supplier cached balance vs GL (SYS_AP per supplier) — NEW
+    const supGlRes = await pool.request().query(`
+        SELECT COUNT(*) as cnt, ISNULL(SUM(diff), 0) as total_diff FROM (
+            SELECT ABS(s.current_balance - (
+                COALESCE(s.opening_balance,0) + ISNULL(g.gl_net,0)
+            )) as diff
+            FROM suppliers s
+            OUTER APPLY (
+                SELECT SUM(jl.credit - jl.debit) AS gl_net
+                FROM journal_entry_lines jl
+                JOIN journal_entries je ON je.id = jl.entry_id
+                JOIN chart_of_accounts ca ON ca.id = jl.account_id
+                WHERE ca.system_code = 'SYS_AP' AND je.supplier_id = s.id
+                  AND ${ACTIVE_JE}
+            ) g
+        ) sub
+        WHERE diff > 0.01
+    `);
+    const supGl = supGlRes.recordset[0];
+    results.suppliersGlBalanced = parseFloat(supGl?.total_diff || 0) < 0.01;
+    results.suppliersGlDiffCount = supGl?.cnt || 0;
+    results.suppliersGlTotalDiff = Math.round(parseFloat(supGl?.total_diff || 0) * 100) / 100;
+
+    // 6. Treasury cached balance vs treasury transactions
     const tresRes = await pool.request().query(`
         SELECT COUNT(*) as cnt, ISNULL(SUM(diff), 0) as total_diff FROM (
             SELECT ABS(t.current_balance - (
@@ -107,6 +179,94 @@ async function verifyIntegrity() {
         ) sub
     `);
     results.treasuryBalanced = parseFloat(tresRes.recordset[0]?.total_diff || 0) < 0.01;
+
+    // 7. Treasury GL check — PER-ACCOUNT for every treasury account (4d upgrade)
+    // Each treasury account resolves to a GL system code (explicit `system_code`
+    // from the 4a migration, else derived from account_type: bank -> SYS_BANK,
+    // otherwise SYS_CASH). Its stored current_balance is compared against the
+    // GL balance of the linked COA account (journal_entry_lines SUM(debit-credit)).
+    // Report-only: never fixes data. If more than one treasury account maps to the
+    // same system_code, that is flagged as a mapping warning (GL cannot be split).
+    const treasuryMapped = `CASE WHEN ta.system_code IS NOT NULL THEN ta.system_code WHEN ta.account_type = 'bank' THEN 'SYS_BANK' ELSE 'SYS_CASH' END`;
+    const tresAccRes = await pool.request().query(`
+        SELECT
+            ta.id AS account_id,
+            ta.account_name,
+            ta.account_type,
+            ta.system_code AS stored_system_code,
+            ${treasuryMapped} AS eff_system_code,
+            ROUND(ISNULL(ta.current_balance, 0), 2) AS stored_balance,
+            ROUND(ISNULL(g.gl_balance, 0), 2) AS gl_balance,
+            ROUND(ISNULL(ta.current_balance, 0) - ISNULL(g.gl_balance, 0), 2) AS diff
+        FROM treasury_accounts ta
+        OUTER APPLY (
+            SELECT SUM(jl.debit - jl.credit) AS gl_balance
+            FROM journal_entry_lines jl
+            JOIN journal_entries je ON je.id = jl.entry_id
+            JOIN chart_of_accounts coa ON coa.id = jl.account_id
+            WHERE coa.system_code = (
+                CASE WHEN ta.system_code IS NOT NULL THEN ta.system_code WHEN ta.account_type = 'bank' THEN 'SYS_BANK' ELSE 'SYS_CASH' END
+            )
+              AND ${ACTIVE_JE}
+        ) g
+        ORDER BY ta.account_name
+    `);
+    const tresAccounts = tresAccRes.recordset.map(a => ({
+        treasury_account_id: a.account_id,
+        account_name: a.account_name,
+        account_type: a.account_type,
+        system_code: a.eff_system_code,
+        stored_system_code: a.stored_system_code,
+        stored_balance: parseFloat(a.stored_balance),
+        gl_balance: parseFloat(a.gl_balance),
+        diff: parseFloat(a.diff)
+    }));
+
+    // Mapping collision warning: any system_code bound to more than one treasury account.
+    const tresCollRes = await pool.request().query(`
+        SELECT ${treasuryMapped} AS eff_system_code, COUNT(*) AS cnt
+        FROM treasury_accounts ta
+        GROUP BY ${treasuryMapped}
+        HAVING COUNT(*) > 1
+    `);
+    const treasuryMappingCollisions = tresCollRes.recordset.map(c => ({
+        system_code: c.eff_system_code,
+        account_count: c.cnt
+    }));
+
+    const treasuryDiffCount = tresAccounts.filter(a => Math.abs(a.diff) > 0.01).length;
+    const treasuryTotalDiff = Math.round(tresAccounts.reduce((s, a) => s + Math.abs(a.diff), 0) * 100) / 100;
+    const treasuryAllInBalance = treasuryDiffCount === 0 && treasuryMappingCollisions.length === 0;
+
+    results.treasuryAccounts = tresAccounts;
+    results.treasuryGlDiffCount = treasuryDiffCount;
+    results.treasuryGlTotalDiff = treasuryTotalDiff;
+    results.treasuryMappingCollisions = treasuryMappingCollisions;
+    results.treasuryCollisionDetected = treasuryMappingCollisions.length > 0;
+    results.treasuryGlBalanced = treasuryAllInBalance;
+
+    // 8. COA cached balance vs GL (per account) — NEW
+    const coaGlRes = await pool.request().query(`
+        SELECT COUNT(*) as cnt, ISNULL(SUM(diff), 0) as total_diff FROM (
+            SELECT ca.id,
+                   ABS(ISNULL(ca.current_balance,0) - ISNULL(g.gl_balance,0)) as diff
+            FROM chart_of_accounts ca
+            OUTER APPLY (
+                SELECT SUM(jl.debit - jl.credit) *
+                    CASE WHEN ca.account_type IN ('liability','equity','revenue') THEN -1 ELSE 1 END AS gl_balance
+                FROM journal_entry_lines jl
+                JOIN journal_entries je ON je.id = jl.entry_id
+                WHERE jl.account_id = ca.id AND ${ACTIVE_JE}
+            ) g
+        ) sub
+        WHERE diff > 0.01
+    `);
+    const coaGl = coaGlRes.recordset[0];
+    results.coaGlBalanced = parseFloat(coaGl?.total_diff || 0) < 0.01;
+    results.coaGlDiffCount = coaGl?.cnt || 0;
+    results.coaGlTotalDiff = Math.round(parseFloat(coaGl?.total_diff || 0) * 100) / 100;
+
+    // 9. Trial balance from cached COA balances
     const tbRes = await pool.request().query(`
         SELECT ISNULL(SUM(CASE WHEN account_type IN ('asset','expense') THEN current_balance ELSE 0 END), 0) as total_debit,
                ISNULL(SUM(CASE WHEN account_type IN ('liability','equity','revenue') THEN current_balance ELSE 0 END), 0) as total_credit
@@ -114,8 +274,25 @@ async function verifyIntegrity() {
     `);
     const tb = tbRes.recordset[0];
     results.trialBalanceBalanced = parseFloat(tb.total_debit).toFixed(2) === parseFloat(tb.total_credit).toFixed(2);
-    results.allPassed = results.journalBalance && results.customersBalanced &&
-        results.suppliersBalanced && results.treasuryBalanced && results.trialBalanceBalanced;
+
+    // 10. Inventory value (qty × cost) vs GL SYS_INVENTORY — NEW
+    const invGlRes = await pool.request().query(`
+        SELECT
+            ROUND(ISNULL((SELECT SUM(ib.quantity * p.cost_price) FROM inventory_balances ib
+                JOIN products p ON p.id = ib.product_id), 0), 2) AS stock_value,
+            ROUND(ISNULL((SELECT SUM(jl.debit - jl.credit) FROM journal_entry_lines jl
+                JOIN journal_entries je ON je.id = jl.entry_id
+                JOIN chart_of_accounts ca ON ca.id = jl.account_id
+                WHERE ca.system_code = 'SYS_INVENTORY' AND ${ACTIVE_JE}), 0), 2) AS gl_inventory
+    `);
+    const invGl = invGlRes.recordset[0];
+    results.inventoryGlTotalDiff = Math.round(Math.abs(parseFloat(invGl.stock_value) - parseFloat(invGl.gl_inventory)) * 100) / 100;
+    results.inventoryBalanced = results.inventoryGlTotalDiff < 0.01;
+
+    results.allPassed = results.journalBalance && results.customersBalanced && results.suppliersBalanced &&
+        results.treasuryBalanced && results.trialBalanceBalanced &&
+        results.customersGlBalanced && results.suppliersGlBalanced && results.treasuryGlBalanced &&
+        results.coaGlBalanced && results.inventoryBalanced;
     return results;
 }
 

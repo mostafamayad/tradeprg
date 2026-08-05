@@ -17,28 +17,28 @@ async function getCustomerFullBalance(customerId, poolOrReq) {
   req.input(`cid_${p}`, sql.Int, customerId);
   const cRes = await req.query(`SELECT opening_balance FROM customers WHERE id = @cid_${p}`);
   if (!cRes.recordset[0]) return null;
-  const salesRes = await req.query(`SELECT COALESCE(SUM(grand_total),0) AS total FROM sales_invoices WHERE customer_id = @cid_${p} AND status NOT IN ('cancelled','deleted')`);
-  const retRes = await req.query(`SELECT COALESCE(SUM(grand_total),0) AS total FROM sales_returns WHERE customer_id = @cid_${p} AND status NOT IN ('cancelled','deleted')`);
-  const colRes = await req.query(`
-    SELECT COALESCE(SUM(sub.amount),0) AS total FROM (
-      SELECT cc.amount FROM customer_collections cc
-      LEFT JOIN checks ch ON ch.collection_id = cc.id
-      WHERE cc.customer_id = @cid_${p} AND (ch.id IS NULL OR ch.status NOT IN ('bounced','cancelled'))
-      UNION ALL
-      SELECT ap.amount FROM ar_payments ap
-      LEFT JOIN ar_cheques ac ON ac.payment_id = ap.id
-      WHERE ap.customer_id = @cid_${p} AND ap.status = 'active' AND (ac.id IS NULL OR ac.status NOT IN ('returned','cancelled'))
-      UNION ALL
-      SELECT CASE WHEN an.note_type='debit' THEN an.amount ELSE -an.amount END FROM ar_notes an
-      WHERE an.customer_id = @cid_${p} AND an.status = 'active'
-    ) sub
-  `);
+
+  // SINGLE SOURCE OF TRUTH: derived from the General Ledger (journal_entries on SYS_AR)
+  const accRes = await req.query(`SELECT id FROM chart_of_accounts WHERE system_code = 'SYS_AR'`);
+  const arAccId = accRes.recordset[0] ? accRes.recordset[0].id : null;
+  let net = 0;
+  if (arAccId) {
+    req.input(`ar_${p}`, sql.Int, arAccId);
+    const netRes = await req.query(`
+      SELECT COALESCE(SUM(jl.debit - jl.credit), 0) AS net
+      FROM journal_entry_lines jl
+      JOIN journal_entries je ON je.id = jl.entry_id
+      WHERE je.customer_id = @cid_${p}
+        AND jl.account_id = @ar_${p}
+        AND (je.is_reversed IS NULL OR je.is_reversed = 0)
+        AND (je.reversal_of_id IS NULL)
+        AND (je.source_action IS NULL OR (je.source_action NOT LIKE '%_cancel' AND je.source_action <> 'cancel'))
+    `);
+    net = +netRes.recordset[0].net || 0;
+  }
   const opening = +cRes.recordset[0].opening_balance || 0;
-  const sales = +salesRes.recordset[0].total || 0;
-  const returns = +retRes.recordset[0].total || 0;
-  const collections = +colRes.recordset[0].total || 0;
-  const balance = opening + sales - returns - collections;
-  return { opening, sales, returns, collections, balance };
+  const balance = Math.round((opening + net) * 100) / 100;
+  return { opening, sales: 0, returns: 0, collections: 0, balance };
 }
 
 async function updateCustomerBalance(customerId, poolOrTxReq) {
@@ -90,9 +90,9 @@ async function getCustomerPeriodData(customerId, from, to, poolOrReq) {
 
   const colRes = await req.query(`
     SELECT COALESCE(SUM(amount),0) AS total_collections
-    FROM customer_collections
-    WHERE customer_id = @cid_${p}
-    ${from ? 'AND collection_date >= @from_' + p : ''} ${to ? 'AND collection_date <= @to_' + p : ''}
+    FROM ar_payments
+    WHERE customer_id = @cid_${p} AND status = 'active'
+    ${from ? 'AND payment_date >= @from_' + p : ''} ${to ? 'AND payment_date <= @to_' + p : ''}
   `);
 
   const opening = +cRes.recordset[0].opening_balance || 0;

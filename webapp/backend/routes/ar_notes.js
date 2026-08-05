@@ -141,7 +141,8 @@ router.post('/', asyncHandler(async (req, res) => {
                     { account_id: accRevenue, debit: 0, credit: amountValue, description: `إشعار خصم للعميل ${customerName} بموجب ${noteNo}` }
                 ];
                 await postJournalEntryAsync(txReq, date, `إشعار خصم ${noteNo}`, jeLines, 'ar_note', noteId, req.user ? req.user.id : null,
-                    { module: 'ar_notes', action: 'create_debit_note', document: noteNo, isSystem: true });
+                    { module: 'ar_notes', action: 'create_debit_note', document: noteNo, isSystem: true },
+                    null, customer_id);
             } else {
                 // Credit Note: DR Expense / CR AR
                 const accExpense = await getSystemAccountAsync(txReq, 'SYS_EXPENSE');
@@ -150,7 +151,8 @@ router.post('/', asyncHandler(async (req, res) => {
                     { account_id: accAR, debit: 0, credit: amountValue, description: `إشعار إضافة ${noteNo}: ${reason || ''}` }
                 ];
                 await postJournalEntryAsync(txReq, date, `إشعار إضافة ${noteNo}`, jeLines, 'ar_note', noteId, req.user ? req.user.id : null,
-                    { module: 'ar_notes', action: 'create_credit_note', document: noteNo, isSystem: true });
+                    { module: 'ar_notes', action: 'create_credit_note', document: noteNo, isSystem: true },
+                    null, customer_id);
             }
 
             // 3. Recalculate customer balance

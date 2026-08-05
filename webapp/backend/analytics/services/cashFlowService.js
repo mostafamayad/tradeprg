@@ -1,77 +1,101 @@
 const cfRepo = require('../repositories/cashFlowRepository');
 
+// reference_type buckets for classifying a GL cash/bank movement.
+const OPERATING_IN_REF = ['customer_collection', 'ar_payment', 'ar_cheque', 'crm_settlement'];
+const SUPPLIER_OUT_REF = ['supplier_payment', 'ap_payment', 'ap_cheque', 'purchase_invoice', 'purchase_payment'];
+const INVESTING_OUT_REF = ['fixed_asset'];
+const FINANCE_IN_REF = ['treasury', 'treasury_account', 'transfer', 'ar_note'];
+const FINANCE_OUT_REF = ['treasury', 'treasury_account', 'transfer', 'ap_note', 'sales_return'];
+
+/**
+ * Classify GL cash movements into operating/investing/financing buckets.
+ * A debit on SYS_CASH/SYS_BANK is money-in; a credit is money-out.
+ * @param {Array} movements - from cfRepo.getGlCashMovements
+ */
+function classifyGl(movements) {
+    const b = {
+        collectIn: 0, collectInCount: 0,
+        supplierOut: 0, supplierOutCount: 0,
+        expenseOut: 0, expenseOutCount: 0,
+        salaryOut: 0, salaryOutCount: 0,
+        investingOut: 0, investingOutCount: 0,
+        financingIn: 0, financingInCount: 0,
+        financingOut: 0, financingOutCount: 0
+    };
+
+    movements.forEach(m => {
+        const ref = m.reference_type || '';
+        const debit = parseFloat(m.debit || 0);
+        const credit = parseFloat(m.credit || 0);
+
+        if (debit > 0) {
+            if (OPERATING_IN_REF.includes(ref)) { b.collectIn += debit; b.collectInCount++; }
+            else { b.financingIn += debit; b.financingInCount++; }
+        } else if (credit > 0) {
+            if (SUPPLIER_OUT_REF.includes(ref)) { b.supplierOut += credit; b.supplierOutCount++; }
+            else if (ref === 'expense') { b.expenseOut += credit; b.expenseOutCount++; }
+            else if (ref === 'salary') { b.salaryOut += credit; b.salaryOutCount++; }
+            else if (INVESTING_OUT_REF.includes(ref)) { b.investingOut += credit; b.investingOutCount++; }
+            else { b.financingOut += credit; b.financingOutCount++; }
+        }
+    });
+
+    return b;
+}
+
 /**
  * Full Cash Flow Statement — operating, investing, financing activities.
+ * Fully GL-backed: balances and movements come from journal_entries on
+ * SYS_CASH/SYS_BANK (no treasury_transactions / current_balance dependency).
  * @param {string} [from] - Start date
  * @param {string} [to] - End date
  * @returns {Promise<{operating, investing, financing, summary}>}
  */
 async function getCashFlowStatement(from, to) {
-    const [collections, payments, expenses, salaries, txns, balances] = await Promise.all([
-        cfRepo.getCollections(from, to),
-        cfRepo.getSupplierPayments(from, to),
-        cfRepo.getExpenses(from, to),
-        cfRepo.getSalaryPayments(from, to),
-        cfRepo.getTreasuryTransactions(from, to),
-        cfRepo.getTreasuryBalances()
+    const [movements, balances] = await Promise.all([
+        cfRepo.getGlCashMovements(from, to),
+        cfRepo.getGlBalances(from, to)
     ]);
 
-    const totalCol = collections.reduce((s, c) => s + parseFloat(c.amount || 0), 0);
-    const totalPay = payments.reduce((s, c) => s + parseFloat(c.amount || 0), 0);
-    const totalExp = expenses.reduce((s, c) => s + parseFloat(c.amount || 0), 0);
-    const totalSal = salaries.reduce((s, c) => s + parseFloat(c.amount || 0), 0);
+    const b = classifyGl(movements);
 
-    // Investing: treasury transactions with related_type indicating asset/investment
-    const investingTxns = txns.filter(t => t.trans_type === 'out' && (t.description || '').toLowerCase().includes('asset'));
-    const totalInvesting = investingTxns.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+    const openingCash = balances.reduce((s, a) => s + parseFloat(a.opening || 0), 0);
+    const closingCash = balances.reduce((s, a) => s + parseFloat(a.closing || 0), 0);
+    const totalInflow = balances.reduce((s, a) => s + parseFloat(a.inflow || 0), 0);
+    const totalOutflow = balances.reduce((s, a) => s + parseFloat(a.outflow || 0), 0);
 
-    // Financing: remaining treasury inflows/outflows not classified as operating or investing
-    const operatingOutflowIds = new Set();
-    const classifyAmount = txns.reduce((acc, t) => {
-        const amt = parseFloat(t.amount || 0);
-        if (t.trans_type === 'in') acc.otherIn += amt;
-        else acc.otherOut += amt;
-        return acc;
-    }, { otherIn: 0, otherOut: 0 });
-
-    const openingCash = balances.reduce((s, a) => s + parseFloat(a.opening_balance || 0), 0);
-    const closingCash = balances.reduce((s, a) => s + parseFloat(a.current_balance || 0), 0);
-
-    const operatingInflow = totalCol;
-    const operatingOutflow = totalPay + totalExp + totalSal;
+    const operatingInflow = b.collectIn;
+    const operatingOutflow = b.supplierOut + b.expenseOut + b.salaryOut;
     const operatingNet = operatingInflow - operatingOutflow;
 
-    const investingOutflow = totalInvesting;
+    const investingOutflow = b.investingOut;
     const investingNet = -investingOutflow;
 
-    const financingInflow = classifyAmount.otherIn;
-    const financingOutflow = classifyAmount.otherOut;
+    const financingInflow = b.financingIn;
+    const financingOutflow = b.financingOut;
     const financingNet = financingInflow - financingOutflow;
-
-    const totalInflow = operatingInflow + financingInflow;
-    const totalOutflow = operatingOutflow + investingOutflow + financingOutflow;
 
     return {
         operating: {
             inflows: [
-                { category: 'Customer Collections', amount: Math.round(operatingInflow), count: collections.length }
+                { category: 'Customer Collections', amount: Math.round(operatingInflow), count: b.collectInCount }
             ],
             outflows: [
-                { category: 'Supplier Payments', amount: Math.round(totalPay), count: payments.length },
-                { category: 'Operating Expenses', amount: Math.round(totalExp), count: expenses.length },
-                { category: 'Salaries & Payroll', amount: Math.round(totalSal), count: salaries.length }
+                { category: 'Supplier Payments', amount: Math.round(b.supplierOut), count: b.supplierOutCount },
+                { category: 'Operating Expenses', amount: Math.round(b.expenseOut), count: b.expenseOutCount },
+                { category: 'Salaries & Payroll', amount: Math.round(b.salaryOut), count: b.salaryOutCount }
             ],
             net: Math.round(operatingNet)
         },
         investing: {
             outflows: [
-                { category: 'Asset Purchases', amount: Math.round(totalInvesting), count: investingTxns.length }
+                { category: 'Asset Purchases', amount: Math.round(investingOutflow), count: b.investingOutCount }
             ],
             net: Math.round(investingNet)
         },
         financing: {
-            inflows: [{ category: 'Other Receipts', amount: Math.round(classifyAmount.otherIn) }],
-            outflows: [{ category: 'Other Payments', amount: Math.round(classifyAmount.otherOut) }],
+            inflows: [{ category: 'Other Receipts', amount: Math.round(financingInflow), count: b.financingInCount }],
+            outflows: [{ category: 'Other Payments', amount: Math.round(financingOutflow), count: b.financingOutCount }],
             net: Math.round(financingNet)
         },
         summary: {
@@ -81,7 +105,7 @@ async function getCashFlowStatement(from, to) {
             netCashFlow: Math.round(totalInflow - totalOutflow),
             closingCash: Math.round(closingCash),
             accounts: balances.map(a => ({
-                name: a.account_name, type: a.account_type, balance: Math.round(a.current_balance)
+                name: a.account_name, type: a.account_type, balance: Math.round(a.closing)
             }))
         }
     };
@@ -137,13 +161,13 @@ async function getCashFlowKpis(from, to) {
  * @returns {Promise<{cashInVsOut, dailyBalance, monthlyTrend, operatingBreakdown}>}
  */
 async function getCashFlowCharts(from, to) {
-    const [daily, monthly, collections, payments, expenses] = await Promise.all([
+    const [daily, monthly, movements] = await Promise.all([
         cfRepo.getDailyCashBalance(from, to),
         cfRepo.getMonthlyCashFlow(from, to),
-        cfRepo.getCollections(from, to),
-        cfRepo.getSupplierPayments(from, to),
-        cfRepo.getExpenses(from, to)
+        cfRepo.getGlCashMovements(from, to)
     ]);
+
+    const b = classifyGl(movements);
 
     return {
         cashInVsOut: [
@@ -162,9 +186,9 @@ async function getCashFlowCharts(from, to) {
             net: Math.round(m.net)
         })),
         operatingBreakdown: [
-            { category: 'Collections', amount: Math.round(collections.reduce((s, c) => s + parseFloat(c.amount || 0), 0)) },
-            { category: 'Supplier Payments', amount: Math.round(payments.reduce((s, c) => s + parseFloat(c.amount || 0), 0)) },
-            { category: 'Expenses', amount: Math.round(expenses.reduce((s, c) => s + parseFloat(c.amount || 0), 0)) }
+            { category: 'Collections', amount: Math.round(b.collectIn) },
+            { category: 'Supplier Payments', amount: Math.round(b.supplierOut) },
+            { category: 'Expenses', amount: Math.round(b.expenseOut + b.salaryOut) }
         ]
     };
 }

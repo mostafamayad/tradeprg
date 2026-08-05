@@ -4,6 +4,16 @@ const { postJournalEntryAsync, reverseJournalEntryAsync } = require('../services
 const asyncHandler = require('../utils/asyncHandler');
 const accountRepo = require('../repositories/accountRepository');
 const fiscalRepo = require('../repositories/fiscalPeriodRepository');
+
+// Canonical "active journal entry" predicate. Must stay in sync with
+// routes/admin.js, services/accountingEngine.js, services/balanceService.js,
+// scripts/integrity_audit.js and the statement queries in routes/reports.js:
+// excludes reversed entries, reversal copies (reversal_of_id), and
+// cancellation actions (*_cancel / cancel).
+const ACTIVE_JE = `(j.is_reversed IS NULL OR j.is_reversed = 0)
+    AND (j.reversal_of_id IS NULL)
+    AND (j.source_action IS NULL OR (j.source_action NOT LIKE '%_cancel' AND j.source_action <> 'cancel'))`;
+
 // ── Fiscal Periods ──────────────────────────────────────────
 
 // GET all fiscal periods
@@ -576,12 +586,13 @@ router.get('/ledger/:accountId', asyncHandler(async (req, res) => {
             FROM journal_entry_lines l
             JOIN journal_entries j ON l.entry_id = j.id
             WHERE l.account_id = @accId
+              AND ${ACTIVE_JE}
         `;
 
         if (from) { sqlQuery += ` AND j.entry_date >= @from`; request.input('from', sql.NVarChar, from); }
         if (to) { sqlQuery += ` AND j.entry_date <= @to`; request.input('to', sql.NVarChar, to); }
         
-        sqlQuery += ` ORDER BY j.entry_date ASC, j.id ASC`;
+        sqlQuery += ` ORDER BY j.entry_date ASC, j.created_at ASC, j.entry_no ASC`;
 
         const linesRes = await request.query(sqlQuery);
 
@@ -611,11 +622,11 @@ router.get('/trial-balance', asyncHandler(async (req, res) => {
         let periodWhere = ' WHERE 1=1';
 
         if (from) {
-            openingWhere = ' WHERE j.entry_date < @from AND (j.is_reversed = 0 OR j.is_reversed IS NULL)';
-            periodWhere += ' AND (j.is_reversed = 0 OR j.is_reversed IS NULL) AND j.entry_date >= @from';
+            openingWhere = ` WHERE j.entry_date < @from AND ${ACTIVE_JE}`;
+            periodWhere += ` AND ${ACTIVE_JE} AND j.entry_date >= @from`;
             request.input('from', sql.NVarChar, from);
         } else {
-            periodWhere += ' AND (j.is_reversed = 0 OR j.is_reversed IS NULL)';
+            periodWhere += ` AND ${ACTIVE_JE}`;
         }
         
         if (to) {
@@ -746,6 +757,7 @@ router.get('/general-ledger', asyncHandler(async (req, res) => {
                 FROM journal_entry_lines l
                 JOIN journal_entries j ON l.entry_id = j.id
                 WHERE j.entry_date < @from
+                    AND ${ACTIVE_JE}
                     ${hasAccount ? 'AND l.account_id = @accId' : ''}
                     ${hasRefType ? 'AND j.reference_type = @refType' : ''}
                     ${hasCreatedBy ? 'AND j.created_by = @createdBy' : ''}
@@ -776,6 +788,7 @@ router.get('/general-ledger', asyncHandler(async (req, res) => {
             JOIN journal_entries j ON l.entry_id = j.id
             JOIN chart_of_accounts a ON l.account_id = a.id
             WHERE 1=1
+                AND ${ACTIVE_JE}
                 ${hasFrom ? 'AND j.entry_date >= @from' : ''}
                 ${hasTo ? 'AND j.entry_date <= @to' : ''}
                 ${hasAccount ? 'AND l.account_id = @accId' : ''}
@@ -1016,9 +1029,11 @@ router.get('/balance-sheet', asyncHandler(async (req, res) => {
         let openingWhere = ' WHERE 1=0';
         let periodWhere = ' WHERE 1=1';
         if (from) {
-            openingWhere = ' WHERE j.entry_date < @from';
-            periodWhere += ' AND j.entry_date >= @from';
+            openingWhere = ` WHERE j.entry_date < @from AND ${ACTIVE_JE}`;
+            periodWhere += ` AND j.entry_date >= @from AND ${ACTIVE_JE}`;
             request.input('from', sql.NVarChar, from);
+        } else {
+            periodWhere += ` AND ${ACTIVE_JE}`;
         }
         if (to) {
             periodWhere += ' AND j.entry_date <= @to';
@@ -1291,9 +1306,11 @@ router.get('/income-statement', asyncHandler(async (req, res) => {
         let openingWhere = ' WHERE 1=0';
         let periodWhere = ' WHERE 1=1';
         if (from) {
-            openingWhere = ' WHERE j.entry_date < @from';
-            periodWhere += ' AND j.entry_date >= @from';
+            openingWhere = ` WHERE j.entry_date < @from AND ${ACTIVE_JE}`;
+            periodWhere += ` AND j.entry_date >= @from AND ${ACTIVE_JE}`;
             request.input('from', sql.NVarChar, from);
+        } else {
+            periodWhere += ` AND ${ACTIVE_JE}`;
         }
         if (to) {
             periodWhere += ' AND j.entry_date <= @to';

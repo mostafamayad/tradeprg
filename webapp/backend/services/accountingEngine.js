@@ -517,8 +517,10 @@ async function recalcSupplierBalanceAsync(poolOrTxReq, supplierId) {
 /**
  * Recalculate Customer Balance
  * Must be run within an existing transaction or with a pool request.
- * Formula: opening_balance + SUM(sales) - SUM(returns) - SUM(collections)
- * Collections include: customer_collections (legacy), ar_payments, ar_notes
+ * SINGLE SOURCE OF TRUTH: derived from the General Ledger (journal_entries on SYS_AR).
+ * Formula: opening_balance + SUM(debit - credit) over SYS_AR lines of non-reversed
+ * journal entries attributed to this customer (je.customer_id).
+ * Pending/issued cheques have NO journal entry → zero impact until deposited.
  */
 async function recalcCustomerBalanceAsync(poolOrTxReq, customerId) {
     const pRand = Math.random().toString(36).substring(2, 9);
@@ -528,34 +530,91 @@ async function recalcCustomerBalanceAsync(poolOrTxReq, customerId) {
     const cRes = await request.query(`SELECT opening_balance FROM customers WHERE id = @rcb_cid_${pRand}`);
     if (!cRes.recordset[0]) return;
 
-    const salesRes = await request.query(`SELECT COALESCE(SUM(grand_total), 0) as total FROM sales_invoices WHERE customer_id = @rcb_cid_${pRand} AND status NOT IN ('cancelled', 'deleted')`);
-    const returnsRes = await request.query(`SELECT COALESCE(SUM(grand_total), 0) as total FROM sales_returns WHERE customer_id = @rcb_cid_${pRand} AND status NOT IN ('cancelled', 'deleted')`);
+    const arAccId = await getSystemAccountAsync(request, 'SYS_AR');
+    request.input(`rcb_ar_${pRand}`, sql.Int, arAccId);
 
-    const collectionsRes = await request.query(`
-        SELECT COALESCE(SUM(sub.amount), 0) as total FROM (
-            SELECT cc.amount FROM customer_collections cc
-            LEFT JOIN checks ch ON ch.collection_id = cc.id
-            WHERE cc.customer_id = @rcb_cid_${pRand} AND (ch.id IS NULL OR ch.status NOT IN ('bounced', 'cancelled'))
-            UNION ALL
-            SELECT ap.amount FROM ar_payments ap
-            LEFT JOIN ar_cheques ac ON ac.payment_id = ap.id
-            WHERE ap.customer_id = @rcb_cid_${pRand} AND ap.status = 'active' AND (ac.id IS NULL OR ac.status NOT IN ('returned', 'cancelled'))
-            UNION ALL
-            SELECT CASE WHEN an.note_type='debit' THEN an.amount ELSE -an.amount END FROM ar_notes an
-            WHERE an.customer_id = @rcb_cid_${pRand} AND an.status = 'active'
-        ) sub
+    const netRes = await request.query(`
+        SELECT COALESCE(SUM(jl.debit - jl.credit), 0) AS net
+        FROM journal_entry_lines jl
+        JOIN journal_entries je ON je.id = jl.entry_id
+        WHERE je.customer_id = @rcb_cid_${pRand}
+          AND jl.account_id = @rcb_ar_${pRand}
+          AND (je.is_reversed IS NULL OR je.is_reversed = 0)
+          AND (je.reversal_of_id IS NULL)
+          AND (je.source_action IS NULL OR (je.source_action NOT LIKE '%_cancel' AND je.source_action <> 'cancel'))
     `);
 
     const opening = cRes.recordset[0].opening_balance || 0;
-    const sales = salesRes.recordset[0].total || 0;
-    const returns = returnsRes.recordset[0].total || 0;
-    const collections = collectionsRes.recordset[0].total || 0;
-
-    const balance = opening + sales - returns - collections;
+    const net = netRes.recordset[0].net || 0;
+    const balance = Math.round((opening + net) * 100) / 100;
 
     request.input(`rcb_bal_${pRand}`, sql.Decimal(18, 2), balance);
     await request.query(`UPDATE customers SET current_balance = @rcb_bal_${pRand} WHERE id = @rcb_cid_${pRand}`);
     return balance;
+}
+
+/**
+ * Recalculate Treasury Account Balance
+ * Must be run within an existing transaction or with a pool request.
+ * SINGLE SOURCE OF TRUTH: derived from the General Ledger only.
+ * Formula: SUM(debit - credit) over the linked COA account (via system_code:
+ * cash -> SYS_CASH, bank -> SYS_BANK) of non-reversed journal entry lines.
+ * NOTE: opening_balance is intentionally NOT added — opening balances are posted
+ * to the GL as opening Journal Entries, so adding them again would double count.
+ * Mapping guard: more than one treasury account mapped to the same system_code
+ * is an INVALID mapping (GL cannot attribute lines per account) -> throws.
+ * Adopt mode (TREASURY_GL_ADOPT=1) writes the computed value; otherwise it only
+ * computes and reports any diff vs the stored balance (no write).
+ */
+async function recalcTreasuryBalanceAsync(poolOrTxReq, treasuryAccountId) {
+    const pRand = Math.random().toString(36).substring(2, 9);
+    const request = typeof poolOrTxReq.request === 'function' ? poolOrTxReq.request() : poolOrTxReq;
+
+    request.input(`rtb_tid_${pRand}`, sql.Int, treasuryAccountId);
+    const tRes = await request.query(`SELECT id, account_type, system_code, current_balance, opening_balance FROM treasury_accounts WHERE id = @rtb_tid_${pRand}`);
+    const ta = tRes.recordset[0];
+    if (!ta) return null;
+
+    // Resolve the GL system account code for this treasury account.
+    // Prefer the explicit system_code column (added in 4a migration) when present;
+    // otherwise derive from account_type (cash -> SYS_CASH, bank -> SYS_BANK) for
+    // legacy DBs that predate the column.
+    const sysCode = ta.system_code || (ta.account_type === 'bank' ? 'SYS_BANK' : 'SYS_CASH');
+
+    // Guard: exactly one treasury account may map to the same system code
+    const mapped = `CASE WHEN system_code IS NOT NULL THEN system_code WHEN account_type = 'bank' THEN 'SYS_BANK' ELSE 'SYS_CASH' END`;
+    request.input(`rtb_sc_${pRand}`, sql.NVarChar, sysCode);
+    const cntRes = await request.query(`SELECT COUNT(*) AS cnt FROM treasury_accounts WHERE ${mapped} = @rtb_sc_${pRand}`);
+    if (cntRes.recordset[0].cnt > 1) {
+        throw new Error(`[recalcTreasuryBalance] تعارض تخطيط: أكثر من حساب خزينة مرتبط بـ ${sysCode} (${cntRes.recordset[0].cnt} حسابات). لا يمكن توزيع رصيد GL على عدة حسابات تشغيلية. يجب ربط كل حساب خزينة بحساب GL خاص به (One-to-One).`);
+    }
+
+    const coaAccId = await getSystemAccountAsync(request, sysCode);
+    request.input(`rtb_coa_${pRand}`, sql.Int, coaAccId);
+
+    const netRes = await request.query(`
+        SELECT COALESCE(SUM(jl.debit - jl.credit), 0) AS net
+        FROM journal_entry_lines jl
+        JOIN journal_entries je ON je.id = jl.entry_id
+        WHERE jl.account_id = @rtb_coa_${pRand}
+          AND (je.is_reversed IS NULL OR je.is_reversed = 0)
+          AND (je.reversal_of_id IS NULL)
+          AND (je.source_action IS NULL OR (je.source_action NOT LIKE '%_cancel' AND je.source_action <> 'cancel'))
+    `);
+
+    const balance = Math.round((netRes.recordset[0].net || 0) * 100) / 100;
+    const stored = Math.round((parseFloat(ta.current_balance) || 0) * 100) / 100;
+    const diff = Math.round((balance - stored) * 100) / 100;
+
+    const adopt = process.env.TREASURY_GL_ADOPT === '1' || process.env.TREASURY_GL_ADOPT === 'true';
+    if (adopt) {
+        request.input(`rtb_bal_${pRand}`, sql.Decimal(18, 2), balance);
+        await request.query(`UPDATE treasury_accounts SET current_balance = @rtb_bal_${pRand} WHERE id = @rtb_tid_${pRand}`);
+    } else if (Math.abs(diff) > 0.001) {
+        console.warn(`[recalcTreasuryBalance] DIFF account=${treasuryAccountId} sys=${sysCode} stored=${stored} GL=${balance} diff=${diff} (running in parallel — NOT adopted)`);
+    }
+
+    return { treasury_account_id: treasuryAccountId, system_code: sysCode, balance, stored, diff, adopted: adopt };
 }
 
 module.exports = {
@@ -565,5 +624,6 @@ module.exports = {
     reverseJournalEntryAsync,
     seedRequiredSystemAccountsAsync,
     recalcSupplierBalanceAsync,
-    recalcCustomerBalanceAsync
+    recalcCustomerBalanceAsync,
+    recalcTreasuryBalanceAsync
 };

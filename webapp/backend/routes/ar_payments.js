@@ -4,7 +4,7 @@
 const router = require('express').Router();
 const { getPool, sql } = require('../database/mssql_db');
 const asyncHandler = require('../utils/asyncHandler');
-const { postJournalEntryAsync, getSystemAccountAsync, reverseJournalEntryAsync, recalcCustomerBalanceAsync } = require('../services/accountingEngine');
+const { postJournalEntryAsync, getSystemAccountAsync, reverseJournalEntryAsync, recalcCustomerBalanceAsync, recalcTreasuryBalanceAsync } = require('../services/accountingEngine');
 const logActivity = require('../middleware/logger');
 
 // ============================================================
@@ -72,13 +72,9 @@ async function refreshInvoiceStatusAsync(txRequest, invoiceId) {
     const retRes = await txRequest.query(`SELECT COALESCE(SUM(grand_total),0) as total FROM sales_returns WHERE invoice_id = @ris_id_${srfx} AND status NOT IN ('cancelled', 'deleted')`);
     const returnsTotal = retRes.recordset[0].total || 0;
 
-    // Sum allocations from both collection_allocations and ar_payment_allocations
+    // Single source of truth: ar_payment_allocations.net_amount (excludes legacy collection_allocations)
     const allocRes = await txRequest.query(`
-        SELECT COALESCE(SUM(sub.amount), 0) as total FROM (
-            SELECT COALESCE(SUM(ca.amount), 0) as amount FROM collection_allocations ca WHERE ca.invoice_id = @ris_id_${srfx}
-            UNION ALL
-            SELECT COALESCE(SUM(apa.allocated_amount), 0) as amount FROM ar_payment_allocations apa WHERE apa.invoice_id = @ris_id_${srfx}
-        ) sub
+        SELECT COALESCE(SUM(apa.net_amount), 0) as total FROM ar_payment_allocations apa WHERE apa.invoice_id = @ris_id_${srfx}
     `);
     const totalPaid = allocRes.recordset[0].total || 0;
 
@@ -127,7 +123,7 @@ async function postTreasuryInAsync(txRequest, { date, amount, customerId, docume
 
     await txRequest.query(`UPDATE treasury_accounts SET current_balance = current_balance + @pt_amt_${pfx} WHERE id = @pt_acc_${pfx}`);
 
-    return transNo;
+    return { transNo, accountId: treasury.id };
 }
 
 async function allocatePaymentAsync(txRequest, customerId, paymentId, amount, applyToInvoices = null) {
@@ -180,8 +176,8 @@ async function allocatePaymentAsync(txRequest, customerId, paymentId, amount, ap
         txRequest.input(`al_amt_${sf}`, sql.Decimal(18,2), applyAmount);
 
         await txRequest.query(`
-            INSERT INTO ar_payment_allocations (payment_id, invoice_id, allocated_amount)
-            VALUES (@al_payid_${sf}, @al_invid_ap_${sf}, @al_amt_${sf})
+            INSERT INTO ar_payment_allocations (payment_id, invoice_id, allocated_amount, discount_amount, net_amount)
+            VALUES (@al_payid_${sf}, @al_invid_ap_${sf}, @al_amt_${sf}, 0, @al_amt_${sf})
         `);
 
         await txRequest.query(`
@@ -384,7 +380,7 @@ router.post('/', asyncHandler(async (req, res) => {
             }
 
             // Treasury entry for cash/transfer
-            await postTreasuryInAsync(txReq, {
+            const treasuryResult = await postTreasuryInAsync(txReq, {
                 date,
                 amount: amountValue,
                 customerId: customer_id,
@@ -398,9 +394,6 @@ router.post('/', asyncHandler(async (req, res) => {
                 await allocatePaymentAsync(txReq, customer_id, paymentId, amountValue, apply_to_invoices);
             }
 
-            // Recalculate customer balance
-            await recalcCustomerBalanceAsync(txReq, customer_id);
-
             // --- ACCOUNTING INTEGRATION: AR Payment ---
             if (method !== 'check') {
                 const accAR = await getSystemAccountAsync(txReq, 'SYS_AR');
@@ -412,9 +405,18 @@ router.post('/', asyncHandler(async (req, res) => {
                 await postJournalEntryAsync(
                     txReq, date, `تسديد دفعة ${payNo}`, colLines,
                     'ar_payment', paymentId, req.user ? req.user.id : null,
-                    { module: 'ar_payments', action: 'create_payment', document: payNo, isSystem: true }
+                    { module: 'ar_payments', action: 'create_payment', document: payNo, isSystem: true },
+                    null, customer_id
                 );
             }
+
+            // Recalculate treasury balance (AFTER journal entry so GL-derived balance includes it)
+            if (treasuryResult && treasuryResult.accountId) {
+                await recalcTreasuryBalanceAsync(txReq, treasuryResult.accountId);
+            }
+
+            // Recalculate customer balance (AFTER journal entry so GL-derived balance includes it)
+            await recalcCustomerBalanceAsync(txReq, customer_id);
 
             // Log customer activity
             if (customer_id) {
@@ -485,7 +487,10 @@ router.delete('/:id', asyncHandler(async (req, res) => {
 
             for (const alloc of allocations) {
                 txReq.input(`inv_restore_${alloc.id}`, sql.Int, alloc.invoice_id);
-                txReq.input(`amt_restore_${alloc.id}`, sql.Decimal(18, 2), alloc.allocated_amount);
+                // Restore by net (allocated + discount) — the discount forgave part of
+                // the receivable, so voiding must return the full net to the invoice.
+                const netRestore = num(alloc.allocated_amount) + (num(alloc.discount_amount) || 0);
+                txReq.input(`amt_restore_${alloc.id}`, sql.Decimal(18, 2), netRestore);
 
                 await txReq.query(`
                     UPDATE sales_invoices
@@ -497,15 +502,17 @@ router.delete('/:id', asyncHandler(async (req, res) => {
                 await refreshInvoiceStatusAsync(txReq, alloc.invoice_id);
             }
 
-            // 2. Reverse journal entry if one exists (cash/transfer only)
+            // 2. Reverse journal entries if any (cash/transfer only)
+            //    Reverses ALL active entries referencing this voucher — the receipt
+            //    JE AND the settlement discount JE (both ref 'ar_payment').
             if (payment.payment_method !== 'check') {
                 const jeRes = await txReq.query(`
                     SELECT id FROM journal_entries
                     WHERE reference_type = 'ar_payment' AND reference_id = @pid AND (is_reversed IS NULL OR is_reversed = 0)
                 `);
-                if (jeRes.recordset[0]) {
+                for (const je of jeRes.recordset) {
                     await reverseJournalEntryAsync(
-                        txReq, jeRes.recordset[0].id,
+                        txReq, je.id,
                         `قيد عكسي لسند تسديد ${payment.payment_no}`,
                         req.user ? req.user.id : null
                     );
@@ -536,6 +543,8 @@ router.delete('/:id', asyncHandler(async (req, res) => {
                     `);
 
                     await txReq.query(`UPDATE treasury_accounts SET current_balance = current_balance - @rt_amt WHERE id = @rt_acc`);
+
+                    await recalcTreasuryBalanceAsync(txReq, treasTx.account_id);
                 }
             }
 
@@ -616,7 +625,8 @@ router.get('/matching/customers', asyncHandler(async (req, res) => {
             )
             OR EXISTS (
                 SELECT 1 FROM sales_invoices si
-                WHERE si.customer_id = c.id AND si.status IN ('pending', 'partial') AND si.remaining > 0
+                WHERE si.customer_id = c.id AND si.status IN ('pending', 'partial')
+                AND si.grand_total > COALESCE((SELECT SUM(apa.net_amount) FROM ar_payment_allocations apa WHERE apa.invoice_id = si.id), 0)
             )
             ORDER BY c.customer_name
         `);
@@ -653,11 +663,17 @@ router.get('/matching/data/:customerId', asyncHandler(async (req, res) => {
         }
 
         const invoicesRes = await request.query(`
-            SELECT si.id, si.invoice_no, si.invoice_date, si.grand_total, 
-                si.amount_paid, si.remaining, si.status
-            FROM sales_invoices si
-            WHERE si.customer_id = @cid AND si.status IN ('pending', 'partial') AND si.remaining > 0
-            ORDER BY si.invoice_date
+            SELECT * FROM (
+                SELECT si.id, si.invoice_no, si.invoice_date, si.grand_total,
+                    si.grand_total
+                    - COALESCE((SELECT SUM(apa.net_amount) FROM ar_payment_allocations apa WHERE apa.invoice_id = si.id), 0)
+                    - COALESCE((SELECT SUM(sr.grand_total) FROM sales_returns sr WHERE sr.invoice_id = si.id AND sr.status NOT IN ('cancelled','deleted')), 0) AS remaining,
+                    si.status
+                FROM sales_invoices si
+                WHERE si.customer_id = @cid AND si.status IN ('pending', 'partial')
+            ) t
+            WHERE t.remaining > 0
+            ORDER BY t.invoice_date
         `);
         console.log(`[AR Matching] Customer ${cid}: found ${invoicesRes.recordset.length} unpaid invoices`);
         if (invoicesRes.recordset.length > 0) {
@@ -760,25 +776,30 @@ router.post('/matching/save', asyncHandler(async (req, res) => {
                     txReq.input(`mp_npid_${asfx}`, sql.Int, paymentId);
                     txReq.input(`mp_niid_${asfx}`, sql.Int, a.invoice_id);
                     txReq.input(`mp_namt_${asfx}`, sql.Decimal(18, 2), a.allocated_amount);
+                    txReq.input(`mp_ndis_${asfx}`, sql.Decimal(18, 2), discAmt);
+                    txReq.input(`mp_nnet_${asfx}`, sql.Decimal(18, 2), num(a.allocated_amount) + discAmt);
 
                     const invRes = await txReq.query(`
-                        SELECT id, invoice_no, grand_total, amount_paid, remaining, status
-                        FROM sales_invoices
-                        WHERE id = @mp_niid_${asfx} AND customer_id = @mp_cid_${sfx}
+                        SELECT si.id, si.invoice_no, si.grand_total, si.status,
+                            COALESCE((SELECT SUM(net_amount) FROM ar_payment_allocations WHERE invoice_id = si.id), 0) AS allocated_net,
+                            COALESCE((SELECT SUM(sr.grand_total) FROM sales_returns sr WHERE sr.invoice_id = si.id AND sr.status NOT IN ('cancelled','deleted')), 0) AS returns_total
+                        FROM sales_invoices si
+                        WHERE si.id = @mp_niid_${asfx} AND si.customer_id = @mp_cid_${sfx}
                     `);
                     if (!invRes.recordset[0]) {
                         console.log(`[AR Matching Save] FAIL: invoice ${a.invoice_id} not found for customer ${customer_id}`);
                         throw new Error(`الفاتورة رقم ${a.invoice_id} غير موجودة لهذا العميل`);
                     }
                     const inv = invRes.recordset[0];
-                    console.log(`[AR Matching Save] Invoice found: ${inv.invoice_no}, remaining=${inv.remaining}, status=${inv.status}, to_allocate=${a.allocated_amount}, discount=${discAmt}`);
+                    const invDue = Math.max(0, num(inv.grand_total) - num(inv.allocated_net) - num(inv.returns_total));
+                    console.log(`[AR Matching Save] Invoice found: ${inv.invoice_no}, dynamic_due=${invDue}, status=${inv.status}, to_allocate=${a.allocated_amount}, discount=${discAmt}`);
                     
                     if (inv.status === 'cancelled' || inv.status === 'deleted') throw new Error(`لا يمكن توزيع المبلغ على فاتورة ملغية (${inv.invoice_no})`);
-                    if (totalInvoiceCredit > inv.remaining) throw new Error(`المبلغ المدفوع + الخصم (${totalInvoiceCredit}) يتجاوز المتبقي من الفاتورة ${inv.invoice_no} (${inv.remaining})`);
+                    if (totalInvoiceCredit > invDue) throw new Error(`المبلغ المدفوع + الخصم (${totalInvoiceCredit}) يتجاوز المتبقي من الفاتورة ${inv.invoice_no} (${invDue})`);
 
                     await txReq.query(`
-                        INSERT INTO ar_payment_allocations (payment_id, invoice_id, allocated_amount)
-                        VALUES (@mp_npid_${asfx}, @mp_niid_${asfx}, @mp_namt_${asfx})
+                        INSERT INTO ar_payment_allocations (payment_id, invoice_id, allocated_amount, discount_amount, net_amount)
+                        VALUES (@mp_npid_${asfx}, @mp_niid_${asfx}, @mp_namt_${asfx}, @mp_ndis_${asfx}, @mp_nnet_${asfx})
                     `);
 
                     await txReq.query(`
@@ -790,20 +811,25 @@ router.post('/matching/save', asyncHandler(async (req, res) => {
                     console.log(`[AR Matching Save] Invoice ${inv.invoice_no} updated: amount_paid += ${totalInvoiceCredit}`);
 
                     // If there is a discount, generate a Journal Entry for it
+                    // Design rule: discount is a Settlement event attached to the
+                    // ar_payment VOUCHER (not the invoice) so the invoice lifecycle
+                    // keeps exactly 2 JE's (issuance + COGS) and voiding the voucher
+                    // reverses the discount in the same transaction.
                     if (discAmt > 0) {
-                        const { createJournalEntryAsync } = require('./journal_entries');
-                        await createJournalEntryAsync(txReq, {
-                            reference_type: 'sales_discount',
-                            reference_id: a.invoice_id,
-                            entry_date: new Date(),
-                            description: `خصم سداد نقدي للفاتورة ${inv.invoice_no} بموجب تسوية دفع`,
-                            customer_id: customer_id,
-                            lines: [
-                                { account_system_code: 'SYS_SALES_DISCOUNT', debit: discAmt, credit: 0 },
-                                { account_system_code: 'SYS_AR', debit: 0, credit: discAmt }
-                            ]
-                        });
-                        console.log(`[AR Matching Save] Discount journal entry created: ${discAmt}`);
+                        const { postJournalEntryAsync, getSystemAccountAsync } = require('../services/accountingEngine');
+                        const discAcc = await getSystemAccountAsync(txReq, 'SYS_SALES_DISCOUNT');
+                        const arAcc = await getSystemAccountAsync(txReq, 'SYS_AR');
+                        await postJournalEntryAsync(
+                            txReq, new Date(), `خصم سداد نقدي للفاتورة ${inv.invoice_no} بموجب تسوية سند قبض ${payment.payment_no}`,
+                            [
+                                { account_id: discAcc, debit: discAmt, credit: 0, description: `خصم سداد للفاتورة ${inv.invoice_no}` },
+                                { account_id: arAcc, debit: 0, credit: discAmt, description: `خصم سداد للفاتورة ${inv.invoice_no}` }
+                            ],
+                            'ar_payment', paymentId, null,
+                            { module: 'ar_payments', action: 'payment_matching_discount', document: `MATCH-${paymentId}-${inv.invoice_no}`, isSystem: true },
+                            null, customer_id
+                        );
+                        console.log(`[AR Matching Save] Discount journal entry created: ${discAmt} (attached to payment ${paymentId})`);
                     }
 
                     affectedInvoiceIds.add(a.invoice_id);
@@ -813,6 +839,10 @@ router.post('/matching/save', asyncHandler(async (req, res) => {
             for (const invId of affectedInvoiceIds) {
                 await refreshInvoiceStatusAsync(txReq, invId);
             }
+
+            // Customer balance is GL-referent: recompute within the same transaction
+            // so the subledger reflects the discount's reduction of the receivable (no drift).
+            await recalcCustomerBalanceAsync(txReq, customer_id);
 
             await tx.commit();
             console.log(`[AR Matching Save] Transaction committed successfully for customer ${customerName}, ${allocations.length} allocations`);

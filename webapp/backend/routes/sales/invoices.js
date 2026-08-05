@@ -1,10 +1,13 @@
+// LEGACY - DO NOT USE
+// Replaced by the Allocation Engine (routes/sales.js + routes/collections.js + routes/ar_payments.js).
+// Not mounted in server.js, not imported anywhere. Kept as archive only; excluded from Single Source Compliance.
 // ============================================================
 // ROUTE: Sales Invoices
 // ============================================================
 
 const router = require('express').Router();
 const { getPool, sql } = require('../../database/mssql_db');
-const { postJournalEntryAsync, reverseJournalEntryAsync, getSystemAccountAsync, recalcCustomerBalanceAsync } = require('../../services/accountingEngine');
+const { postJournalEntryAsync, reverseJournalEntryAsync, getSystemAccountAsync, recalcCustomerBalanceAsync, recalcTreasuryBalanceAsync } = require('../../services/accountingEngine');
 const { updateStockBalanceAsync } = require('../../services/stockEngine');
 const { nextDocNoAsync } = require('../../services/documentEngine');
 const { createTreasuryTransactionAsync } = require('../../services/treasuryEngine');
@@ -461,6 +464,8 @@ router.post('/invoices', async (req, res) => {
                 'customer_collection', colId, req.user ? req.user.id : null,
                 { module: 'collections', action: 'create_collection', document: colNo, isSystem: true }
             );
+
+            if (treasury) await recalcTreasuryBalanceAsync(txRequest, treasury.id);
         }
 
         await transaction.commit();
@@ -699,6 +704,8 @@ router.post('/invoices/:id/pay', async (req, res) => {
                 { module: 'collections', action: 'create_collection', document: colNo, isSystem: true }
             );
         }
+
+        if (treasury) await recalcTreasuryBalanceAsync(txRequest, treasury.id);
 
         await updateInvoiceStatusAsync(txRequest, invoice.id);
         await recalcCustomerBalanceAsync(txRequest, invoice.customer_id);

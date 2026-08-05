@@ -104,7 +104,11 @@ const EXTRA_TABLES = {
             id INT IDENTITY(1,1) PRIMARY KEY,
             payment_id INT NOT NULL,
             invoice_id INT NOT NULL,
-            allocated_amount DECIMAL(18,4) NOT NULL
+            allocated_amount DECIMAL(18,4) NOT NULL,
+            discount_amount DECIMAL(18,4) NOT NULL DEFAULT 0,
+            net_amount DECIMAL(18,4) NOT NULL DEFAULT 0,
+            created_at DATETIME DEFAULT GETDATE(),
+            created_by INT NULL
         );
     END`,
   ap_payment_allocations: `
@@ -228,6 +232,12 @@ async function ensureCoreColumns(pool) {
     IF COL_LENGTH('journal_entries', 'customer_id') IS NULL ALTER TABLE journal_entries ADD customer_id INT NULL;
     IF COL_LENGTH('journal_entries', 'supplier_id') IS NULL ALTER TABLE journal_entries ADD supplier_id INT NULL;
     IF COL_LENGTH('chart_of_accounts', 'system_code') IS NULL ALTER TABLE chart_of_accounts ADD system_code NVARCHAR(50) NULL;
+    IF COL_LENGTH('treasury_accounts', 'system_code') IS NULL ALTER TABLE treasury_accounts ADD system_code NVARCHAR(50) NULL;
+  `);
+  // backfill treasury system_code (separate batch: cannot reference a column added in the same batch)
+  await q(pool, `
+    IF COL_LENGTH('treasury_accounts', 'system_code') IS NOT NULL
+      UPDATE treasury_accounts SET system_code = CASE WHEN account_type = 'bank' THEN 'SYS_BANK' ELSE 'SYS_CASH' END WHERE system_code IS NULL;
   `);
   console.log('  ~ core columns ensured');
 }

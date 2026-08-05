@@ -1,3 +1,6 @@
+// LEGACY - DO NOT USE
+// Replaced by the Allocation Engine (routes/reports.js). Not mounted in server.js, not imported anywhere.
+// Kept as archive only; excluded from Single Source Compliance.
 const router = require('express').Router();
 const asyncHandler = require('../../utils/asyncHandler');
 const { num, loadCompanyData, escapeHtml, validatePagination, applyDateFilter, getSysAccId, getPool, sql, SYS_SALES, SYS_SALES_RETURNS, SYS_AR, SYS_AP, SYS_VAT_OUTPUT, SYS_VAT_INPUT, SYS_COGS, SYS_PURCHASES, SYS_PURCHASE_RETURNS, SYS_INVENTORY, SYS_INVENTORY_SHORTAGE } = require('./shared');

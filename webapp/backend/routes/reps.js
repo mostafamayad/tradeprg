@@ -243,7 +243,7 @@ router.get('/:id/statement', async (req, res) => {
                 FROM (
                     SELECT 'sales' AS src, grand_total AS amount FROM sales_invoices WHERE rep_id = @rid AND status != 'cancelled' AND invoice_date < @from
                     UNION ALL
-                    SELECT 'collection', amount FROM customer_collections WHERE rep_id = @rid AND collection_date < @from
+                    SELECT 'collection', ap.amount FROM ar_payments ap JOIN customers c ON ap.customer_id = c.id WHERE c.rep_id = @rid AND ap.status = 'active' AND ap.payment_date < @from
                     UNION ALL
                     SELECT 'return', sr.grand_total FROM sales_returns sr JOIN sales_invoices i ON sr.invoice_id = i.id WHERE i.rep_id = @rid AND sr.status != 'cancelled' AND sr.return_date < @from
                 ) t
@@ -280,13 +280,13 @@ router.get('/:id/statement', async (req, res) => {
 
         movSql += `
             UNION ALL
-            SELECT collection_date, collection_no, N'تحصيل', 'collection',
-                   0, cc.amount, c.customer_name, cc.notes, cc.id, 3
-            FROM customer_collections cc
-            LEFT JOIN customers c ON cc.customer_id = c.id
-            WHERE cc.rep_id = @rid`;
-        if (from) movSql += ` AND cc.collection_date >= @from`;
-        if (to) movSql += ` AND cc.collection_date <= @to`;
+            SELECT ap.payment_date, ap.payment_no, N'تحصيل', 'collection',
+                   0, ap.amount, c.customer_name, ap.notes, ap.id, 3
+            FROM ar_payments ap
+            LEFT JOIN customers c ON ap.customer_id = c.id
+            WHERE c.rep_id = @rid AND ap.status = 'active'`;
+        if (from) movSql += ` AND ap.payment_date >= @from`;
+        if (to) movSql += ` AND ap.payment_date <= @to`;
 
         movSql += ` ORDER BY trans_date ASC, _sort ASC, ref_id ASC`;
 

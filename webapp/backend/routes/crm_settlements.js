@@ -151,9 +151,11 @@ router.patch('/:id/approve', asyncHandler(async (req, res) => {
         await postJournalEntryAsync(
             txReq, s.settlement_date, `تسوية عميل ${s.settlement_no}`, lines,
             'crm_settlement', s.id, req.user.id,
-            { module: 'crm_settlements', action: 'approve', document: s.settlement_no, isSystem: true }
+            { module: 'crm_settlements', action: 'approve', document: s.settlement_no, isSystem: true },
+            null, s.customer_id
         );
 
+        // Recalculate customer balance (AFTER journal entry so GL-derived balance includes it)
         await recalcCustomerBalanceAsync(txReq, s.customer_id);
         await tx.commit();
         await logActivity(req, 'APPROVE', 'crm_settlements', null, `اعتماد تسوية ${s.settlement_no}`, null, null, 'SUCCESS', null);

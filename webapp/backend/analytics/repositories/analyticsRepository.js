@@ -286,8 +286,8 @@ async function getDashboardKPIs() {
         `SELECT COALESCE(SUM(ib.quantity * p.cost_price), 0) as v FROM inventory_balances ib JOIN products p ON ib.product_id = p.id`,
         `SELECT COUNT(DISTINCT ib.product_id) as v FROM inventory_balances ib JOIN products p ON ib.product_id = p.id WHERE ib.quantity <= p.min_stock AND ib.quantity > 0`,
         `SELECT COUNT(*) as v FROM products p WHERE p.is_active = 1 AND NOT EXISTS (SELECT 1 FROM inventory_balances ib WHERE ib.product_id = p.id AND ib.quantity > 0)`,
-        `SELECT COALESCE(SUM(amount), 0) as v FROM customer_collections WHERE collection_date = @t4 AND amount > 0`,
-        `SELECT COALESCE(SUM(amount), 0) as v FROM customer_collections WHERE LEFT(collection_date, 7) = LEFT(CONVERT(NVarChar(10), GETDATE(), 120), 7) AND amount > 0`
+        `SELECT COALESCE(SUM(amount), 0) as v FROM ar_payments WHERE payment_date = @t4 AND status = 'active'`,
+        `SELECT COALESCE(SUM(amount), 0) as v FROM ar_payments WHERE LEFT(payment_date, 7) = LEFT(CONVERT(NVarChar(10), GETDATE(), 120), 7) AND status = 'active'`
     ];
 
     const results = await Promise.all(queries.map(q => ctx.request.query(q)));
@@ -328,7 +328,7 @@ async function getRecentActivity(limit) {
 
     const [invoices, collections, purchases] = await Promise.all([
         ctx.request.query(`SELECT TOP (@limit) i.id, i.invoice_no, i.invoice_date, i.grand_total, i.status, c.customer_name FROM sales_invoices i LEFT JOIN customers c ON i.customer_id = c.id ORDER BY i.id DESC`),
-        ctx.request.query(`SELECT TOP (@limit) cc.id, cc.collection_no, cc.collection_date, cc.amount, c.customer_name, cc.payment_method FROM customer_collections cc LEFT JOIN customers c ON cc.customer_id = c.id WHERE cc.amount > 0 ORDER BY cc.id DESC`),
+        ctx.request.query(`SELECT TOP (@limit) ap.id, ap.payment_no AS collection_no, ap.payment_date AS collection_date, ap.amount, c.customer_name, ap.payment_method FROM ar_payments ap LEFT JOIN customers c ON ap.customer_id = c.id WHERE ap.status = 'active' ORDER BY ap.id DESC`),
         ctx.request.query(`SELECT TOP (@limit) pi.id, pi.invoice_no, pi.invoice_date, pi.grand_total, s.supplier_name FROM purchase_invoices pi LEFT JOIN suppliers s ON pi.supplier_id = s.id ORDER BY pi.id DESC`)
     ]);
 
@@ -780,7 +780,7 @@ async function getCustomerStatement(customerId, from, to) {
     const wStr2 = to && to !== 'undefined' && to !== '' ? ' AND i.invoice_date <= @to' : '';
     const wStrFull = wStr + wStr2;
     const wStrR = wStrFull.replace(/i\./g, '');
-    const wStrC = wStrFull.replace(/i\./g, '');
+    const wStrC = wStrFull.replace(/i\./g, '').replace(/invoice_date/g, 'payment_date');
     const wStrJ = wStrFull;
 
     const arRes = await ctx.request.query(`SELECT id FROM chart_of_accounts WHERE system_code = 'AR'`);
@@ -808,13 +808,13 @@ SELECT return_date AS trans_date, return_no AS doc_no,
 FROM sales_returns
 WHERE customer_id = @cid AND status NOT IN ('cancelled', 'deleted') ${wStrR}
 UNION ALL
-SELECT collection_date AS trans_date, collection_no AS doc_no,
+SELECT payment_date AS trans_date, payment_no AS doc_no,
        N'تحصيل' AS doc_type, N'تحصيل' AS doc_type_short,
        0 AS debit, amount AS credit,
        'collection' AS ref_type, id AS ref_id,
        ISNULL(notes,'') AS description, '' AS created_by_name
-FROM customer_collections
-WHERE customer_id = @cid ${wStrC}
+FROM ar_payments
+WHERE customer_id = @cid AND status = 'active' ${wStrC}
 ${arAccId ? `
 UNION ALL
 SELECT je.entry_date AS trans_date, je.entry_no AS doc_no,

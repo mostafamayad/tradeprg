@@ -306,6 +306,8 @@ BEGIN
         [supplier_id] INT NOT NULL,
         [store_id] INT NOT NULL,
         [payment_type] NVARCHAR(255) DEFAULT 'cash',
+        [invoice_type] NVARCHAR(255) DEFAULT 'normal',
+        [vat_rate] DECIMAL(18,4) DEFAULT 0,
         [subtotal] DECIMAL(18,4) DEFAULT 0,
         [discount_amount] DECIMAL(18,4) DEFAULT 0,
         [tax_amount] DECIMAL(18,4) DEFAULT 0,

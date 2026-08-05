@@ -57,10 +57,10 @@ async function updateCustomerTotalsAsync(txRequest, customerId) {
         SELECT 
             COALESCE((SELECT MAX(invoice_date) FROM sales_invoices WHERE customer_id = @uct_cid_${pRand} AND status != 'cancelled'), NULL) as last_inv_date,
             COALESCE((SELECT MAX(return_date) FROM sales_returns WHERE customer_id = @uct_cid_${pRand} AND status != 'cancelled'), NULL) as last_ret_date,
-            COALESCE((SELECT MAX(collection_date) FROM customer_collections WHERE customer_id = @uct_cid_${pRand}), NULL) as last_pay_date,
+            COALESCE((SELECT MAX(ap.payment_date) FROM ar_payments ap WHERE ap.customer_id = @uct_cid_${pRand} AND ap.status = 'active'), NULL) as last_pay_date,
             COALESCE((SELECT SUM(grand_total) FROM sales_invoices WHERE customer_id = @uct_cid_${pRand} AND status != 'cancelled'), 0) as tot_sales,
             COALESCE((SELECT SUM(grand_total) FROM sales_returns WHERE customer_id = @uct_cid_${pRand} AND status != 'cancelled'), 0) as tot_returns,
-            COALESCE((SELECT SUM(amount) FROM customer_collections WHERE customer_id = @uct_cid_${pRand}), 0) as tot_payments
+            COALESCE((SELECT SUM(ap.amount) FROM ar_payments ap WHERE ap.customer_id = @uct_cid_${pRand} AND ap.status = 'active'), 0) as tot_payments
     `);
     const d = r.recordset[0];
     if (d) {
@@ -752,7 +752,7 @@ router.delete('/:id', async (req, res) => {
                 SELECT
                     (SELECT COUNT(1) FROM sales_invoices WHERE customer_id = @id AND status != 'cancelled') as invoices_cnt,
                     (SELECT COUNT(1) FROM sales_returns WHERE customer_id = @id AND status != 'cancelled') as returns_cnt,
-                    (SELECT COUNT(1) FROM customer_collections WHERE customer_id = @id) as collections_cnt,
+                    (SELECT COUNT(1) FROM ar_payments WHERE customer_id = @id AND status = 'active') as collections_cnt,
                     (SELECT COUNT(1) FROM sales_orders WHERE customer_id = @id AND status != 'cancelled') as orders_cnt,
                     (SELECT COUNT(1) FROM quotations WHERE customer_id = @id AND status != 'cancelled') as quotes_cnt,
                     (SELECT COUNT(1) FROM journal_entries WHERE reference_type = 'sales_invoice' AND reference_id IN (SELECT id FROM sales_invoices WHERE customer_id = @id)) as je_cnt,
@@ -766,7 +766,7 @@ router.delete('/:id', async (req, res) => {
                     SELECT
                         (SELECT COUNT(1) FROM sales_invoices WHERE customer_id = @id2 AND status != 'cancelled') as invoices_cnt,
                         (SELECT COUNT(1) FROM sales_returns WHERE customer_id = @id2 AND status != 'cancelled') as returns_cnt,
-                        (SELECT COUNT(1) FROM customer_collections WHERE customer_id = @id2) as collections_cnt,
+                        (SELECT COUNT(1) FROM ar_payments WHERE customer_id = @id2 AND status = 'active') as collections_cnt,
                         0 as orders_cnt, 0 as quotes_cnt,
                         (SELECT COUNT(1) FROM journal_entries WHERE reference_type = 'sales_invoice' AND reference_id IN (SELECT id FROM sales_invoices WHERE customer_id = @id2)) as je_cnt,
                         (SELECT COUNT(1) FROM customer_activity_log WHERE customer_id = @id2) as log_cnt
@@ -909,6 +909,8 @@ router.patch('/:id/block', requirePermission('customers.block'), async (req, res
 });
 
 // ── Account Statement ──
+// SINGLE SOURCE OF TRUTH: built exclusively from the General Ledger
+// (journal_entries on SYS_AR attributed to the customer via je.customer_id).
 router.get('/:id/statement', asyncHandler(async (req, res) => {
     try {
         const { from, to } = req.query;
@@ -923,49 +925,84 @@ router.get('/:id/statement', asyncHandler(async (req, res) => {
         const cust = custResult.recordset[0];
         if (!cust) return res.status(404).json({ success: false, message: 'العميل غير موجود' });
 
+        const arAccId = await accountingEngine.getSystemAccountAsync(pool.request(), 'SYS_AR');
+
+        const GL_SELECT = `
+            SELECT je.entry_date AS trans_date,
+                   CASE WHEN je.reference_type = 'manual_je' OR je.reference_type IS NULL
+                        THEN je.entry_no
+                        ELSE COALESCE(NULLIF(je.source_document, ''), je.entry_no)
+                   END AS doc_no,
+                   je.reference_type, je.reference_id, je.id AS je_id,
+                   jl.debit, jl.credit,
+                   ISNULL(jl.description, je.description) AS notes
+            FROM journal_entry_lines jl
+            JOIN journal_entries je ON je.id = jl.entry_id
+            WHERE jl.account_id = @arAccId
+              AND je.customer_id = @cid
+              AND (je.is_reversed IS NULL OR je.is_reversed = 0)
+              AND (je.reversal_of_id IS NULL)
+              AND (je.source_action IS NULL OR (je.source_action NOT LIKE '%_cancel' AND je.source_action <> 'cancel'))
+        `;
+
         let lines = [];
+
+        // Opening balance row
+        let opening = cust.opening_balance || 0;
+        if (from) {
+            const openReq = pool.request();
+            openReq.input('cid', sql.Int, Number(customerId));
+            openReq.input('arAccId', sql.Int, arAccId);
+            openReq.input('from', sql.NVarChar, from);
+            const openRows = (await openReq.query(GL_SELECT + ' AND je.entry_date < @from')).recordset;
+            opening += openRows.reduce((s, r) => s + ((r.debit || 0) - (r.credit || 0)), 0);
+        }
 
         const defaultDate = from || (cust.created_at ? new Date(cust.created_at).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10));
         lines.push({
             trans_date: defaultDate,
             doc_type: 'رصيد افتتاحي',
             doc_no: '-',
-            debit: cust.opening_balance > 0 ? cust.opening_balance : 0,
-            credit: cust.opening_balance < 0 ? Math.abs(cust.opening_balance) : 0,
+            debit: opening > 0 ? opening : 0,
+            credit: opening < 0 ? Math.abs(opening) : 0,
             notes: ''
         });
 
-        const request = pool.request();
-        request.input('customerId', sql.Int, customerId);
-        if (from) request.input('from', sql.Date, from);
-        if (to) request.input('to', sql.Date, to);
+        // GL-based period transactions
+        const periodReq = pool.request();
+        periodReq.input('cid', sql.Int, Number(customerId));
+        periodReq.input('arAccId', sql.Int, arAccId);
+        if (from) periodReq.input('from', sql.NVarChar, from);
+        if (to)   periodReq.input('to',   sql.NVarChar, to);
+        let periodSql = GL_SELECT;
+        if (from) periodSql += ' AND je.entry_date >= @from';
+        if (to)   periodSql += ' AND je.entry_date <= @to';
+        periodSql += ' ORDER BY je.entry_date ASC, je.created_at ASC, je.entry_no ASC';
+        const periodRows = (await periodReq.query(periodSql)).recordset;
 
-        // Sales invoices
-        let salesSql = `SELECT invoice_date as trans_date, invoice_no as doc_no, grand_total as debit, 0 as credit, N'فاتورة مبيعات' as doc_type, notes FROM sales_invoices WHERE customer_id = @customerId AND status != 'cancelled'`;
-        if (from) salesSql += ` AND invoice_date >= @from`;
-        if (to) salesSql += ` AND invoice_date <= @to`;
-        const salesRes = await request.query(salesSql);
-        lines = lines.concat(salesRes.recordset);
+        function mapType(raw, action) {
+            if (action && String(action).toLowerCase().endsWith('_cancel')) return 'قيد عكسي';
+            switch (raw) {
+                case 'sales_invoice':       return 'فاتورة مبيعات';
+                case 'sales_return':        return 'مرتجع مبيعات';
+                case 'customer_collection':
+                case 'collection':          return 'تحصيل';
+                case 'ar_payment':          return 'سند تحصيل';
+                case 'ar_note':             return 'إشعار';
+                case 'crm_settlement':      return 'تسوية';
+                default:                    return 'قيد يومية';
+            }
+        }
 
-        // Sales returns
-        let retSql = `SELECT return_date as trans_date, return_no as doc_no, 0 as debit, grand_total as credit, N'مرتجع مبيعات' as doc_type, '' as notes FROM sales_returns WHERE customer_id = @customerId AND status != 'cancelled'`;
-        if (from) retSql += ` AND return_date >= @from`;
-        if (to) retSql += ` AND return_date <= @to`;
-        const retRes = await request.query(retSql);
-        lines = lines.concat(retRes.recordset);
-
-        // Collections
-        let colSql = `SELECT collection_date as trans_date, collection_no as doc_no, 0 as debit, amount as credit, N'تحصيل' as doc_type, notes FROM customer_collections WHERE customer_id = @customerId`;
-        if (from) colSql += ` AND collection_date >= @from`;
-        if (to) colSql += ` AND collection_date <= @to`;
-        const colRes = await request.query(colSql);
-        lines = lines.concat(colRes.recordset);
-
-        // Sort by date
-        lines.sort((a, b) => {
-            const dateA = new Date(a.trans_date);
-            const dateB = new Date(b.trans_date);
-            return dateA > dateB ? 1 : -1;
+        periodRows.forEach(r => {
+            lines.push({
+                trans_date: r.trans_date,
+                doc_no: r.doc_no,
+                doc_type: mapType(r.reference_type, r.source_action),
+                debit: r.debit || 0,
+                credit: r.credit || 0,
+                notes: r.notes || ''
+            });
         });
 
         let runningBalance = 0, totalDebit = 0, totalCredit = 0;
@@ -980,7 +1017,7 @@ router.get('/:id/statement', asyncHandler(async (req, res) => {
         res.json({
             success: true,
             customer: { id: cust.id, name: cust.customer_name, code: cust.customer_code, phone: cust.phone, balance: runningBalance },
-            opening_balance: cust.opening_balance || 0,
+            opening_balance: opening,
             lines,
             summary: { totalDebit, totalCredit, finalBalance: runningBalance }
         });
@@ -1024,9 +1061,9 @@ router.get('/:id/analytics', asyncHandler(async (req, res) => {
                 c.*,
                 (SELECT COUNT(1) FROM sales_invoices WHERE customer_id = @id AND status != 'cancelled') as invoice_count,
                 (SELECT COUNT(1) FROM sales_returns WHERE customer_id = @id AND status != 'cancelled') as return_count,
-                (SELECT COUNT(1) FROM customer_collections WHERE customer_id = @id) as collection_count,
+                (SELECT COUNT(1) FROM ar_payments WHERE customer_id = @id AND status = 'active') as collection_count,
                 (SELECT COALESCE(AVG(grand_total), 0) FROM sales_invoices WHERE customer_id = @id AND status != 'cancelled') as avg_invoice,
-                (SELECT COALESCE(AVG(amount), 0) FROM customer_collections WHERE customer_id = @id) as avg_collection,
+                (SELECT COALESCE(AVG(amount), 0) FROM ar_payments WHERE customer_id = @id AND status = 'active') as avg_collection,
                 (SELECT COALESCE(MAX(invoice_date), NULL) FROM sales_invoices WHERE customer_id = @id AND status != 'cancelled') as last_inv_date,
                 (SELECT COALESCE(MIN(invoice_date), NULL) FROM sales_invoices WHERE customer_id = @id AND status != 'cancelled') as first_inv_date
             FROM customers c WHERE c.id = @id
@@ -1088,8 +1125,8 @@ router.get('/:id/related', asyncHandler(async (req, res) => {
             FROM sales_returns WHERE customer_id = @id ORDER BY return_date DESC
         `);
         const collections = await request.query(`
-            SELECT id, collection_no as doc_no, collection_date as doc_date, 'collection' as doc_type, amount, 'completed' as status
-            FROM customer_collections WHERE customer_id = @id ORDER BY collection_date DESC
+            SELECT id, payment_no as doc_no, payment_date as doc_date, 'collection' as doc_type, amount, 'completed' as status
+            FROM ar_payments WHERE customer_id = @id AND status = 'active' ORDER BY payment_date DESC
         `);
 
         res.json({
