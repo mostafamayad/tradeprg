@@ -114,6 +114,7 @@ const REQUIRED_SYSTEM_ACCOUNTS = [
     { code: '413', name: 'الخصومات المسموح بها',          type: 'revenue',    parent: '41', sys: 'SYS_SALES_DISCOUNT' },
     { code: '43',  name: 'زيادة وتسويات المخزون',          type: 'revenue',    parent: '4',  sys: 'SYS_INVENTORY_SURPLUS' },
     { code: '44',  name: 'مردودات المشتريات',             type: 'revenue',    parent: '4',  sys: 'SYS_PURCHASE_RETURNS' },
+    { code: '45',  name: 'الخصم النقدي المكتسب',           type: 'revenue',    parent: '4',  sys: 'SYS_PURCHASE_DISCOUNT' },
     { code: '51',  name: 'تكلفة البضاعة المباعة (COGS)',   type: 'expense',    parent: '5',  sys: 'SYS_COGS' },
     { code: '52',  name: 'مشتريات',                       type: 'expense',    parent: '5',  sys: 'SYS_PURCHASES' },
     { code: '53',  name: 'مصروفات التشغيل',               type: 'expense',    parent: '6',  sys: 'SYS_EXPENSE' },

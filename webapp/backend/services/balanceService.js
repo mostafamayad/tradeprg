@@ -192,8 +192,8 @@ async function getSupplierPeriodData(supplierId, from, to, poolOrReq) {
   `);
   const payRes = await req.query(`
     SELECT COALESCE(SUM(amount),0) AS total_payments
-    FROM supplier_payments
-    WHERE supplier_id = @sid_${p}
+    FROM ap_payments
+    WHERE supplier_id = @sid_${p} AND status = 'active'
     ${from ? 'AND payment_date >= @from_' + p : ''} ${to ? 'AND payment_date <= @to_' + p : ''}
   `);
 

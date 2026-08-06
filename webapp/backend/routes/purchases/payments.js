@@ -4,7 +4,7 @@
 const router = require('express').Router();
 const { getPool, sql } = require('../../database/mssql_db');
 const asyncHandler = require('../../utils/asyncHandler');
-const { postJournalEntryAsync, getSystemAccountAsync, reverseJournalEntryAsync, recalcSupplierBalanceAsync } = require('../../services/accountingEngine');
+const { postJournalEntryAsync, getSystemAccountAsync, reverseJournalEntryAsync, recalcSupplierBalanceAsync, recalcTreasuryBalanceAsync } = require('../../services/accountingEngine');
 const { updateStockBalanceAsync } = require('../../services/stockEngine');
 const { createTreasuryTransactionAsync } = require('../../services/treasuryEngine');
 const { nextDocNoAsync } = require('../../services/documentEngine');
@@ -101,6 +101,8 @@ router.post('/payments', async (req, res) => {
                     { module: 'purchases', action: 'payment', document: payNo, isSystem: true }
                 );
             }
+
+            await recalcTreasuryBalanceAsync(txRequest, treasury.id);
         }
 
         await recalcSupplierBalanceAsync(txRequest, supplier_id);

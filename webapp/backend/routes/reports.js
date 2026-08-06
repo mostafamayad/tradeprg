@@ -2766,8 +2766,8 @@ router.get('/purchase-dashboard', asyncHandler(async (req, res) => {
         if (to)   { payW += `${from ? ' AND' : ' WHERE'} payment_date <= @to`; rq3.input('to', sql.NVarChar, to); }
         const payQ = `
             SELECT COALESCE(SUM(amount), 0) AS paid_amount, COUNT(*) AS payment_count
-            FROM supplier_payments sp
-            ${payW}
+            FROM ap_payments
+            ${payW && "WHERE status = 'active'" + (payW.length > 0 ? ' AND ' + payW.replace(/^WHERE /, '') : '')}
         `;
         const payData = (await rq3.query(payQ)).recordset[0];
 
@@ -3035,7 +3035,7 @@ router.get('/supplier-payments', asyncHandler(async (req, res) => {
         const { from, to, supplier_id, page = 1, per_page = 200 } = req.query;
         const pool = await getPool();
 
-        let wheres = 'WHERE 1=1';
+        let wheres = "WHERE 1=1 AND sp.status = 'active'";
         const rq1 = pool.request();
         if (from) { wheres += ` AND sp.payment_date >= @from`; rq1.input('from', sql.NVarChar, from); }
         if (to)   { wheres += ` AND sp.payment_date <= @to`;   rq1.input('to', sql.NVarChar, to); }
@@ -3044,7 +3044,7 @@ router.get('/supplier-payments', asyncHandler(async (req, res) => {
         const q = `
             SELECT sp.id, sp.payment_no, sp.payment_date, sp.amount, sp.payment_method, sp.notes,
                    s.supplier_name, s.supplier_code
-            FROM supplier_payments sp
+            FROM ap_payments sp
             LEFT JOIN suppliers s ON s.id = sp.supplier_id
             ${wheres}
             ORDER BY sp.payment_date DESC
@@ -3056,14 +3056,14 @@ router.get('/supplier-payments', asyncHandler(async (req, res) => {
         if (from) rq2.input('from', sql.NVarChar, from);
         if (to)   rq2.input('to', sql.NVarChar, to);
         if (supplier_id) rq2.input('supplier_id', sql.Int, supplier_id);
-        const totQ = `SELECT COUNT(*) AS payment_count, COALESCE(SUM(amount), 0) AS total_amount FROM supplier_payments sp ${wheres}`;
+        const totQ = `SELECT COUNT(*) AS payment_count, COALESCE(SUM(amount), 0) AS total_amount FROM ap_payments sp ${wheres}`;
         const totals = (await rq2.query(totQ)).recordset[0];
 
         const rq3 = pool.request();
         if (from) rq3.input('from', sql.NVarChar, from);
         if (to)   rq3.input('to', sql.NVarChar, to);
         if (supplier_id) rq3.input('supplier_id', sql.Int, supplier_id);
-        const countQ = `SELECT COUNT(*) AS total FROM supplier_payments sp ${wheres}`;
+        const countQ = `SELECT COUNT(*) AS total FROM ap_payments sp ${wheres}`;
         const countRes = (await rq3.query(countQ)).recordset[0];
 
         res.json({
@@ -3170,9 +3170,10 @@ router.get('/top-suppliers', asyncHandler(async (req, res) => {
                 GROUP BY sr.supplier_id
             ),
             sup_payments AS (
-                SELECT sp.supplier_id, COALESCE(SUM(sp.amount), 0) AS total_payments
-                FROM supplier_payments sp
-                GROUP BY sp.supplier_id
+                SELECT ap.supplier_id, COALESCE(SUM(ap.amount), 0) AS total_payments
+                FROM ap_payments ap
+                WHERE ap.status = 'active'
+                GROUP BY ap.supplier_id
             )
             SELECT s.id, s.supplier_code, s.supplier_name, s.phone, s.current_balance,
                    COALESCE(sp.invoice_count, 0) AS invoice_count,
@@ -3310,7 +3311,7 @@ router.get('/purchase-movement', asyncHandler(async (req, res) => {
             ${wR}
         `);
 
-        let wP = 'WHERE 1=1';
+        let wP = "WHERE 1=1 AND sp.status = 'active'";
         if (from) { wP += ` AND sp.payment_date >= @from`; }
         if (to)   { wP += ` AND sp.payment_date <= @to`; }
         if (supplier_id) { wP += ` AND sp.supplier_id = @supplier_id`; }
@@ -3320,7 +3321,7 @@ router.get('/purchase-movement', asyncHandler(async (req, res) => {
                    N'سند صرف' AS doc_type, sp.amount AS grand_total, 0 AS tax_amount,
                    sp.amount AS net_total, 'paid' AS status,
                    s.supplier_name, '' AS store_name
-            FROM supplier_payments sp
+            FROM ap_payments sp
             LEFT JOIN suppliers s ON s.id = sp.supplier_id
             ${wP}
         `);
@@ -4242,27 +4243,27 @@ router.get('/ap-matching-status', asyncHandler(async (req, res) => {
   if (from) { where += ` AND pi.invoice_date >= @from`; rq.input('from', sql.NVarChar, from); }
   if (to)   { where += ` AND pi.invoice_date <= @to`;   rq.input('to',   sql.NVarChar, to); }
   if (supplier_id) { where += ` AND pi.supplier_id = @sid`; rq.input('sid', sql.Int, parseInt(supplier_id)); }
-  let having = '';
-  if (status === 'open')    having = 'HAVING ROUND(pi.grand_total - ISNULL(SUM(spa.allocated_amount),0), 2) > 0';
-  if (status === 'closed')  having = 'HAVING ROUND(pi.grand_total - ISNULL(SUM(spa.allocated_amount),0), 2) <= 0';
-  if (status === 'partial') having = 'HAVING ISNULL(SUM(spa.allocated_amount),0) > 0 AND ROUND(pi.grand_total - ISNULL(SUM(spa.allocated_amount),0), 2) > 0';
+let having = '';
+  if (status === 'open')    having = 'HAVING ROUND(pi.grand_total - ISNULL(SUM(spa.net_amount),0), 2) > 0';
+  if (status === 'closed')  having = 'HAVING ROUND(pi.grand_total - ISNULL(SUM(spa.net_amount),0), 2) <= 0';
+  if (status === 'partial') having = 'HAVING ISNULL(SUM(spa.net_amount),0) > 0 AND ROUND(pi.grand_total - ISNULL(SUM(spa.net_amount),0), 2) > 0';
   const r = await rq.query(`
     SELECT pi.id, pi.invoice_no,
       CONVERT(varchar(10), pi.invoice_date, 23) AS invoice_date,
       s.supplier_name, pi.grand_total,
-      ISNULL(SUM(spa.allocated_amount),0) AS allocated_amount,
+      ISNULL(SUM(spa.net_amount),0) AS allocated_amount,
       pi.discount_amount AS discount_amount,
-      ROUND(pi.grand_total - ISNULL(SUM(spa.allocated_amount),0), 2) AS remaining,
+      ROUND(pi.grand_total - ISNULL(SUM(spa.net_amount),0), 2) AS remaining,
       CASE
-        WHEN ROUND(pi.grand_total - ISNULL(SUM(spa.allocated_amount),0), 2) <= 0 THEN N'مسدد بالكامل'
-        WHEN ISNULL(SUM(spa.allocated_amount),0) > 0 THEN N'مسدد جزئياً'
+        WHEN ROUND(pi.grand_total - ISNULL(SUM(spa.net_amount),0), 2) <= 0 THEN N'مسدد بالكامل'
+        WHEN ISNULL(SUM(spa.net_amount),0) > 0 THEN N'مسدد جزئياً'
         ELSE N'غير مسدد'
       END AS match_status,
       COUNT(spa.id) AS allocation_count
     FROM purchase_invoices pi
     JOIN suppliers s ON pi.supplier_id = s.id
-    LEFT JOIN supplier_payments sp ON sp.supplier_id = pi.supplier_id
-    LEFT JOIN supplier_payment_allocations spa ON spa.payment_id = sp.id AND spa.invoice_id = pi.id
+    LEFT JOIN ap_payments sp ON sp.supplier_id = pi.supplier_id AND sp.status = 'active'
+    LEFT JOIN ap_payment_allocations spa ON spa.payment_id = sp.id AND spa.invoice_id = pi.id AND spa.status = 'active'
     WHERE ${where}
     GROUP BY pi.id, pi.invoice_no, pi.invoice_date, s.supplier_name, pi.grand_total, pi.discount_amount
     ${having}

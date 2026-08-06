@@ -4,7 +4,7 @@
 const router = require('express').Router();
 const { getPool, sql } = require('../database/mssql_db');
 const asyncHandler = require('../utils/asyncHandler');
-const { postJournalEntryAsync, getSystemAccountAsync, reverseJournalEntryAsync, recalcSupplierBalanceAsync } = require('../services/accountingEngine');
+const { postJournalEntryAsync, getSystemAccountAsync, reverseJournalEntryAsync, recalcSupplierBalanceAsync, recalcTreasuryBalanceAsync } = require('../services/accountingEngine');
 const logActivity = require('../middleware/logger');
 
 // ============================================================
@@ -58,7 +58,7 @@ async function refreshInvoiceStatusAsync(txRequest, invoiceId) {
     const retRes = await txRequest.query(`SELECT COALESCE(SUM(grand_total),0) as total FROM purchase_returns WHERE invoice_id = @ris_id_${srfx} AND status NOT IN ('cancelled', 'deleted')`);
     const returnsTotal = retRes.recordset[0].total || 0;
     const allocRes = await txRequest.query(`
-        SELECT COALESCE(SUM(apa.allocated_amount), 0) as total FROM ap_payment_allocations apa WHERE apa.invoice_id = @ris_id_${srfx}
+        SELECT COALESCE(SUM(apa.net_amount), 0) as total FROM ap_payment_allocations apa WHERE apa.invoice_id = @ris_id_${srfx} AND apa.status = 'active'
     `);
     const totalPaid = allocRes.recordset[0].total || 0;
     const remaining = Math.max(0, num(inv.grand_total) - totalPaid - num(returnsTotal));
@@ -94,7 +94,7 @@ async function postTreasuryOutAsync(txRequest, { date, amount, supplierId, docum
         VALUES (@pt_tn_${pfx}, @pt_td_${pfx}, 'out', @pt_amt_${pfx}, @pt_acc_${pfx}, 'supplier', @pt_sid_${pfx}, @pt_doc_${pfx}, @pt_desc_${pfx})
     `);
     await txRequest.query(`UPDATE treasury_accounts SET current_balance = current_balance - @pt_amt_${pfx} WHERE id = @pt_acc_${pfx}`);
-    return transNo;
+    return { transNo, accountId: treasury.id };
 }
 
 async function allocatePaymentAsync(txRequest, supplierId, paymentId, amount, applyToInvoices = null) {
@@ -136,7 +136,7 @@ async function allocatePaymentAsync(txRequest, supplierId, paymentId, amount, ap
         txRequest.input(`al_payid_${sf}`, sql.Int, paymentId);
         txRequest.input(`al_invid_ap_${sf}`, sql.Int, inv.id);
         txRequest.input(`al_amt_${sf}`, sql.Decimal(18,2), applyAmount);
-        await txRequest.query(`INSERT INTO ap_payment_allocations (payment_id, invoice_id, allocated_amount) VALUES (@al_payid_${sf}, @al_invid_ap_${sf}, @al_amt_${sf})`);
+        await txRequest.query(`INSERT INTO ap_payment_allocations (payment_id, invoice_id, allocated_amount, discount_amount, net_amount) VALUES (@al_payid_${sf}, @al_invid_ap_${sf}, @al_amt_${sf}, 0, @al_amt_${sf})`);
         await txRequest.query(`
             UPDATE purchase_invoices SET amount_paid = amount_paid + @al_amt_${sf},
                 remaining = CASE WHEN remaining - @al_amt_${sf} < 0 THEN 0 ELSE remaining - @al_amt_${sf} END
@@ -197,34 +197,53 @@ router.get('/supplier/:id/unpaid', async (req, res) => {
     }
 });
 
+// SINGLE SOURCE OF TRUTH: built exclusively from the General Ledger
+// (journal_entries on SYS_AP attributed to the supplier via je.supplier_id).
 router.get('/supplier/:id/statement', async (req, res) => {
     try {
         const { from, to } = req.query;
         const pool = await getPool();
         const request = pool.request();
         request.input('sid', sql.Int, req.params.id);
-        let sqlQuery = `
-            SELECT d.* FROM (
-                SELECT 'invoice' as type, pi.invoice_no as doc_no, pi.invoice_date as doc_date, pi.grand_total as amount, NULL as ref_no
-                FROM purchase_invoices pi WHERE pi.supplier_id = @sid AND pi.status NOT IN ('cancelled', 'deleted')
-                UNION ALL
-                SELECT 'return', pr.return_no, pr.return_date, -pr.grand_total, NULL
-                FROM purchase_returns pr WHERE pr.supplier_id = @sid AND pr.status NOT IN ('cancelled', 'deleted')
-                UNION ALL
-                SELECT 'payment', ap.payment_no, ap.payment_date, -ap.amount, NULL
-                FROM ap_payments ap WHERE ap.supplier_id = @sid AND ap.status = 'active'
-                UNION ALL
-                SELECT 'note', an.note_no, an.note_date, CASE WHEN an.note_type='debit' THEN -an.amount ELSE an.amount END, NULL
-                FROM ap_notes an WHERE an.supplier_id = @sid AND an.status = 'active'
-            ) d WHERE 1=1
+
+        const supRes = await request.query('SELECT opening_balance FROM suppliers WHERE id = @sid');
+        const opening = supRes.recordset[0] ? supRes.recordset[0].opening_balance || 0 : 0;
+
+        const apAccId = await getSystemAccountAsync(request, 'SYS_AP');
+        request.input('apAccId', sql.Int, apAccId);
+
+        const GL_SELECT = `
+            SELECT je.entry_date AS doc_date,
+                   CASE WHEN je.reference_type = 'manual_je' OR je.reference_type IS NULL
+                        THEN je.entry_no
+                        ELSE COALESCE(NULLIF(je.source_document, ''), je.entry_no)
+                   END AS doc_no,
+                   je.reference_type, je.source_action,
+                   jl.debit, jl.credit
+            FROM journal_entry_lines jl
+            JOIN journal_entries je ON je.id = jl.entry_id
+            WHERE jl.account_id = @apAccId
+              AND je.supplier_id = @sid
+              AND (je.is_reversed IS NULL OR je.is_reversed = 0)
+              AND (je.reversal_of_id IS NULL)
+              AND (je.source_action IS NULL OR (je.source_action NOT LIKE '%_cancel' AND je.source_action <> 'cancel'))
         `;
-        if (from) { sqlQuery += ` AND d.doc_date >= @from`; request.input('from', sql.Date, from); }
-        if (to) { sqlQuery += ` AND d.doc_date <= @to`; request.input('to', sql.Date, to); }
-        sqlQuery += ` ORDER BY d.doc_date, d.doc_no`;
-        const result = await request.query(sqlQuery);
-        const openingRes = await request.query(`SELECT opening_balance FROM suppliers WHERE id = @sid`);
-        const opening = openingRes.recordset[0] ? openingRes.recordset[0].opening_balance || 0 : 0;
-        res.json({ success: true, data: result.recordset, opening_balance: opening });
+
+        let periodSql = GL_SELECT;
+        if (from) { periodSql += ' AND je.entry_date >= @from'; request.input('from', sql.NVarChar, from); }
+        if (to)   { periodSql += ' AND je.entry_date <= @to';   request.input('to',   sql.NVarChar, to); }
+        periodSql += ' ORDER BY je.entry_date ASC, je.created_at ASC, je.entry_no ASC';
+        const result = await request.query(periodSql);
+
+        const rows = result.recordset.map(r => ({
+            type: r.reference_type || 'journal_entry',
+            doc_no: r.doc_no,
+            doc_date: r.doc_date,
+            amount: r.credit - r.debit,
+            ref_no: null
+        }));
+
+        res.json({ success: true, data: rows, opening_balance: opening });
     } catch (err) {
         logDetailedError('AP Statement', err);
         res.status(500).json({ success: false, message: 'خطأ في جلب كشف الحساب', error_detail: err.message });
@@ -333,13 +352,10 @@ router.post('/', asyncHandler(async (req, res) => {
             }
 
             // Treasury entry for cash/transfer (money OUT)
-            await postTreasuryOutAsync(txReq, { date, amount: amountValue, supplierId: supplier_id, documentNo: payNo, description: `تسديد فاتورة مورد ${payNo}`, paymentMethod: method });
+            const treasuryResult = await postTreasuryOutAsync(txReq, { date, amount: amountValue, supplierId: supplier_id, documentNo: payNo, description: `تسديد فاتورة مورد ${payNo}`, paymentMethod: method });
 
             // Allocate to invoices
             await allocatePaymentAsync(txReq, supplier_id, paymentId, amountValue, apply_to_invoices);
-
-            // Recalculate supplier balance
-            await recalcSupplierBalanceAsync(txReq, supplier_id);
 
             // Journal entry: DR SYS_AP / CR Cash(or Bank) — for cash/transfer only
             if (method !== 'check') {
@@ -353,6 +369,14 @@ router.post('/', asyncHandler(async (req, res) => {
                     { module: 'ap_payments', action: 'create_payment', document: payNo, isSystem: true },
                     supplier_id);
             }
+
+            // Recalculate treasury balance (AFTER journal entry so GL-derived balance includes it)
+            if (treasuryResult && treasuryResult.accountId) {
+                await recalcTreasuryBalanceAsync(txReq, treasuryResult.accountId);
+            }
+
+            // Recalculate supplier balance AFTER the journal entry so the GL-derived balance includes it
+            await recalcSupplierBalanceAsync(txReq, supplier_id);
 
             await tx.commit();
             await logActivity(req, 'CREATE', 'ap_payments', payNo, `سند تسديد ${payNo}`, null, { payment_no: payNo, supplier_id, amount: amountValue, payment_method: method }, 'SUCCESS', null);
@@ -395,25 +419,24 @@ router.delete('/:id', asyncHandler(async (req, res) => {
         txReq.input('pid', sql.Int, paymentId);
 
         try {
-            // 1. Restore invoice remaining from allocations
-            const allocRes = await txReq.query(`SELECT * FROM ap_payment_allocations WHERE payment_id = @pid`);
+            // 1. Soft-reverse allocations (audit trail preserved; ACTIVE-only is the SSOT).
+            const allocRes = await txReq.query(`SELECT id, invoice_id FROM ap_payment_allocations WHERE payment_id = @pid AND status = 'active'`);
+            const affectedInvoiceIds = new Set(allocRes.recordset.map(a => a.invoice_id));
             for (const alloc of allocRes.recordset) {
-                txReq.input(`inv_restore_${alloc.id}`, sql.Int, alloc.invoice_id);
-                txReq.input(`amt_restore_${alloc.id}`, sql.Decimal(18, 2), alloc.allocated_amount);
-                await txReq.query(`
-                    UPDATE purchase_invoices SET amount_paid = amount_paid - @amt_restore_${alloc.id},
-                        remaining = remaining + @amt_restore_${alloc.id} WHERE id = @inv_restore_${alloc.id}
-                `);
-                await refreshInvoiceStatusAsync(txReq, alloc.invoice_id);
+                txReq.input(`void_alloc_${alloc.id}`, sql.Int, alloc.id);
+                await txReq.query(`UPDATE ap_payment_allocations SET status = 'void' WHERE id = @void_alloc_${alloc.id}`);
+            }
+            for (const invId of affectedInvoiceIds) {
+                await refreshInvoiceStatusAsync(txReq, invId);
             }
 
-            // 2. Reverse journal entry (cash/transfer only)
+            // 2. Reverse journal entries (payment JE + any discount JE both keyed on the voucher)
             if (payment.payment_method !== 'check') {
                 const jeRes = await txReq.query(`
                     SELECT id FROM journal_entries WHERE reference_type = 'ap_payment' AND reference_id = @pid AND (is_reversed IS NULL OR is_reversed = 0)
                 `);
-                if (jeRes.recordset[0]) {
-                    await reverseJournalEntryAsync(txReq, jeRes.recordset[0].id, `قيد عكسي لسند تسديد ${payment.payment_no}`, req.user ? req.user.id : null);
+                for (const je of jeRes.recordset) {
+                    await reverseJournalEntryAsync(txReq, je.id, `قيد عكسي لسند تسديد ${payment.payment_no}`, req.user ? req.user.id : null);
                 }
             }
 
@@ -438,6 +461,8 @@ router.delete('/:id', asyncHandler(async (req, res) => {
                         VALUES (@rt_tn, @rt_date, 'in', @rt_amt, @rt_acc, 'supplier', @rt_sid, @rt_doc, @rt_desc)
                     `);
                     await txReq.query(`UPDATE treasury_accounts SET current_balance = current_balance + @rt_amt WHERE id = @rt_acc`);
+
+                    await recalcTreasuryBalanceAsync(txReq, treasTx.account_id);
                 }
             }
 
@@ -483,8 +508,8 @@ router.get('/matching/suppliers', asyncHandler(async (req, res) => {
         const pool = await getPool();
         const result = await pool.request().query(`
             SELECT DISTINCT s.id, s.supplier_name, s.current_balance FROM suppliers s
-            WHERE EXISTS (SELECT 1 FROM supplier_payments sp WHERE sp.supplier_id = s.id
-                AND sp.amount > COALESCE((SELECT SUM(allocated_amount) FROM supplier_payment_allocations WHERE payment_id = sp.id), 0))
+            WHERE EXISTS (SELECT 1 FROM ap_payments ap WHERE ap.supplier_id = s.id AND ap.status = 'active'
+                AND ap.amount > COALESCE((SELECT SUM(net_amount) FROM ap_payment_allocations WHERE payment_id = ap.id AND status = 'active'), 0))
             OR EXISTS (SELECT 1 FROM purchase_invoices pi WHERE pi.supplier_id = s.id AND pi.status IN ('pending', 'partial') AND pi.remaining > 0)
             ORDER BY s.supplier_name
         `);
@@ -504,10 +529,10 @@ router.get('/matching/data/:supplierId', asyncHandler(async (req, res) => {
         request.input('sid', sql.Int, sid);
         const paymentsRes = await request.query(`
             SELECT * FROM (
-                SELECT sp.id, sp.payment_no, sp.payment_date, sp.amount,
-                    COALESCE((SELECT SUM(allocated_amount) FROM supplier_payment_allocations WHERE payment_id = sp.id), 0) AS allocated_total,
-                    sp.amount - COALESCE((SELECT SUM(allocated_amount) FROM supplier_payment_allocations WHERE payment_id = sp.id), 0) AS unallocated
-                FROM supplier_payments sp WHERE sp.supplier_id = @sid
+                SELECT ap.id, ap.payment_no, ap.payment_date, ap.amount,
+                    COALESCE((SELECT SUM(net_amount) FROM ap_payment_allocations WHERE payment_id = ap.id AND status = 'active'), 0) AS allocated_total,
+                    ap.amount - COALESCE((SELECT SUM(net_amount) FROM ap_payment_allocations WHERE payment_id = ap.id AND status = 'active'), 0) AS unallocated
+                FROM ap_payments ap WHERE ap.supplier_id = @sid AND ap.status = 'active'
             ) sub WHERE sub.unallocated > 0 ORDER BY sub.payment_date
         `);
         const invoicesRes = await request.query(`
@@ -529,7 +554,7 @@ router.post('/matching/save', asyncHandler(async (req, res) => {
         if (!supplier_id) return res.status(400).json({ success: false, message: 'المورد مطلوب' });
         if (!Array.isArray(allocations) || allocations.length === 0) return res.status(400).json({ success: false, message: 'يرجى توزيع المبالغ على الفواتير' });
         for (const a of allocations) {
-            if (!a.payment_id || !a.invoice_id || a.allocated_amount <= 0)
+            if (!a.payment_id || !a.invoice_id || (a.allocated_amount <= 0 && (a.discount_amount || 0) <= 0))
                 return res.status(400).json({ success: false, message: 'بيانات التوزيع غير صالحة', error_detail: `payment_id=${a.payment_id}, invoice_id=${a.invoice_id}, amount=${a.allocated_amount}` });
         }
 
@@ -555,8 +580,8 @@ router.post('/matching/save', asyncHandler(async (req, res) => {
                 txReq.input(`mp_sid_${sfx}`, sql.Int, supplier_id);
                 const payRes = await txReq.query(`
                     SELECT id, payment_no, amount,
-                        COALESCE((SELECT SUM(allocated_amount) FROM supplier_payment_allocations WHERE payment_id = @mp_pid_${sfx}), 0) AS allocated_total
-                    FROM supplier_payments WHERE id = @mp_pid_${sfx} AND supplier_id = @mp_sid_${sfx}
+                        COALESCE((SELECT SUM(net_amount) FROM ap_payment_allocations WHERE payment_id = @mp_pid_${sfx} AND status = 'active'), 0) AS allocated_total
+                    FROM ap_payments WHERE id = @mp_pid_${sfx} AND supplier_id = @mp_sid_${sfx} AND status = 'active'
                 `);
                 if (!payRes.recordset[0]) throw new Error(`سند الصرف الداخلي رقم ${paymentId} غير موجود`);
                 const payment = payRes.recordset[0];
@@ -573,6 +598,8 @@ router.post('/matching/save', asyncHandler(async (req, res) => {
                     txReq.input(`mp_npid_${asfx}`, sql.Int, paymentId);
                     txReq.input(`mp_niid_${asfx}`, sql.Int, a.invoice_id);
                     txReq.input(`mp_namt_${asfx}`, sql.Decimal(18, 2), a.allocated_amount);
+                    txReq.input(`mp_ndisc_${asfx}`, sql.Decimal(18, 2), discAmt);
+                    txReq.input(`mp_nnet_${asfx}`, sql.Decimal(18, 2), totalInvoiceDebit);
                     const invRes = await txReq.query(`
                         SELECT id, invoice_no, grand_total, amount_paid, remaining, status FROM purchase_invoices
                         WHERE id = @mp_niid_${asfx} AND supplier_id = @mp_sid_${sfx}
@@ -582,27 +609,25 @@ router.post('/matching/save', asyncHandler(async (req, res) => {
                     if (inv.status === 'cancelled' || inv.status === 'deleted') throw new Error(`لا يمكن توزيع المبلغ على فاتورة ملغية (${inv.invoice_no})`);
                     if (totalInvoiceDebit > inv.remaining) throw new Error(`المبلغ المسدد + الخصم (${totalInvoiceDebit}) يتجاوز المتبقي من الفاتورة ${inv.invoice_no} (${inv.remaining})`);
                     
-                    await txReq.query(`INSERT INTO supplier_payment_allocations (payment_id, invoice_id, allocated_amount) VALUES (@mp_npid_${asfx}, @mp_niid_${asfx}, @mp_namt_${asfx})`);
+await txReq.query(`INSERT INTO ap_payment_allocations (payment_id, invoice_id, allocated_amount, discount_amount, net_amount) VALUES (@mp_npid_${asfx}, @mp_niid_${asfx}, @mp_namt_${asfx}, @mp_ndisc_${asfx}, @mp_nnet_${asfx})`);
                     await txReq.query(`
-                        UPDATE purchase_invoices SET amount_paid = amount_paid + ${totalInvoiceDebit},
-                            remaining = CASE WHEN remaining - ${totalInvoiceDebit} < 0 THEN 0 ELSE remaining - ${totalInvoiceDebit} END
+                        UPDATE purchase_invoices SET amount_paid = amount_paid + @mp_nnet_${asfx},
+                            remaining = CASE WHEN remaining - @mp_nnet_${asfx} < 0 THEN 0 ELSE remaining - @mp_nnet_${asfx} END
                         WHERE id = @mp_niid_${asfx}
                     `);
                     
                     if (discAmt > 0) {
-                        const { createJournalEntryAsync } = require('./journal_entries');
-                        await createJournalEntryAsync(txReq, {
-                            reference_type: 'purchase_discount',
-                            reference_id: a.invoice_id,
-                            entry_date: new Date(),
-                            description: `خصم نقدي مكتسب لفاتورة المشتريات ${inv.invoice_no} بموجب تسوية دفع`,
-                            customer_id: null,
-                            supplier_id: supplier_id,
-                            lines: [
-                                { account_system_code: 'SYS_AP', debit: discAmt, credit: 0 },
-                                { account_system_code: 'SYS_PURCHASE_DISCOUNT', debit: 0, credit: discAmt }
-                            ]
-                        });
+                        const discAcc = await getSystemAccountAsync(txReq, 'SYS_PURCHASE_DISCOUNT');
+                        const apAcc = await getSystemAccountAsync(txReq, 'SYS_AP');
+                        await postJournalEntryAsync(txReq, new Date().toISOString().slice(0, 10),
+                            `خصم نقدي مكتسب لفاتورة المشتريات ${inv.invoice_no}`,
+                            [
+                                { account_id: apAcc, debit: discAmt, credit: 0, description: `خصم سداد للفاتورة ${inv.invoice_no}` },
+                                { account_id: discAcc, debit: 0, credit: discAmt, description: `خصم مكتسب لفاتورة المشتريات ${inv.invoice_no}` }
+                            ],
+                            'ap_payment', paymentId, req.user ? req.user.id : null,
+                            { module: 'ap_payments', action: 'payment_matching_discount', document: `MATCH-${paymentId}-${a.invoice_id}`, isSystem: true },
+                            supplier_id);
                     }
 
                     affectedInvoiceIds.add(a.invoice_id);
@@ -630,6 +655,8 @@ router.post('/matching/save', asyncHandler(async (req, res) => {
                     await txReq.query(`UPDATE purchase_invoices SET remaining = @ris_rem_${srfx}, status = @ris_stat_${srfx} WHERE id = @ris_id_${srfx}`);
                 }
             }
+            // Recalculate supplier balance AFTER discount/matching JEs so the GL-derived balance includes them
+            await recalcSupplierBalanceAsync(txReq, supplier_id);
             await tx.commit();
             await logActivity(req, 'CREATE', 'ap_payment_matching', null, `مطابقة سداد مع فواتير للمورد ${supplierName}`, null, { supplier_id, supplier_name: supplierName, allocation_count: allocations.length, total: allocations.reduce((s, a) => s + num(a.allocated_amount), 0) }, 'SUCCESS', null);
             res.json({ success: true, message: 'تم حفظ المطابقة بنجاح' });

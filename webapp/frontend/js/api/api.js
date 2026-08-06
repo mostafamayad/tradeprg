@@ -390,21 +390,21 @@ window.API = {
         const qs = new URLSearchParams(params).toString();
         return await this.request('/payments' + (qs ? '?' + qs : ''));
     },
-    async createSupplierPayment(data) {
-        return await this.request('/payments', 'POST', data);
+async createSupplierPayment(data) {
+        return await this.request('/ap/payments', 'POST', data);
     },
     async getPayments(params = {}) {
         const qs = new URLSearchParams(params).toString();
         return await this.request('/payments' + (qs ? '?' + qs : ''));
     },
     async createPayment(data) {
-        return await this.request('/payments', 'POST', data);
+        return await this.request('/ap/payments', 'POST', data);
     },
     async deletePayment(id) {
-        return await this.request(`/payments/${id}`, 'DELETE');
+        return await this.request(`/ap/payments/${id}`, 'DELETE');
     },
     async updatePayment(id, data) {
-        return await this.request(`/payments/${id}`, 'PUT', data);
+        return await this.request(`/ap/payments/${id}`, 'PUT', data);
     },
     saveSupplierPayment(data) {
         return this.createSupplierPayment(data);

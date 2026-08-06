@@ -4,7 +4,7 @@
 const router = require('express').Router();
 const { getPool, sql } = require('../../database/mssql_db');
 const asyncHandler = require('../../utils/asyncHandler');
-const { postJournalEntryAsync, getSystemAccountAsync, reverseJournalEntryAsync, recalcSupplierBalanceAsync } = require('../../services/accountingEngine');
+const { postJournalEntryAsync, getSystemAccountAsync, reverseJournalEntryAsync, recalcSupplierBalanceAsync, recalcTreasuryBalanceAsync } = require('../../services/accountingEngine');
 const { updateStockBalanceAsync } = require('../../services/stockEngine');
 const { createTreasuryTransactionAsync } = require('../../services/treasuryEngine');
 const { nextDocNoAsync } = require('../../services/documentEngine');
@@ -57,7 +57,7 @@ async function canCancelPurchaseInvoiceAsync(poolOrTx, invoiceId) {
     {
         const r = Math.random().toString(36).substring(2, 9);
         request.input(`ccp_pay_${r}`, sql.Int, invoiceId);
-        const pay = await request.query(`SELECT COUNT(*) as cnt FROM ap_payment_allocations WHERE invoice_id = @ccp_pay_${r}`);
+        const pay = await request.query(`SELECT COUNT(*) as cnt FROM ap_payment_allocations WHERE invoice_id = @ccp_pay_${r} AND status = 'active'`);
         if (pay.recordset[0].cnt > 0) reasons.push('الفاتورة مرتبطة بسداد أو مطابقة');
     }
 
@@ -324,6 +324,11 @@ router.post('/invoices', async (req, res) => {
                 'purchase_payment', invoiceId, req.user ? req.user.id : null,
                 { module: 'purchases', action: 'payment', document: invoiceNo, isSystem: true }
             );
+        }
+
+        if (paid > 0) {
+            const tresRes = await txRequest.query(`SELECT TOP 1 id FROM treasury_accounts WHERE account_type = 'cash'`);
+            if (tresRes.recordset[0]) await recalcTreasuryBalanceAsync(txRequest, tresRes.recordset[0].id);
         }
 
         await recalcSupplierBalanceAsync(txRequest, supplier_id);

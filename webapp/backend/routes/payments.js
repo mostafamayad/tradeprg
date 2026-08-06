@@ -155,7 +155,12 @@ router.get('/:id', asyncHandler(async (req, res) => {
 // ── Create Payment ──────────────────────────────────────────
 router.post('/', asyncHandler(async (req, res) => {
     try {
-        const { supplier_id, payment_no, payment_date, amount, payment_method, check_no, check_date, bank_name, notes } = req.body;
+        // Phase 4 unify: supplier_payments is READ-ONLY. All creations go through the
+        // AP SSOT engine at /api/ap/payments (net/discount allocations + soft-reversal).
+        return res.status(410).json({
+            success: false, code: 'LEGACY_WRITE_DISABLED',
+            message: 'إنشاء سند صرف عبر /api/payments معطّل. استخدم شاشة سندات الصرف الموحدة (/api/ap/payments).'
+        });
         if (!supplier_id) return res.status(400).json({ success: false, message: 'المورد مطلوب' });
         if (!amount || amount <= 0) return res.status(400).json({ success: false, message: 'قيمة الدفعة يجب أن تكون أكبر من صفر' });
 
@@ -280,10 +285,12 @@ router.post('/', asyncHandler(async (req, res) => {
 // ── Delete Payment ──────────────────────────────────────────
 router.delete('/:id', asyncHandler(async (req, res) => {
     try {
-        const pool = await getPool();
-        const preReq = pool.request();
-        preReq.input('id', sql.Int, req.params.id);
-        const rowRes = await preReq.query('SELECT * FROM supplier_payments WHERE id = @id');
+        // Phase 4 unify: supplier_payments is READ-ONLY. Reversal goes through the
+        // AP SSOT soft-reversal engine at /api/ap/payments/:id.
+        return res.status(410).json({
+            success: false, code: 'LEGACY_WRITE_DISABLED',
+            message: 'إلغاء سند عبر /api/payments معطّل. استخدم إلغاء (Soft Reverse) في شاشة سندات الصرف الموحدة.'
+        });
         const row = rowRes.recordset[0];
         if (!row) return res.status(404).json({ success: false, message: 'الدفعة غير موجودة' });
 
@@ -418,7 +425,7 @@ router.get('/supplier/:id/statement', asyncHandler(async (req, res) => {
         let periodSql = selectParts;
         if (from) periodSql += ' AND je.entry_date >= @from';
         if (to)   periodSql += ' AND je.entry_date <= @to';
-        periodSql += ' ORDER BY je.entry_date ASC, je.id ASC';
+        periodSql += ' ORDER BY je.entry_date ASC, je.created_at ASC, je.entry_no ASC';
         const rows = (await periodReq.query(periodSql)).recordset;
 
         // ── أنواع الحركات + التسميات + ملاحظة الفرق بين القيد الأصلي والعكسي ──

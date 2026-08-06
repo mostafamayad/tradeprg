@@ -413,6 +413,32 @@ app.listen(PORT, '0.0.0.0', async () => {
                 ALTER TABLE ar_payment_allocations ADD status NVARCHAR(20) NOT NULL DEFAULT 'active';
             END
         `);
+        // ── Phase 4: AP alignment to the AR soft-reversal SSOT ──
+        // ap_payment_allocations is mirrored to ar_payment_allocations: net = allocated + discount,
+        // a status (active/void) so voiding never deletes the audit trail, and timestamps.
+        await pool.request().query(`
+            IF COL_LENGTH('ap_payment_allocations', 'discount_amount') IS NULL
+            BEGIN
+                ALTER TABLE ap_payment_allocations ADD discount_amount DECIMAL(18,4) NOT NULL DEFAULT 0;
+            END
+            IF COL_LENGTH('ap_payment_allocations', 'net_amount') IS NULL
+            BEGIN
+                ALTER TABLE ap_payment_allocations ADD net_amount DECIMAL(18,4) NOT NULL DEFAULT 0;
+            END
+            IF COL_LENGTH('ap_payment_allocations', 'status') IS NULL
+            BEGIN
+                ALTER TABLE ap_payment_allocations ADD status NVARCHAR(20) NOT NULL DEFAULT 'active';
+            END
+            IF COL_LENGTH('ap_payment_allocations', 'created_at') IS NULL
+            BEGIN
+                ALTER TABLE ap_payment_allocations ADD created_at DATETIME DEFAULT GETDATE();
+                ALTER TABLE ap_payment_allocations ADD created_by INT NULL;
+            END
+        `);
+        await pool.request().query(`
+            UPDATE ap_payment_allocations SET net_amount = allocated_amount
+            WHERE net_amount = 0 AND allocated_amount > 0;
+        `);
         // sales_return_audit: index on return_id
         await pool.request().query(`
             IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_sales_return_audit_return_id')

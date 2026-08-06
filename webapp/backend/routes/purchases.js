@@ -4,7 +4,7 @@
 const router = require('express').Router();
 const { getPool, sql } = require('../database/mssql_db');
 const asyncHandler = require('../utils/asyncHandler');
-const { postJournalEntryAsync, getSystemAccountAsync, reverseJournalEntryAsync, recalcSupplierBalanceAsync } = require('../services/accountingEngine');
+const { postJournalEntryAsync, getSystemAccountAsync, reverseJournalEntryAsync, recalcSupplierBalanceAsync, recalcTreasuryBalanceAsync } = require('../services/accountingEngine');
 const logActivity = require('../middleware/logger');
 
 // ============================================================
@@ -91,7 +91,7 @@ async function canCancelPurchaseInvoiceAsync(poolOrTx, invoiceId) {
     {
         const r = Math.random().toString(36).substring(2, 9);
         request.input(`ccp_pay_${r}`, sql.Int, invoiceId);
-        const pay = await request.query(`SELECT COUNT(*) as cnt FROM ap_payment_allocations WHERE invoice_id = @ccp_pay_${r}`);
+        const pay = await request.query(`SELECT COUNT(*) as cnt FROM ap_payment_allocations WHERE invoice_id = @ccp_pay_${r} AND status = 'active'`);
         if (pay.recordset[0].cnt > 0) reasons.push('الفاتورة مرتبطة بسداد أو مطابقة');
     }
 
@@ -228,7 +228,7 @@ router.get('/invoices/:id', asyncHandler(async (req, res) => {
 }));
 
 router.post('/invoices', async (req, res) => {
-    const { supplier_id, invoice_date, due_date, supplier_invoice_no, store_id, payment_type, discount_amount, tax_amount, amount_paid, notes, items } = req.body;
+    const { supplier_id, invoice_date, due_date, supplier_invoice_no, store_id, payment_type, invoice_type, vat_rate, discount_amount, tax_amount, amount_paid, notes, items } = req.body;
     if (!supplier_id) return res.status(400).json({ success: false, message: 'المورد مطلوب' });
     if (!items || items.length === 0) return res.status(400).json({ success: false, message: 'لا توجد أصناف' });
 
@@ -293,6 +293,8 @@ router.post('/invoices', async (req, res) => {
             .input('supplierId', sql.Int, supplier_id)
             .input('storeId', sql.Int, storeId)
             .input('paymentType', sql.NVarChar, payment_type || 'cash')
+            .input('invoiceType', sql.NVarChar, invoice_type || 'normal')
+            .input('vatRate', sql.Decimal(18, 4), invoice_type === 'tax' ? (parseFloat(vat_rate) || 0) : 0)
             .input('subtotal', sql.Decimal(18, 2), subtotal)
             .input('discount', sql.Decimal(18, 2), disc)
             .input('tax', sql.Decimal(18, 2), tax)
@@ -301,9 +303,9 @@ router.post('/invoices', async (req, res) => {
             .input('remaining', sql.Decimal(18, 2), remaining)
             .input('notes', sql.NVarChar, notes || '')
             .query(`
-                INSERT INTO purchase_invoices (invoice_no, supplier_invoice_no, invoice_date, due_date, supplier_id, store_id, payment_type, subtotal, discount_amount, tax_amount, grand_total, amount_paid, remaining, notes, status) 
+                INSERT INTO purchase_invoices (invoice_no, supplier_invoice_no, invoice_date, due_date, supplier_id, store_id, payment_type, invoice_type, vat_rate, subtotal, discount_amount, tax_amount, grand_total, amount_paid, remaining, notes, status) 
                 OUTPUT INSERTED.id
-                VALUES (@invoiceNo, @supplierInvoiceNo, @invoiceDate, @dueDate, @supplierId, @storeId, @paymentType, @subtotal, @discount, @tax, @grandTotal, @paid, @remaining, @notes, 'posted')
+                VALUES (@invoiceNo, @supplierInvoiceNo, @invoiceDate, @dueDate, @supplierId, @storeId, @paymentType, @invoiceType, @vatRate, @subtotal, @discount, @tax, @grandTotal, @paid, @remaining, @notes, 'posted')
             `);
             
         const invoiceId = invResult.recordset[0].id;
@@ -415,6 +417,11 @@ router.post('/invoices', async (req, res) => {
             { module: 'purchases', action: 'create_invoice', document: invoiceNo, isSystem: true },
             supplier_id
         );
+
+        if (paid > 0) {
+            const tresRes = await txRequest.query(`SELECT TOP 1 id FROM treasury_accounts WHERE account_type = 'cash'`);
+            if (tresRes.recordset[0]) await recalcTreasuryBalanceAsync(txRequest, tresRes.recordset[0].id);
+        }
 
         await recalcSupplierBalanceAsync(txRequest, supplier_id);
         
@@ -552,6 +559,12 @@ router.post('/payments', async (req, res) => {
 
     let transaction;
     try {
+        // Phase 4 unify: supplier_payments is READ-ONLY. All supplier payment creations
+        // must go through the AP SSOT engine at /api/ap/payments.
+        return res.status(410).json({
+            success: false, code: 'LEGACY_WRITE_DISABLED',
+            message: 'تسجيل دفعة مورد عبر /api/purchases/payments معطّل. استخدم شاشة سندات الصرف الموحدة (/api/ap/payments).'
+        });
         const pool = await getPool();
         
         if (payment_no) {
@@ -603,6 +616,8 @@ router.post('/payments', async (req, res) => {
             txRequest.input('ta_paid', sql.Decimal(18, 2), amount);
             txRequest.input('ta_accid', sql.Int, treasury.id);
             await txRequest.query(`UPDATE treasury_accounts SET current_balance = current_balance - @ta_paid WHERE id = @ta_accid`);
+
+            await recalcTreasuryBalanceAsync(txRequest, treasury.id);
         }
 
         await recalcSupplierBalanceAsync(txRequest, supplier_id);
@@ -1138,7 +1153,7 @@ router.get('/returns/available-qty/:invoiceId', asyncHandler(async (req, res) =>
 // UPDATE (EDIT) PURCHASE INVOICE
 // ============================================================
 router.put('/invoices/:id', async (req, res) => {
-    const { supplier_id, invoice_date, due_date, supplier_invoice_no, store_id, payment_type, discount_amount, tax_amount, amount_paid, notes, items } = req.body;
+    const { supplier_id, invoice_date, due_date, supplier_invoice_no, store_id, payment_type, invoice_type, vat_rate, discount_amount, tax_amount, amount_paid, notes, items } = req.body;
     
     let transaction;
     try {
@@ -1287,6 +1302,9 @@ router.put('/invoices/:id', async (req, res) => {
         txRequest.input('ui_invno', sql.NVarChar, supplier_invoice_no || '');
         txRequest.input('ui_stid', sql.Int, storeId);
         txRequest.input('ui_ptype', sql.NVarChar, payment_type || invoice.payment_type);
+        txRequest.input('ui_itype', sql.NVarChar, invoice_type || invoice.invoice_type || 'normal');
+        const effVatRate = (invoice_type || invoice.invoice_type || 'normal') === 'tax' ? (parseFloat(vat_rate) || parseFloat(invoice.vat_rate) || 0) : 0;
+        txRequest.input('ui_vrate', sql.Decimal(18, 4), effVatRate);
         txRequest.input('ui_sub', sql.Decimal(18, 2), subtotal);
         txRequest.input('ui_damt', sql.Decimal(18, 2), disc);
         txRequest.input('ui_tax', sql.Decimal(18, 2), tax);
@@ -1297,7 +1315,7 @@ router.put('/invoices/:id', async (req, res) => {
         
         await txRequest.query(`
             UPDATE purchase_invoices SET 
-            supplier_id = @ui_sid, invoice_date = @ui_date, due_date = @ui_ddate, supplier_invoice_no = @ui_invno, store_id = @ui_stid, payment_type = @ui_ptype,
+            supplier_id = @ui_sid, invoice_date = @ui_date, due_date = @ui_ddate, supplier_invoice_no = @ui_invno, store_id = @ui_stid, payment_type = @ui_ptype, invoice_type = @ui_itype, vat_rate = @ui_vrate,
             subtotal = @ui_sub, discount_amount = @ui_damt, tax_amount = @ui_tax, grand_total = @ui_grand, amount_paid = @ui_paid, remaining = @ui_rem, notes = @ui_notes
             WHERE id = @txInvId
         `);

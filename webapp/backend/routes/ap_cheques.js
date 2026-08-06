@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getPool, sql } = require('../database/mssql_db');
 const asyncHandler = require('../utils/asyncHandler');
-const { postJournalEntryAsync, getSystemAccountAsync, recalcSupplierBalanceAsync } = require('../services/accountingEngine');
+const { postJournalEntryAsync, getSystemAccountAsync, reverseJournalEntryAsync, recalcSupplierBalanceAsync, recalcTreasuryBalanceAsync } = require('../services/accountingEngine');
 const logActivity = require('../middleware/logger');
 
 function num(value) {
@@ -25,7 +25,7 @@ async function refreshInvoiceStatusAsync(txRequest, invoiceId) {
     if (!inv || inv.status === 'cancelled') return;
     const retRes = await txRequest.query(`SELECT COALESCE(SUM(grand_total),0) as total FROM purchase_returns WHERE invoice_id = @ris_id_${srfx} AND status NOT IN ('cancelled', 'deleted')`);
     const returnsTotal = retRes.recordset[0].total || 0;
-    const allocRes = await txRequest.query(`SELECT COALESCE(SUM(apa.allocated_amount), 0) as total FROM ap_payment_allocations apa WHERE apa.invoice_id = @ris_id_${srfx}`);
+    const allocRes = await txRequest.query(`SELECT COALESCE(SUM(apa.net_amount), 0) as total FROM ap_payment_allocations apa WHERE apa.invoice_id = @ris_id_${srfx} AND apa.status = 'active'`);
     const totalPaid = allocRes.recordset[0].total || 0;
     const remaining = Math.max(0, num(inv.grand_total) - totalPaid - num(returnsTotal));
     let status = 'pending';
@@ -175,6 +175,8 @@ router.patch('/:id/clear', asyncHandler(async (req, res) => {
                     VALUES (@tr_tn_${sfx}, GETDATE(), 'out', @ch_amt_${sfx}, @tr_tid_${sfx}, 'supplier', @tr_sid_${sfx}, @tr_tn_${sfx}, @tr_desc_${sfx})
                 `);
                 await txReq.query(`UPDATE treasury_accounts SET current_balance = current_balance - @ch_amt_${sfx} WHERE id = @tr_tid_${sfx}`);
+
+                await recalcTreasuryBalanceAsync(txReq, treasuryId);
             }
 
             // 3. Update cheque status
@@ -229,23 +231,24 @@ router.patch('/:id/return', asyncHandler(async (req, res) => {
             const sfx = Math.random().toString(36).substring(2, 9);
             txReq.input(`ch_pid_${sfx}`, sql.Int, ch.payment_id);
 
-            // 1. Restore invoice remaining from allocations
-            const allocRes = await txReq.query(`SELECT * FROM ap_payment_allocations WHERE payment_id = @ch_pid_${sfx}`);
+            // 1. Soft-reverse allocations (audit trail preserved; ACTIVE-only is the SSOT)
+            const allocRes = await txReq.query(`SELECT id, invoice_id FROM ap_payment_allocations WHERE payment_id = @ch_pid_${sfx} AND status = 'active'`);
+            const voidedInvs = new Set(allocRes.recordset.map(a => a.invoice_id));
             for (const alloc of allocRes.recordset) {
-                const asfx = sfx + '_a' + alloc.id;
-                txReq.input(`aiid_${asfx}`, sql.Int, alloc.invoice_id);
-                txReq.input(`aamt_${asfx}`, sql.Decimal(18, 2), alloc.allocated_amount);
-                await txReq.query(`
-                    UPDATE purchase_invoices
-                    SET amount_paid = amount_paid - @aamt_${asfx},
-                        remaining = remaining + @aamt_${asfx}
-                    WHERE id = @aiid_${asfx}
-                `);
-                await refreshInvoiceStatusAsync(txReq, alloc.invoice_id);
+                txReq.input(`aaiid__${sfx}_${alloc.id}`, sql.Int, alloc.id);
+                await txReq.query(`UPDATE ap_payment_allocations SET status = 'void' WHERE id = @aaiid__${sfx}_${alloc.id}`);
+            }
+            for (const invId of voidedInvs) {
+                await refreshInvoiceStatusAsync(txReq, invId);
             }
 
-            // 2. Delete allocations
-            await txReq.query(`DELETE FROM ap_payment_allocations WHERE payment_id = @ch_pid_${sfx}`);
+            // 2. Reverse voucher journal entries (the matching discount JE is keyed on the voucher)
+            const jeRes = await txReq.query(`
+                SELECT id FROM journal_entries WHERE reference_type = 'ap_payment' AND reference_id = @ch_pid_${sfx} AND (is_reversed IS NULL OR is_reversed = 0)
+            `);
+            for (const je of jeRes.recordset) {
+                await reverseJournalEntryAsync(txReq, je.id, `قيد عكسي لسند تسديد (الشيك)`, req.user ? req.user.id : null);
+            }
 
             // 3. Mark payment as reversed
             txReq.input(`ch_rev_${sfx}`, sql.NVarChar, 'reversed');
@@ -323,23 +326,24 @@ router.patch('/:id/cancel', asyncHandler(async (req, res) => {
             const sfx = Math.random().toString(36).substring(2, 9);
             txReq.input(`ch_pid_${sfx}`, sql.Int, ch.payment_id);
 
-            // 1. Restore invoice remaining from allocations
-            const allocRes = await txReq.query(`SELECT * FROM ap_payment_allocations WHERE payment_id = @ch_pid_${sfx}`);
+            // 1. Soft-reverse allocations (audit trail preserved; ACTIVE-only is the SSOT)
+            const allocRes = await txReq.query(`SELECT id, invoice_id FROM ap_payment_allocations WHERE payment_id = @ch_pid_${sfx} AND status = 'active'`);
+            const voidedInvs = new Set(allocRes.recordset.map(a => a.invoice_id));
             for (const alloc of allocRes.recordset) {
-                const asfx = sfx + '_a' + alloc.id;
-                txReq.input(`aiid_${asfx}`, sql.Int, alloc.invoice_id);
-                txReq.input(`aamt_${asfx}`, sql.Decimal(18, 2), alloc.allocated_amount);
-                await txReq.query(`
-                    UPDATE purchase_invoices
-                    SET amount_paid = amount_paid - @aamt_${asfx},
-                        remaining = remaining + @aamt_${asfx}
-                    WHERE id = @aiid_${asfx}
-                `);
-                await refreshInvoiceStatusAsync(txReq, alloc.invoice_id);
+                txReq.input(`aaiid__${sfx}_${alloc.id}`, sql.Int, alloc.id);
+                await txReq.query(`UPDATE ap_payment_allocations SET status = 'void' WHERE id = @aaiid__${sfx}_${alloc.id}`);
+            }
+            for (const invId of voidedInvs) {
+                await refreshInvoiceStatusAsync(txReq, invId);
             }
 
-            // 2. Delete allocations
-            await txReq.query(`DELETE FROM ap_payment_allocations WHERE payment_id = @ch_pid_${sfx}`);
+            // 2. Reverse voucher journal entries (the matching discount JE is keyed on the voucher)
+            const jeRes = await txReq.query(`
+                SELECT id FROM journal_entries WHERE reference_type = 'ap_payment' AND reference_id = @ch_pid_${sfx} AND (is_reversed IS NULL OR is_reversed = 0)
+            `);
+            for (const je of jeRes.recordset) {
+                await reverseJournalEntryAsync(txReq, je.id, `قيد عكسي لسند تسديد (الشيك)`, req.user ? req.user.id : null);
+            }
 
             // 3. Mark payment as reversed
             txReq.input(`ch_rev_${sfx}`, sql.NVarChar, 'reversed');

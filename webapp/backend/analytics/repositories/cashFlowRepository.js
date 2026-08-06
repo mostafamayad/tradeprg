@@ -62,11 +62,11 @@ async function getSupplierPayments(from, to) {
     inp(ctx, 'from', sql.NVarChar, from);
     inp(ctx, 'to', sql.NVarChar, to);
     const result = await ctx.request.query(`
-        SELECT sp.payment_date AS date, sp.amount, s.supplier_name, sp.payment_method
-        FROM supplier_payments sp
-        LEFT JOIN suppliers s ON sp.supplier_id = s.id
-        ${whereDate(from, to, 'sp.payment_date')}
-        ORDER BY sp.payment_date
+        SELECT ap.payment_date AS date, ap.amount, s.supplier_name, ap.payment_method
+        FROM ap_payments ap
+        LEFT JOIN suppliers s ON ap.supplier_id = s.id
+        WHERE ap.status = 'active'${whereDate(from, to, 'ap.payment_date') ? ' AND ' + whereDate(from, to, 'ap.payment_date').replace(/^WHERE /, '') : ''}
+        ORDER BY ap.payment_date
     `);
     return result.recordset;
 }

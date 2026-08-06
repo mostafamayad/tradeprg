@@ -504,8 +504,7 @@
             if (!act) return;
             const makeBtn = (html, cls, onclick) => { const b=document.createElement('button'); b.className=cls; b.innerHTML=html; b.onclick=onclick; act.appendChild(b); };
             makeBtn('<i class="fa-solid fa-print"></i> طباعة', 'btn btn-outline btn-sm', () => { if (window.API) window.API.printInIframe('/api/reports/payment/'+pay.id+'/print'); });
-            makeBtn('<i class="fa-solid fa-pen-to-square"></i> تعديل', 'btn btn-outline btn-sm', () => { modal.classList.remove('active'); setTimeout(() => openPaymentModal({id:pay.id,payment_no:pay.payment_no,payment_date:pay.payment_date,amount:pay.amount,payment_method:pay.payment_method,notes:pay.notes,check_no:pay.check_no,check_date:pay.check_date,bank_name:pay.bank_name,supplier_id:pay.supplier_id}), 150); });
-            makeBtn('<i class="fa-solid fa-trash"></i> حذف', 'btn btn-danger btn-sm', async () => { if (!confirm('هل تريد حذف هذا السند؟')) return; const r=await req('/payments/'+pay.id,'DELETE'); if (r.success) { modal.classList.remove('active'); alert('تم الحذف'); if (typeof reloadCb==='function') reloadCb(); } });
+            makeBtn('<i class="fa-solid fa-trash"></i> حذف', 'btn btn-danger btn-sm', async () => { if (!confirm('هل تريد إلغاء (Soft Reverse) هذا السند؟')) return; const r=await req('/ap/payments/'+pay.id,'DELETE'); if (r.success) { modal.classList.remove('active'); alert('تم الإلغاء'); if (typeof reloadCb==='function') reloadCb(); } });
             makeBtn('<i class="fa-solid fa-xmark"></i> إغلاق', 'btn btn-outline btn-sm', () => modal.classList.remove('active'));
         });
     }
@@ -631,7 +630,7 @@
             const orig = saveBtn.innerHTML;
             saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الحفظ...';
             saveBtn.disabled = true;
-            const r = isEdit ? await req('/payments/' + payData.id, 'PUT', payload) : await req('/payments', 'POST', payload);
+            const r = await req('/ap/payments', 'POST', payload);
             saveBtn.innerHTML = orig;
             saveBtn.disabled = false;
             if (r.success) {

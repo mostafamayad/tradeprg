@@ -554,16 +554,16 @@ router.get('/payment/:id/print', asyncHandler(async (req, res) => {
     rq.input('id', sql.Int, req.params.id);
 
     const payRes = await rq.query(`SELECT sp.*, s.supplier_name, s.phone, s.address
-                                   FROM supplier_payments sp
+                                   FROM ap_payments sp
                                    LEFT JOIN suppliers s ON sp.supplier_id = s.id
                                    WHERE sp.id = @id`);
     const pay = payRes.recordset[0];
     if (!pay) return res.status(404).send('السند غير موجود');
 
     const allocRes = await rq.query(`SELECT spa.*, pi.invoice_no
-                                     FROM supplier_payment_allocations spa
+                                     FROM ap_payment_allocations spa
                                      LEFT JOIN purchase_invoices pi ON spa.invoice_id = pi.id
-                                     WHERE spa.payment_id = @id`);
+                                     WHERE spa.payment_id = @id AND spa.status = 'active'`);
     const allocs = allocRes.recordset;
 
     const company = await loadCompanyData(rq);
@@ -722,8 +722,8 @@ router.get('/purchase-dashboard', asyncHandler(async (req, res) => {
         if (to)   { payW += `${from ? ' AND' : ' WHERE'} payment_date <= @to`; rq3.input('to', sql.NVarChar, to); }
         const payQ = `
             SELECT COALESCE(SUM(amount), 0) AS paid_amount, COUNT(*) AS payment_count
-            FROM supplier_payments sp
-            ${payW}
+            FROM ap_payments
+            ${payW ? "WHERE status = 'active'" + (payW.length > 0 ? ' AND ' + payW.replace(/^WHERE /, '') : '') : "WHERE status = 'active'"}
         `;
         const payData = (await rq3.query(payQ)).recordset[0];
 
@@ -759,6 +759,9 @@ router.get('/purchase-dashboard', asyncHandler(async (req, res) => {
     }
 }));
 
+// ── Supplier Statement (كشف حساب مورد) ──────────────────────
+// SINGLE SOURCE OF TRUTH: built exclusively from the General Ledger
+// (journal_entries on SYS_AP attributed to the supplier via je.supplier_id).
 router.get('/supplier-statement/:id', asyncHandler(async (req, res) => {
     try {
         const { from, to } = req.query;
@@ -772,105 +775,86 @@ router.get('/supplier-statement/:id', asyncHandler(async (req, res) => {
 
         const apAcc = await getSysAccId(rq, SYS_AP);
 
-        let wStr = '';
-        if (from) wStr += ` AND invoice_date >= @from`;
-        if (to)   wStr += ` AND invoice_date <= @to`;
+        const GL_SELECT = `
+            SELECT je.entry_date AS trans_date,
+                   CASE WHEN je.reference_type = 'manual_je' OR je.reference_type IS NULL
+                        THEN je.entry_no
+                        ELSE COALESCE(NULLIF(je.source_document, ''), je.entry_no)
+                   END AS doc_no,
+                   je.reference_type, je.reference_id, je.id AS je_id,
+                   je.source_action, jl.debit, jl.credit,
+                   ISNULL(jl.description, je.description) AS description,
+                   ISNULL(u.full_name, '') AS created_by_name
+            FROM journal_entry_lines jl
+            JOIN journal_entries je ON je.id = jl.entry_id
+            LEFT JOIN users u ON je.created_by = u.id
+            WHERE jl.account_id = @apAccId
+              AND je.supplier_id = @sid
+              AND (je.is_reversed IS NULL OR je.is_reversed = 0)
+              AND (je.reversal_of_id IS NULL)
+              AND (je.source_action IS NULL OR (je.source_action NOT LIKE '%_cancel' AND je.source_action <> 'cancel'))
+        `;
 
-        let parts = [];
-        parts.push(`
-            SELECT invoice_date AS trans_date, invoice_no AS doc_no,
-                   N'فاتورة مشتريات' AS doc_type, N'فاتورة' AS doc_type_short,
-                   grand_total AS debit, 0 AS credit,
-                   'purchase_invoice' AS ref_type, id AS ref_id,
-                   ISNULL(notes,'') AS description, '' AS created_by_name
-            FROM purchase_invoices
-            WHERE supplier_id = @sid AND status NOT IN ('cancelled', 'deleted')${wStr}
-        `);
-
-        let wStrR = '';
-        if (from) wStrR += ` AND return_date >= @from`;
-        if (to)   wStrR += ` AND return_date <= @to`;
-
-        parts.push(`
-            SELECT return_date AS trans_date, return_no AS doc_no,
-                   N'مرتجع مشتريات' AS doc_type, N'مرتجع' AS doc_type_short,
-                   0 AS debit, grand_total AS credit,
-                   'purchase_return' AS ref_type, id AS ref_id,
-                   ISNULL(return_reason,'') AS description, '' AS created_by_name
-            FROM purchase_returns
-            WHERE supplier_id = @sid AND status NOT IN ('cancelled', 'deleted')${wStrR}
-        `);
-
-        let wStrP = '';
-        if (from) wStrP += ` AND payment_date >= @from`;
-        if (to)   wStrP += ` AND payment_date <= @to`;
-
-        parts.push(`
-            SELECT payment_date AS trans_date, payment_no AS doc_no,
-                   N'سند صرف' AS doc_type, N'سند صرف' AS doc_type_short,
-                   0 AS debit, amount AS credit,
-                   'supplier_payment' AS ref_type, id AS ref_id,
-                   ISNULL(notes,'') AS description, '' AS created_by_name
-            FROM supplier_payments
-            WHERE supplier_id = @sid${wStrP}
-        `);
-
-        if (apAcc) {
-            let wStrJ = '';
-            if (from) wStrJ += ` AND je.entry_date >= @from`;
-            if (to)   wStrJ += ` AND je.entry_date <= @to`;
-
-            parts.push(`
-                SELECT je.entry_date AS trans_date, je.entry_no AS doc_no,
-                       CASE WHEN jl.debit > 0 THEN N'قيد مدين' ELSE N'قيد دائن' END AS doc_type,
-                       CASE WHEN jl.debit > 0 THEN N'مدين' ELSE N'دائن' END AS doc_type_short,
-                       jl.debit, jl.credit,
-                       'journal_entry' AS ref_type, je.id AS ref_id,
-                       ISNULL(jl.description,'') AS description,
-                       ISNULL(u.full_name,'') AS created_by_name
-                FROM journal_entry_lines jl
-                JOIN journal_entries je ON je.id = jl.entry_id
-                LEFT JOIN users u ON je.created_by = u.id
-                WHERE jl.account_id = @apAccId
-                  AND je.reference_type IS NULL
-                  AND (jl.description LIKE N'%' + CAST(@sid AS NVARCHAR) + N'%'
-                       OR jl.description LIKE N'%المورد%' + CAST(@sid AS NVARCHAR)
-                       OR jl.description LIKE N'%' + CAST(@sid AS NVARCHAR) + N'%')
-                  ${wStrJ}
-            `);
+        let opening = num(sup.opening_balance);
+        if (from) {
+            const openReq = pool.request();
+            openReq.input('sid', sql.Int, Number(sid));
+            openReq.input('apAccId', sql.Int, apAcc);
+            openReq.input('from', sql.NVarChar, from);
+            const openRows = (await openReq.query(GL_SELECT + ' AND je.entry_date < @from')).recordset;
+            opening += openRows.reduce((s, r) => s + (num(r.credit) - num(r.debit)), 0);
         }
 
-        const finalQ = parts.join(' UNION ALL ') + ' ORDER BY trans_date ASC, ref_id ASC';
+        const periodReq = pool.request();
+        periodReq.input('sid', sql.Int, Number(sid));
+        periodReq.input('apAccId', sql.Int, apAcc);
+        if (from) periodReq.input('from', sql.NVarChar, from);
+        if (to)   periodReq.input('to',   sql.NVarChar, to);
+        let periodSql = GL_SELECT;
+        if (from) periodSql += ' AND je.entry_date >= @from';
+        if (to)   periodSql += ' AND je.entry_date <= @to';
+        periodSql += ' ORDER BY je.entry_date ASC, je.created_at ASC, je.entry_no ASC';
+        const periodRows = (await periodReq.query(periodSql)).recordset;
 
-        const reqF = pool.request();
-        reqF.input('sid', sql.Int, Number(sid));
-        if (apAcc) reqF.input('apAccId', sql.Int, apAcc);
-        if (from) reqF.input('from', sql.NVarChar, from);
-        if (to)   reqF.input('to',   sql.NVarChar, to);
+        const IS_GL_ONLY = ['purchase_invoice', 'purchase_return', 'supplier_payment', 'ap_payment', 'ap_note'];
+        function mapType(raw) {
+            if (!raw) return 'journal_entry';
+            if (IS_GL_ONLY.includes(raw)) return raw;
+            return 'journal_entry';
+        }
+        function label(raw, action) {
+            if (action && String(action).toLowerCase().endsWith('_cancel')) return { t: 'قيد عكسي', s: 'عكس' };
+            switch (raw) {
+                case 'purchase_invoice': return { t: 'فاتورة شراء', s: 'فاتورة' };
+                case 'purchase_return':  return { t: 'مرتجع شراء',  s: 'مرتجع' };
+                case 'supplier_payment':
+                case 'ap_payment':       return { t: 'سند صرف',     s: 'سند صرف' };
+                case 'ap_note':          return { t: 'إشعار',       s: 'إشعار' };
+                default:                 return { t: 'قيد يومية',    s: 'قيد' };
+            }
+        }
 
-        const rowsRes = await reqF.query(finalQ);
-        const rows = rowsRes.recordset;
-
-        let running = num(sup.opening_balance);
-        const statement = rows.map(r => {
+        let running = opening;
+        const statement = periodRows.map(r => {
+            const l = label(r.reference_type, r.source_action);
             running += num(r.debit) - num(r.credit);
             return {
-                date: r.trans_date, doc_no: r.doc_no, doc_type: r.doc_type,
-                doc_type_short: r.doc_type_short, debit: num(r.debit), credit: num(r.credit),
+                date: r.trans_date, doc_no: r.doc_no, doc_type: l.t,
+                doc_type_short: l.s, debit: num(r.debit), credit: num(r.credit),
                 balance: running, description: r.description, created_by: r.created_by_name,
-                ref_type: r.ref_type, ref_id: r.ref_id
+                ref_type: mapType(r.reference_type), ref_id: r.reference_id != null ? r.reference_id : r.je_id
             };
         });
 
         const totalDebit  = statement.reduce((s, r) => s + r.debit, 0);
         const totalCredit = statement.reduce((s, r) => s + r.credit, 0);
-        const closing     = num(sup.opening_balance) + totalDebit - totalCredit;
+        const closing     = opening + totalDebit - totalCredit;
 
         res.json({
             success: true,
             data: {
                 supplier: { id: sup.id, supplier_code: sup.supplier_code, supplier_name: sup.supplier_name, phone: sup.phone, address: sup.address, current_balance: num(sup.current_balance) },
-                opening_balance: num(sup.opening_balance),
+                opening_balance: opening,
                 total_debit: totalDebit, total_credit: totalCredit,
                 closing_balance: closing, rows: statement
             }
@@ -1012,15 +996,15 @@ router.get('/supplier-payments', asyncHandler(async (req, res) => {
         const pool = await getPool();
         const rq = pool.request();
 
-        let wheres = 'WHERE 1=1';
+        let wheres = "WHERE 1=1 AND sp.status = 'active'";
         if (from) { wheres += ` AND sp.payment_date >= @from`; rq.input('from', sql.NVarChar, from); }
         if (to)   { wheres += ` AND sp.payment_date <= @to`;   rq.input('to', sql.NVarChar, to); }
         if (supplier_id) { wheres += ` AND sp.supplier_id = @supplier_id`; rq.input('supplier_id', sql.Int, supplier_id); }
 
         const q = `
-            SELECT sp.id, sp.payment_no, sp.payment_date, sp.amount, sp.payment_method, sp.reference, sp.notes,
+            SELECT sp.id, sp.payment_no, sp.payment_date, sp.amount, sp.payment_method, sp.notes,
                    s.supplier_name, s.supplier_code
-            FROM supplier_payments sp
+            FROM ap_payments sp
             LEFT JOIN suppliers s ON s.id = sp.supplier_id
             ${wheres}
             ORDER BY sp.payment_date DESC
@@ -1028,10 +1012,10 @@ router.get('/supplier-payments', asyncHandler(async (req, res) => {
         `;
         const data = (await rq.query(q)).recordset;
 
-        const totQ = `SELECT COUNT(*) AS payment_count, COALESCE(SUM(amount), 0) AS total_amount FROM supplier_payments sp ${wheres}`;
+        const totQ = `SELECT COUNT(*) AS payment_count, COALESCE(SUM(amount), 0) AS total_amount FROM ap_payments sp ${wheres}`;
         const totals = (await rq.query(totQ)).recordset[0];
 
-        const countQ = `SELECT COUNT(*) AS total FROM supplier_payments sp ${wheres}`;
+        const countQ = `SELECT COUNT(*) AS total FROM ap_payments sp ${wheres}`;
         const countRes = (await rq.query(countQ)).recordset[0];
 
         res.json({
@@ -1140,9 +1124,10 @@ router.get('/top-suppliers', asyncHandler(async (req, res) => {
                 GROUP BY sr.supplier_id
             ),
             sup_payments AS (
-                SELECT sp.supplier_id, COALESCE(SUM(sp.amount), 0) AS total_payments
-                FROM supplier_payments sp
-                GROUP BY sp.supplier_id
+                SELECT ap.supplier_id, COALESCE(SUM(ap.amount), 0) AS total_payments
+                FROM ap_payments ap
+                WHERE ap.status = 'active'
+                GROUP BY ap.supplier_id
             )
             SELECT s.id, s.supplier_code, s.supplier_name, s.phone, s.current_balance,
                    COALESCE(sp.invoice_count, 0) AS invoice_count,
@@ -1282,7 +1267,7 @@ router.get('/purchase-movement', asyncHandler(async (req, res) => {
             ${wR}
         `);
 
-        let wP = 'WHERE 1=1';
+        let wP = "WHERE 1=1 AND sp.status = 'active'";
         if (from) { wP += ` AND sp.payment_date >= @from`; }
         if (to)   { wP += ` AND sp.payment_date <= @to`; }
         if (supplier_id) { wP += ` AND sp.supplier_id = @supplier_id`; }
@@ -1292,7 +1277,7 @@ router.get('/purchase-movement', asyncHandler(async (req, res) => {
                    N'سند صرف' AS doc_type, sp.amount AS grand_total, 0 AS tax_amount,
                    sp.amount AS net_total, 'paid' AS status,
                    s.supplier_name, '' AS store_name
-            FROM supplier_payments sp
+            FROM ap_payments sp
             LEFT JOIN suppliers s ON s.id = sp.supplier_id
             ${wP}
         `);
