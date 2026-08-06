@@ -6,8 +6,6 @@
 //   CONFIRM_FINANCE_APPROVAL=true node scripts/book_e2_adjustment.js --execute
 'use strict';
 
-const { execFileSync } = require('child_process');
-const path = require('path');
 const { getPool, sql } = require('../database/mssql_db');
 const { getSystemAccountAsync, postJournalEntryAsync } = require('../services/accountingEngine');
 
@@ -182,16 +180,7 @@ async function run() {
   const tb = await trialBalance(pool);
   console.log(`\nTrial Balance: Debits=${tb.tot_debit.toFixed(2)} Credits=${tb.tot_credit.toFixed(2)} -> ${tb.tot_debit === tb.tot_credit ? 'BALANCED' : 'UNBALANCED'}`);
 
-  // 4) Integrity Audit (read-only report)
-  try {
-    console.log('\n=== Integrity Audit ===');
-    const auditPath = path.join(__dirname, 'integrity_audit.js');
-    execFileSync(process.execPath, [auditPath], { stdio: 'inherit' });
-    console.log('\n=== Integrity Audit complete ===');
-  } catch (err) {
-    console.log('\nIntegrity audit reporter failed (code above may be partial).');
-  }
-
+  // Full reconciliation/audit is delegated to scripts/post_adjustment_verification.js (read-only).
   process.exit(finalDiff === 0 ? 0 : 1);
 }
 
