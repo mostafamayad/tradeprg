@@ -69,7 +69,7 @@ async function canCancelSalesInvoiceAsync(poolOrTx, invoiceId) {
     {
         const r = Math.random().toString(36).substring(2, 9);
         request.input(`ccs_pay_${r}`, sql.Int, invoiceId);
-        const pay = await request.query(`SELECT COUNT(*) as cnt FROM ar_payment_allocations WHERE invoice_id = @ccs_pay_${r}`);
+        const pay = await request.query(`SELECT COUNT(*) as cnt FROM ar_payment_allocations WHERE invoice_id = @ccs_pay_${r} AND status = 'active'`);
         if (pay.recordset[0].cnt > 0) reasons.push('الفاتورة مرتبطة بسداد أو مطابقة');
     }
 

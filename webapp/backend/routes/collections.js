@@ -59,7 +59,7 @@ async function refreshInvoiceStatusAsync(txRequest, invoiceId) {
     const returnsTotal = retRes.recordset[0].total || 0;
 
     // Single source of truth: ar_payment_allocations.net_amount
-    const allocRes = await txRequest.query(`SELECT COALESCE(SUM(apa.net_amount),0) as total FROM ar_payment_allocations apa WHERE apa.invoice_id = @ris_id_${srfx}`);
+    const allocRes = await txRequest.query(`SELECT COALESCE(SUM(apa.net_amount),0) as total FROM ar_payment_allocations apa WHERE apa.invoice_id = @ris_id_${srfx} AND apa.status = 'active'`);
     const allocPaid = allocRes.recordset[0].total || 0;
 
     const remaining = Math.max(0, num(inv.grand_total) - num(allocPaid) - num(returnsTotal));
@@ -127,7 +127,7 @@ async function allocateCollectionAsync(txRequest, customerId, collectionId, amou
             const invRes = await txRequest.query(`
                 SELECT si.id, si.grand_total, si.amount_paid,
                     si.grand_total
-                    - COALESCE((SELECT SUM(apa.net_amount) FROM ar_payment_allocations apa WHERE apa.invoice_id = si.id), 0)
+                    - COALESCE((SELECT SUM(apa.net_amount) FROM ar_payment_allocations apa WHERE apa.invoice_id = si.id AND apa.status = 'active'), 0)
                     - COALESCE((SELECT SUM(sr.grand_total) FROM sales_returns sr WHERE sr.invoice_id = si.id AND sr.status NOT IN ('cancelled','deleted')), 0) AS remaining
                 FROM sales_invoices si
                 WHERE si.id = @al_invid_${sf} AND si.customer_id = @al_cid_${sf} AND si.status != 'cancelled'
@@ -144,7 +144,7 @@ async function allocateCollectionAsync(txRequest, customerId, collectionId, amou
             SELECT * FROM (
                 SELECT si.id, si.invoice_date, si.grand_total, si.amount_paid,
                     si.grand_total
-                    - COALESCE((SELECT SUM(apa.net_amount) FROM ar_payment_allocations apa WHERE apa.invoice_id = si.id), 0)
+                    - COALESCE((SELECT SUM(apa.net_amount) FROM ar_payment_allocations apa WHERE apa.invoice_id = si.id AND apa.status = 'active'), 0)
                     - COALESCE((SELECT SUM(sr.grand_total) FROM sales_returns sr WHERE sr.invoice_id = si.id AND sr.status NOT IN ('cancelled','deleted')), 0) AS remaining
                 FROM sales_invoices si
                 WHERE si.customer_id = @al_cid_all_${pfx} AND si.status != 'cancelled'
@@ -224,7 +224,7 @@ router.get('/', asyncHandler(async (req, res) => {
             LEFT JOIN customers c ON ap.customer_id = c.id
             LEFT JOIN sales_reps r ON c.rep_id = r.id
             LEFT JOIN (SELECT payment_id, SUM(allocated_amount) AS allocated
-                       FROM ar_payment_allocations GROUP BY payment_id) alloc ON alloc.payment_id = ap.id
+                       FROM ar_payment_allocations WHERE status = 'active' GROUP BY payment_id) alloc ON alloc.payment_id = ap.id
             ${where}
         `;
 

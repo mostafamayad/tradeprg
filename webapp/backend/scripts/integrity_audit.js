@@ -169,7 +169,7 @@ defCheck('ar_customer_vs_gl', 'Subledger vs GL', 'فرق رصيد العميل (
    OUTER APPLY (SELECT SUM(COALESCE(apa.discount_amount,0)) AS disc
                 FROM ar_payment_allocations apa
                 JOIN sales_invoices si ON si.id = apa.invoice_id
-                WHERE si.customer_id = c.id) d
+                WHERE si.customer_id = c.id AND apa.status = 'active') d
    OUTER APPLY (SELECT SUM(jl.debit - jl.credit) AS gl_balance
                 FROM journal_entry_lines jl
                 JOIN journal_entries je ON je.id = jl.entry_id
@@ -503,7 +503,7 @@ defCheck('all_alloc_over_payment', 'Allocations', 'تخصيصات تفوق قي�
           ROUND(x.allocated,2) AS allocated, ROUND(x.allocated - x.amount,2) AS over_amt
    FROM (
      SELECT p.payment_no, p.id AS payment_id, p.customer_id, p.supplier_id, p.amount,
-            ISNULL((SELECT SUM(allocated_amount) FROM ar_payment_allocations WHERE payment_id = p.id),0)
+            ISNULL((SELECT SUM(allocated_amount) FROM ar_payment_allocations WHERE payment_id = p.id AND status = 'active'),0)
               + ISNULL((SELECT SUM(allocated_amount) FROM ap_payment_allocations WHERE payment_id = p.id),0) AS allocated
      FROM (
        SELECT payment_no, id, customer_id, CAST(NULL AS INT) AS supplier_id, amount FROM ar_payments
@@ -519,7 +519,7 @@ defCheck('all_alloc_to_cancelled_invoice', 'Allocations', 'تخصيصات تشي
           COALESCE(si.status, pi.status) AS invoice_status,
           COALESCE(si.invoice_no, pi.invoice_no) AS invoice_no
    FROM (
-     SELECT id, payment_id, invoice_id, allocated_amount FROM ar_payment_allocations
+     SELECT id, payment_id, invoice_id, allocated_amount FROM ar_payment_allocations WHERE status = 'active'
      UNION ALL
      SELECT id, payment_id, invoice_id, allocated_amount FROM ap_payment_allocations
    ) a

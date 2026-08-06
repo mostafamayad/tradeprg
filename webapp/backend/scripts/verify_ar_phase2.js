@@ -107,8 +107,8 @@ function check(name, b) { results.push([name, ok(b)]); console.log(`${ok(b)}  ${
     // Dynamic remaining recompute from allocations
     const dyn = (await db(`
         SELECT si.grand_total,
-               COALESCE((SELECT SUM(net_amount) FROM ar_payment_allocations WHERE invoice_id = si.id),0) AS net,
-               si.grand_total - COALESCE((SELECT SUM(net_amount) FROM ar_payment_allocations WHERE invoice_id = si.id),0) AS remaining
+               COALESCE((SELECT SUM(net_amount) FROM ar_payment_allocations WHERE invoice_id = si.id AND status = 'active'),0) AS net,
+               si.grand_total - COALESCE((SELECT SUM(net_amount) FROM ar_payment_allocations WHERE invoice_id = si.id AND status = 'active'),0) AS remaining
         FROM sales_invoices si WHERE si.id = @i`, { i: invoiceId }))[0];
     check('dynamic remaining = 0 (grand_total - SUM(net))', Math.round(Number(dyn.remaining) * 100) / 100 === 0);
 

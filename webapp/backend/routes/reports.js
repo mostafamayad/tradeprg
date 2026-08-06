@@ -16,7 +16,7 @@ function num(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
 // Dynamic invoice remaining (single source: ar_payment_allocations.net_amount minus approved returns).
 // Cache columns amount_paid/remaining stay in sync for display, but every report uses the dynamic value.
 const INV_DYNAMIC_REMAINING = `(i.grand_total
-  - COALESCE((SELECT SUM(apa.net_amount) FROM ar_payment_allocations apa WHERE apa.invoice_id = i.id), 0)
+  - COALESCE((SELECT SUM(apa.net_amount) FROM ar_payment_allocations apa WHERE apa.invoice_id = i.id AND apa.status = 'active'), 0)
   - COALESCE((SELECT SUM(sr.grand_total) FROM sales_returns sr WHERE sr.invoice_id = i.id AND sr.status NOT IN ('cancelled','deleted')), 0))`;
 
 // Load company data from both company_info and settings tables (settings has logo, phone, email, etc.)
@@ -1018,7 +1018,7 @@ router.get('/dashboard-cards', asyncHandler(async (req, res) => {
              COALESCE(SUM(subtotal), 0) AS gross_sales,
              COALESCE(SUM(discount_amount), 0) AS total_discount,
              COALESCE(SUM(tax_amount), 0) AS total_tax,
-             COALESCE(SUM((SELECT SUM(apa.net_amount) FROM ar_payment_allocations apa WHERE apa.invoice_id = i.id)), 0) AS total_paid,
+             COALESCE(SUM((SELECT SUM(apa.net_amount) FROM ar_payment_allocations apa WHERE apa.invoice_id = i.id AND apa.status = 'active')), 0) AS total_paid,
              COALESCE(SUM(${INV_DYNAMIC_REMAINING}), 0) AS total_outstanding,
              CASE WHEN COUNT(*) > 0 THEN COALESCE(SUM(grand_total), 0) / COUNT(*) ELSE 0 END AS avg_invoice
       FROM sales_invoices i
@@ -4213,7 +4213,7 @@ let having = '';
       COUNT(apa.id) AS allocation_count
     FROM sales_invoices si
     JOIN customers c ON si.customer_id = c.id
-    LEFT JOIN ar_payment_allocations apa ON apa.invoice_id = si.id
+    LEFT JOIN ar_payment_allocations apa ON apa.invoice_id = si.id AND apa.status = 'active'
     LEFT JOIN (
         SELECT invoice_id, SUM(grand_total) AS returns_total
         FROM sales_returns WHERE status NOT IN ('cancelled','deleted') GROUP BY invoice_id

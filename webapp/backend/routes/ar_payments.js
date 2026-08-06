@@ -72,9 +72,10 @@ async function refreshInvoiceStatusAsync(txRequest, invoiceId) {
     const retRes = await txRequest.query(`SELECT COALESCE(SUM(grand_total),0) as total FROM sales_returns WHERE invoice_id = @ris_id_${srfx} AND status NOT IN ('cancelled', 'deleted')`);
     const returnsTotal = retRes.recordset[0].total || 0;
 
-    // Single source of truth: ar_payment_allocations.net_amount (excludes legacy collection_allocations)
+    // Single source of truth: ar_payment_allocations.net_amount (excludes legacy collection_allocations).
+    // Only ACTIVE allocations count — voided vouchers reopen the invoice.
     const allocRes = await txRequest.query(`
-        SELECT COALESCE(SUM(apa.net_amount), 0) as total FROM ar_payment_allocations apa WHERE apa.invoice_id = @ris_id_${srfx}
+        SELECT COALESCE(SUM(apa.net_amount), 0) as total FROM ar_payment_allocations apa WHERE apa.invoice_id = @ris_id_${srfx} AND apa.status = 'active'
     `);
     const totalPaid = allocRes.recordset[0].total || 0;
 
@@ -485,6 +486,7 @@ router.delete('/:id', asyncHandler(async (req, res) => {
             const allocRes = await txReq.query(`SELECT * FROM ar_payment_allocations WHERE payment_id = @pid`);
             const allocations = allocRes.recordset;
 
+            const affectedInvoices = [];
             for (const alloc of allocations) {
                 txReq.input(`inv_restore_${alloc.id}`, sql.Int, alloc.invoice_id);
                 // Restore by net (allocated + discount) — the discount forgave part of
@@ -498,8 +500,17 @@ router.delete('/:id', asyncHandler(async (req, res) => {
                         remaining = remaining + @amt_restore_${alloc.id}
                     WHERE id = @inv_restore_${alloc.id}
                 `);
+                affectedInvoices.push(alloc.invoice_id);
+            }
 
-                await refreshInvoiceStatusAsync(txReq, alloc.invoice_id);
+            // 1b. Soft-reverse: allocations are the audit trail and are never deleted.
+            //     Flag them void so every consumer (dynamic remaining, matching engine,
+            //     matching report, statement drill-down, aging, integrity audit) stops
+            //     counting them — the invoice reopens and can be re-matched directly.
+            await txReq.query(`UPDATE ar_payment_allocations SET status = 'void' WHERE payment_id = @pid`);
+
+            for (const invId of affectedInvoices) {
+                await refreshInvoiceStatusAsync(txReq, invId);
             }
 
             // 2. Reverse journal entries if any (cash/transfer only)
@@ -621,12 +632,12 @@ router.get('/matching/customers', asyncHandler(async (req, res) => {
             WHERE EXISTS (
                 SELECT 1 FROM ar_payments ap
                 WHERE ap.customer_id = c.id AND ap.status = 'active'
-                AND ap.amount > COALESCE((SELECT SUM(allocated_amount) FROM ar_payment_allocations WHERE payment_id = ap.id), 0)
+                AND ap.amount > COALESCE((SELECT SUM(allocated_amount) FROM ar_payment_allocations WHERE payment_id = ap.id AND status = 'active'), 0)
             )
             OR EXISTS (
                 SELECT 1 FROM sales_invoices si
                 WHERE si.customer_id = c.id AND si.status IN ('pending', 'partial')
-                AND si.grand_total > COALESCE((SELECT SUM(apa.net_amount) FROM ar_payment_allocations apa WHERE apa.invoice_id = si.id), 0)
+                AND si.grand_total > COALESCE((SELECT SUM(apa.net_amount) FROM ar_payment_allocations apa WHERE apa.invoice_id = si.id AND apa.status = 'active'), 0)
             )
             ORDER BY c.customer_name
         `);
@@ -648,8 +659,8 @@ router.get('/matching/data/:customerId', asyncHandler(async (req, res) => {
         const paymentsRes = await request.query(`
             SELECT * FROM (
                 SELECT ap.id, ap.payment_no, ap.payment_date, ap.amount,
-                    COALESCE((SELECT SUM(allocated_amount) FROM ar_payment_allocations WHERE payment_id = ap.id), 0) AS allocated_total,
-                    ap.amount - COALESCE((SELECT SUM(allocated_amount) FROM ar_payment_allocations WHERE payment_id = ap.id), 0) AS unallocated,
+                    COALESCE((SELECT SUM(allocated_amount) FROM ar_payment_allocations WHERE payment_id = ap.id AND status = 'active'), 0) AS allocated_total,
+                    ap.amount - COALESCE((SELECT SUM(allocated_amount) FROM ar_payment_allocations WHERE payment_id = ap.id AND status = 'active'), 0) AS unallocated,
                     ap.payment_method
                 FROM ar_payments ap
                 WHERE ap.customer_id = @cid AND ap.status = 'active'
@@ -666,7 +677,7 @@ router.get('/matching/data/:customerId', asyncHandler(async (req, res) => {
             SELECT * FROM (
                 SELECT si.id, si.invoice_no, si.invoice_date, si.grand_total,
                     si.grand_total
-                    - COALESCE((SELECT SUM(apa.net_amount) FROM ar_payment_allocations apa WHERE apa.invoice_id = si.id), 0)
+                    - COALESCE((SELECT SUM(apa.net_amount) FROM ar_payment_allocations apa WHERE apa.invoice_id = si.id AND apa.status = 'active'), 0)
                     - COALESCE((SELECT SUM(sr.grand_total) FROM sales_returns sr WHERE sr.invoice_id = si.id AND sr.status NOT IN ('cancelled','deleted')), 0) AS remaining,
                     si.status
                 FROM sales_invoices si
@@ -750,7 +761,7 @@ router.post('/matching/save', asyncHandler(async (req, res) => {
                 txReq.input(`mp_cid_${sfx}`, sql.Int, customer_id);
                 const payRes = await txReq.query(`
                     SELECT id, payment_no, amount,
-                        COALESCE((SELECT SUM(allocated_amount) FROM ar_payment_allocations WHERE payment_id = @mp_pid_${sfx}), 0) AS allocated_total
+                        COALESCE((SELECT SUM(allocated_amount) FROM ar_payment_allocations WHERE payment_id = @mp_pid_${sfx} AND status = 'active'), 0) AS allocated_total
                     FROM ar_payments
                     WHERE id = @mp_pid_${sfx} AND customer_id = @mp_cid_${sfx} AND status = 'active'
                 `);
@@ -781,7 +792,7 @@ router.post('/matching/save', asyncHandler(async (req, res) => {
 
                     const invRes = await txReq.query(`
                         SELECT si.id, si.invoice_no, si.grand_total, si.status,
-                            COALESCE((SELECT SUM(net_amount) FROM ar_payment_allocations WHERE invoice_id = si.id), 0) AS allocated_net,
+                            COALESCE((SELECT SUM(net_amount) FROM ar_payment_allocations WHERE invoice_id = si.id AND status = 'active'), 0) AS allocated_net,
                             COALESCE((SELECT SUM(sr.grand_total) FROM sales_returns sr WHERE sr.invoice_id = si.id AND sr.status NOT IN ('cancelled','deleted')), 0) AS returns_total
                         FROM sales_invoices si
                         WHERE si.id = @mp_niid_${asfx} AND si.customer_id = @mp_cid_${sfx}

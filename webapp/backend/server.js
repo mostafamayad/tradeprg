@@ -379,6 +379,10 @@ app.listen(PORT, '0.0.0.0', async () => {
                 ALTER TABLE sales_return_items ADD serial_no NVARCHAR(100) NULL;
         `);
         // ── Phase 2: ar_payment_allocations single-source columns (discount/net) ──
+        // NOTE: the backfill UPDATE is intentionally a SEPARATE batch. SQL Server
+        // compiles a batch before executing it, so referencing net_amount in an UPDATE
+        // that is also CREATED via ALTER in the same batch throws "Invalid column name"
+        // when the column did not already exist (e.g. an existing database).
         await pool.request().query(`
             IF COL_LENGTH('ar_payment_allocations', 'discount_amount') IS NULL
             BEGIN
@@ -393,8 +397,21 @@ app.listen(PORT, '0.0.0.0', async () => {
                 ALTER TABLE ar_payment_allocations ADD created_at DATETIME DEFAULT GETDATE();
                 ALTER TABLE ar_payment_allocations ADD created_by INT NULL;
             END
+        `);
+        await pool.request().query(`
             UPDATE ar_payment_allocations SET net_amount = allocated_amount
             WHERE net_amount = 0 AND allocated_amount > 0;
+        `);
+        // ── Phase 3: soft-reversal of allocations ──
+        // Voiding a CASH/TRANSFER AR voucher must reopen the invoices it covered.
+        // The allocation rows are the audit trail and are NOT deleted; instead they
+        // are flagged so every consumer (dynamic remaining, matching, reports) only
+        // counts ACTIVE allocations. Existing rows become 'active' via the DEFAULT.
+        await pool.request().query(`
+            IF COL_LENGTH('ar_payment_allocations', 'status') IS NULL
+            BEGIN
+                ALTER TABLE ar_payment_allocations ADD status NVARCHAR(20) NOT NULL DEFAULT 'active';
+            END
         `);
         // sales_return_audit: index on return_id
         await pool.request().query(`

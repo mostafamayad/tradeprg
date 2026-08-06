@@ -570,7 +570,7 @@ class CommissionRepository {
                            si.grand_total AS invoice_total, apa.allocated_amount AS amount
                     FROM ar_payment_allocations apa
                     JOIN sales_invoices si ON apa.invoice_id = si.id
-                    WHERE apa.payment_id = @collectionId`);
+                    WHERE apa.payment_id = @collectionId AND apa.status = 'active'`);
         return r.recordset;
     }
 

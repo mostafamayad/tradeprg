@@ -33,7 +33,7 @@ async function refreshInvoiceStatusAsync(txRequest, invoiceId) {
     const retRes = await txRequest.query(`SELECT COALESCE(SUM(grand_total),0) as total FROM sales_returns WHERE invoice_id = @ris_id_${srfx} AND status NOT IN ('cancelled', 'deleted')`);
     const returnsTotal = retRes.recordset[0].total || 0;
     const allocRes = await txRequest.query(`
-        SELECT COALESCE(SUM(apa.net_amount), 0) as total FROM ar_payment_allocations apa WHERE apa.invoice_id = @ris_id_${srfx}
+        SELECT COALESCE(SUM(apa.net_amount), 0) as total FROM ar_payment_allocations apa WHERE apa.invoice_id = @ris_id_${srfx} AND apa.status = 'active'
     `);
     const totalPaid = allocRes.recordset[0].total || 0;
     const remaining = Math.max(0, num(inv.grand_total) - totalPaid - num(returnsTotal));
@@ -348,11 +348,16 @@ router.patch('/:id/return', asyncHandler(async (req, res) => {
                             remaining = remaining + @aamt_${asfx}
                         WHERE id = @aiid_${asfx}
                     `);
-                    await refreshInvoiceStatusAsync(txReq, alloc.invoice_id);
                 }
 
-                // 2. Delete allocations
-                await txReq.query(`DELETE FROM ar_payment_allocations WHERE payment_id = @ch_pid_${sfx}`);
+                // 2. Soft-void allocations — the audit trail is preserved; consumers only count ACTIVE.
+                await txReq.query(`UPDATE ar_payment_allocations SET status = 'void' WHERE payment_id = @ch_pid_${sfx}`);
+
+                // 2b. Recompute invoice status now that voided allocations no longer count.
+                const voidedInvs = await txReq.query(`SELECT DISTINCT invoice_id FROM ar_payment_allocations WHERE payment_id = @ch_pid_${sfx}`);
+                for (const invRow of voidedInvs.recordset) {
+                    await refreshInvoiceStatusAsync(txReq, invRow.invoice_id);
+                }
 
                 // 3. Mark payment as reversed
                 txReq.input(`ch_rev_${sfx}`, sql.NVarChar, 'reversed');
@@ -448,11 +453,16 @@ router.patch('/:id/cancel', asyncHandler(async (req, res) => {
                             remaining = remaining + @aamt_${asfx}
                         WHERE id = @aiid_${asfx}
                     `);
-                    await refreshInvoiceStatusAsync(txReq, alloc.invoice_id);
                 }
 
-                // 2. Delete allocations
-                await txReq.query(`DELETE FROM ar_payment_allocations WHERE payment_id = @ch_pid_${sfx}`);
+                // 2. Soft-void allocations — the audit trail is preserved; consumers only count ACTIVE.
+                await txReq.query(`UPDATE ar_payment_allocations SET status = 'void' WHERE payment_id = @ch_pid_${sfx}`);
+
+                // 2b. Recompute invoice status now that voided allocations no longer count.
+                const voidedInvs = await txReq.query(`SELECT DISTINCT invoice_id FROM ar_payment_allocations WHERE payment_id = @ch_pid_${sfx}`);
+                for (const invRow of voidedInvs.recordset) {
+                    await refreshInvoiceStatusAsync(txReq, invRow.invoice_id);
+                }
 
                 // 3. Mark payment as reversed
                 txReq.input(`ch_rev_${sfx}`, sql.NVarChar, 'reversed');
