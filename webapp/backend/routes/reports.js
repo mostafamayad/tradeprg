@@ -1018,13 +1018,22 @@ router.get('/dashboard-cards', asyncHandler(async (req, res) => {
              COALESCE(SUM(subtotal), 0) AS gross_sales,
              COALESCE(SUM(discount_amount), 0) AS total_discount,
              COALESCE(SUM(tax_amount), 0) AS total_tax,
-             COALESCE(SUM((SELECT SUM(apa.net_amount) FROM ar_payment_allocations apa WHERE apa.invoice_id = i.id AND apa.status = 'active')), 0) AS total_paid,
-             COALESCE(SUM(${INV_DYNAMIC_REMAINING}), 0) AS total_outstanding,
              CASE WHEN COUNT(*) > 0 THEN COALESCE(SUM(grand_total), 0) / COUNT(*) ELSE 0 END AS avg_invoice
       FROM sales_invoices i
       ${wheres}
     `;
     const sales = (await rq.query(salesQ)).recordset[0];
+
+    // Paid-to-date on sales (AR allocations SSOT), same invoice/status/date window
+    const paidQ = `
+      SELECT COALESCE(SUM(apa.net_amount), 0) AS total_paid
+      FROM ar_payment_allocations apa
+      JOIN sales_invoices i ON i.id = apa.invoice_id
+      WHERE apa.status = 'active' AND i.status NOT IN ('cancelled', 'deleted')
+      ${from ? ` AND i.invoice_date >= @from` : ''} ${to ? ` AND i.invoice_date <= @to` : ''}
+    `;
+    if (from || to) { rq.input('from', sql.NVarChar, from || '9999'); rq.input('to', sql.NVarChar, to || '9999'); }
+    const paidData = (await rq.query(paidQ)).recordset[0];
 
     // Returns summary
     const rq2 = pool.request();
@@ -1086,7 +1095,7 @@ router.get('/dashboard-cards', asyncHandler(async (req, res) => {
         total_returns: totalReturns,
         net_sales: netSales,
         collected_amount: num(colData.collected_amount),
-        outstanding_amount: num(sales.total_outstanding),
+        outstanding_amount: num(netSales - num(paidData.total_paid)),
         total_vat: num(sales.total_tax),
         invoice_count: num(sales.invoice_count),
         avg_invoice: num(sales.avg_invoice),
