@@ -1,4 +1,4 @@
-const BASE = 'http://localhost:3000/api';
+const BASE = process.env.TEST_BASE_URL || 'http://localhost:3000/api';
 
 let token = null;
 

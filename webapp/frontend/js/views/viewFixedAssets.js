@@ -504,7 +504,7 @@
     window.approveFAMovement = async function (mid) {
         if (!confirmMsg('اعتماد هذه الحركة؟')) return;
         const r = await api('/movements/' + mid + '/approve', { method: 'PATCH' });
-        if (r.success) { addMsg('تم الاعتماد', 'success'); closeModal('fa-mv-modal'); }
+        if (r.success) { addMsg('تم الاعتماد', 'success'); closeModal('fa-mv-modal'); loadFATable(); loadFASummary(); }
         else addMsg(r.message, 'error');
     };
 

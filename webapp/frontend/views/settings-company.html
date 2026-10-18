@@ -60,7 +60,7 @@
         </div>
         <div class="form-group">
             <label>نسبة الضريبة الافتراضية (%)</label>
-            <input type="number" id="comp-tax-rate" min="0" max="100" placeholder="14">
+            <input type="number" id="comp-tax-rate" min="0" max="100" placeholder="نسبة الضريبة">
         </div>
     </div>
 </div>
@@ -82,7 +82,7 @@
                 document.getElementById('comp-email').value = res.data.company_email || '';
                 document.getElementById('comp-website').value = res.data.company_website || '';
                 document.getElementById('comp-postal').value = res.data.company_postal_code || '';
-                document.getElementById('comp-tax-rate').value = res.data.tax_rate || '14';
+                document.getElementById('comp-tax-rate').value = res.data.tax_rate || '';
             }
         }
     }

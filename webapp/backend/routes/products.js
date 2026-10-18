@@ -35,6 +35,74 @@ router.get('/', asyncHandler(async (req, res) => {
     }
 }));
 
+
+router.get('/track/:query', asyncHandler(async (req, res) => {
+    const q = req.params.query ? req.params.query.trim() : '';
+    if (!q) return res.status(400).json({ success: false, message: 'محدد البحث مطلوب' });
+    const pool = await getPool();
+    const request = pool.request();
+    request.input('q', sql.NVarChar, q);
+    request.input('qlike', sql.NVarChar, '%' + q + '%');
+
+    const pRes = await request.query(`
+        SELECT TOP 1 p.*, c.category_name,
+            COALESCE((SELECT SUM(ib.quantity) FROM inventory_balances ib WHERE ib.product_id = p.id), 0) as total_stock
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE p.barcode = @q OR p.product_code = @q OR p.barcode LIKE @qlike OR p.product_code LIKE @qlike OR p.product_name LIKE @qlike
+        ORDER BY CASE WHEN p.barcode = @q THEN 0 WHEN p.product_code = @q THEN 1 ELSE 2 END
+    `);
+    const product = pRes.recordset[0];
+    if (!product) return res.status(404).json({ success: false, message: 'لم يتم العثور على أي صنف بهذا السيريال أو الكود' });
+
+    const pId = product.id;
+    request.input('pid', sql.Int, pId);
+
+    const storeBalancesRes = await request.query(`
+        SELECT ib.quantity, s.store_name 
+        FROM inventory_balances ib 
+        JOIN stores s ON ib.store_id = s.id 
+        WHERE ib.product_id = @pid
+    `);
+
+    const purchasesRes = await request.query(`
+        SELECT TOP 10 pi.invoice_no, pi.invoice_date, s.supplier_name, pii.quantity, pii.cost_price, pii.line_total
+        FROM purchase_invoice_items pii
+        JOIN purchase_invoices pi ON pii.invoice_id = pi.id
+        LEFT JOIN suppliers s ON pi.supplier_id = s.id
+        WHERE pii.product_id = @pid AND pi.status != 'cancelled'
+        ORDER BY pi.invoice_date DESC, pi.id DESC
+    `);
+
+    const salesRes = await request.query(`
+        SELECT TOP 10 si.invoice_no, si.invoice_date, c.customer_name, sii.quantity, sii.unit_price AS sell_price, sii.line_total
+        FROM sales_invoice_items sii
+        JOIN sales_invoices si ON sii.invoice_id = si.id
+        LEFT JOIN customers c ON si.customer_id = c.id
+        WHERE sii.product_id = @pid AND si.status != 'cancelled'
+        ORDER BY si.invoice_date DESC, si.id DESC
+    `);
+
+    const movementsRes = await request.query(`
+        SELECT TOP 30 sm.*, s.store_name 
+        FROM stock_movements sm 
+        LEFT JOIN stores s ON sm.store_id = s.id 
+        WHERE sm.product_id = @pid 
+        ORDER BY sm.id DESC
+    `);
+
+    res.json({
+        success: true,
+        data: {
+            product,
+            storeBalances: storeBalancesRes.recordset,
+            purchases: purchasesRes.recordset,
+            sales: salesRes.recordset,
+            movements: movementsRes.recordset
+        }
+    });
+}));
+
 router.get('/:id', asyncHandler(async (req, res) => {
     try {
         const pool = await getPool();

@@ -1,4 +1,4 @@
-﻿const router = require('express').Router();
+const router = require('express').Router();
 const asyncHandler = require('../../utils/asyncHandler');
 const { num, loadCompanyData, escapeHtml, validatePagination, applyDateFilter, getSysAccId, getPool, sql, SYS_SALES, SYS_SALES_RETURNS, SYS_AR, SYS_AP, SYS_VAT_OUTPUT, SYS_VAT_INPUT, SYS_COGS, SYS_PURCHASES, SYS_PURCHASE_RETURNS, SYS_INVENTORY, SYS_INVENTORY_SHORTAGE } = require('./shared');
 const { parsePagination, buildPaginationResponse } = require('../../middleware/pagination');
@@ -844,6 +844,33 @@ router.get('/supplier-statement/:id', asyncHandler(async (req, res) => {
                 balance: running, description: r.description, created_by: r.created_by_name,
                 ref_type: mapType(r.reference_type), ref_id: r.reference_id != null ? r.reference_id : r.je_id
             };
+        });
+
+        const piIdsAll = statement.filter(r => r.ref_type === 'purchase_invoice').map(r => r.ref_id);
+        const ppIdsAll = statement.filter(r => r.ref_type === 'ap_payment' || r.ref_type === 'supplier_payment').map(r => r.ref_id);
+
+        let matchByRef = { purchase_invoice: {}, payment: {} };
+        if (piIdsAll.length > 0) {
+            const msReq = pool.request();
+            const invRows = (await msReq.query(`SELECT id, remaining FROM purchase_invoices WHERE id IN (${piIdsAll.join(',')})`)).recordset;
+            invRows.forEach(ir => matchByRef.purchase_invoice[ir.id] = (num(ir.remaining) <= 0));
+        }
+        if (ppIdsAll.length > 0) {
+            const mpReq = pool.request();
+            const payRows = (await mpReq.query(`
+                SELECT p.id, p.amount, COALESCE(SUM(a.allocated_amount), 0) AS allocated
+                FROM ap_payments p
+                LEFT JOIN ap_payment_allocations a ON a.payment_id = p.id AND a.status = 'active'
+                WHERE p.id IN (${ppIdsAll.join(',')})
+                GROUP BY p.id, p.amount
+            `)).recordset;
+            payRows.forEach(pr => matchByRef.payment[pr.id] = (num(pr.allocated) >= num(pr.amount) && num(pr.amount) > 0));
+        }
+
+        statement.forEach(r => {
+            if (r.ref_type === 'purchase_invoice') r.is_matched = matchByRef.purchase_invoice[r.ref_id] || false;
+            else if (r.ref_type === 'ap_payment' || r.ref_type === 'supplier_payment') r.is_matched = matchByRef.payment[r.ref_id] || false;
+            else r.is_matched = null;
         });
 
         const totalDebit  = statement.reduce((s, r) => s + r.debit, 0);

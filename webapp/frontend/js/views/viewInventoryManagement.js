@@ -507,6 +507,10 @@
                     alert(`تم تعديل المخزون. الفرق: ${diff > 0 ? '+' : ''}${diff}`);
                     document.getElementById('adj-qty').value = '';
                     document.getElementById('adj-notes').value = '';
+                    // تحديث قائمة المخزون تلقائياً
+                    if (typeof viewHandlers !== 'undefined' && viewHandlers['view-inventory']) {
+                        viewHandlers['view-inventory']();
+                    }
                 } else {
                     alert('خطأ: ' + (r.message || ''));
                 }

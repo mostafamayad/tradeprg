@@ -1,0 +1,33 @@
+﻿# Git ignore for TradePro ERP repository root
+BACKUP/
+Datatrial/
+_legacy_archive/
+عملائى/
+*.bak
+*.backup
+
+# Scripts and temp tools
+*.py
+script*.js
+find-*.js
+fix_*.js
+list-*.js
+views.patch
+hash.txt
+recovered_edit.txt
+ci-audit-local.json
+
+# Local deploy & generator
+license-generator/
+vps_deploy/
+tools/
+test/
+
+# Backend runtime files
+webapp/backend/*.log
+webapp/backend/*.err
+webapp/backend/*.txt
+webapp/backend/.env
+webapp/backend/.token
+webapp/backend/tmp_*
+webapp/backend/_drop_ci.js

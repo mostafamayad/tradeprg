@@ -4,7 +4,7 @@
 
 const router = require('express').Router();
 const { getPool, sql } = require('../database/mssql_db');
-const { postJournalEntryAsync, getSystemAccountAsync } = require('../services/accountingEngine');
+const { postJournalEntryAsync, getSystemAccountAsync, recalcTreasuryBalanceAsync } = require('../services/accountingEngine');
 const asyncHandler = require('../utils/asyncHandler');
 
 // ============================================================
@@ -70,21 +70,26 @@ router.post('/accounts', asyncHandler(async (req, res) => {
         const accId = result.recordset[0].id;
 
         // Create JE for opening balance
+        // The opening JE must hit the COA account that matches the account's
+        // system_code mapping: bank -> SYS_BANK, otherwise -> SYS_CASH.
         if (ob > 0) {
-            const accCash = await getSystemAccountAsync(txRequest, 'SYS_CASH');
+            const accType = account_type || 'cash';
+            const openSysCode = accType === 'bank' ? 'SYS_BANK' : 'SYS_CASH';
+            const accOpen = await getSystemAccountAsync(txRequest, openSysCode);
             const accRE = await getSystemAccountAsync(txRequest, 'SYS_RETAINED_EARNINGS');
             const userId = req.user ? req.user.id : null;
-            if (accCash && accRE && userId) {
+            if (accOpen && accRE && userId) {
                 await postJournalEntryAsync(
                     txRequest, new Date().toISOString().slice(0, 10),
                     `رصيد افتتاحي لحساب خزينة ${account_name}`,
                     [
-                        { account_id: accCash, debit: ob, credit: 0, description: 'رصيد افتتاحي خزينة' },
+                        { account_id: accOpen, debit: ob, credit: 0, description: 'رصيد افتتاحي خزينة' },
                         { account_id: accRE, debit: 0, credit: ob, description: `مقابل رصيد افتتاحي ${account_name}` }
                     ],
                     'treasury_account', accId, userId,
                     { module: 'treasury', action: 'create_account', document: 'ACC-' + accId, isSystem: true }
                 );
+                await recalcTreasuryBalanceAsync(txRequest, accId);
             }
         }
 
@@ -191,6 +196,8 @@ router.post('/transactions', asyncHandler(async (req, res) => {
                 'treasury', result.recordset[0].id, userId,
                 { module: 'treasury', action: 'manual_transaction', document: transNo, isSystem: true }
             );
+
+            await recalcTreasuryBalanceAsync(txRequest, account_id);
         }
 
         await transaction.commit();
@@ -284,6 +291,8 @@ router.post('/expenses', asyncHandler(async (req, res) => {
                     'expense', id, userId,
                     { module: 'treasury', action: 'expense', document: expNo, isSystem: true }
                 );
+
+                await recalcTreasuryBalanceAsync(txRequest, treasury_id);
             }
         }
 

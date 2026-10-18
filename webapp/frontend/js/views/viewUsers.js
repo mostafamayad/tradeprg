@@ -792,7 +792,13 @@ async function savePerms() {
         }
 
         closePermModal();
-        if (typeof showToast === 'function') showToast('\u062a\u0645 \u062d\u0641\u0638 \u0627\u0644\u0635\u0644\u0627\u062d\u064a\u0627\u062a \u0628\u0646\u062c\u0627\u062d', 'success');
+        if (typeof showToast === 'function') showToast('تم حفظ الصلاحيات بنجاح', 'success');
+
+        // تحديث قائمة الأدوار تلقائياً (بيانات الـ badges والنسب)
+        if (!isOwnPerms) {
+            await loadRoles();
+            renderRolesList();
+        }
 
         // Only logout current user if editing their own permissions (to refresh JWT)
         if (isOwnPerms) {

@@ -129,18 +129,24 @@
                 if (!r.success || !r.data) { showError(r.message); return; }
                 const d = r.data;
                 const rows = d.rows || [];
-                const headers = ['#', 'التاريخ', 'رقم المستند', 'النوع', 'مدين', 'دائن', 'الرصيد'];
+                const headers = ['#', 'التاريخ', 'رقم المستند', 'النوع', 'مدين', 'دائن', 'الرصيد', 'التطابق'];
                 const body = rows.length === 0
-                    ? '<tr><td colspan="7" style="text-align:center;padding:30px;color:#999">لا توجد حركات</td></tr>'
-                    : rows.map((r, i) => `<tr>
-                        <td>${i+1}</td>
-                        <td>${r.date || '-'}</td>
-                        <td>${r.doc_no || '-'}</td>
-                        <td>${r.doc_type_short || r.doc_type || '-'}</td>
-                        <td style="font-weight:600">${fmt(r.debit)}</td>
-                        <td style="font-weight:600">${fmt(r.credit)}</td>
-                        <td style="font-weight:800">${fmt(r.balance)}</td>
-                    </tr>`).join('');
+                    ? '<tr><td colspan="8" style="text-align:center;padding:30px;color:#999">لا توجد حركات</td></tr>'
+                    : rows.map((r, i) => {
+                        let matchBadge = '-';
+                        if (r.is_matched === true) matchBadge = '<span style="background:#d1fae5;color:#065f46;padding:2px 6px;border-radius:4px;font-size:0.65rem;white-space:nowrap">متطابق</span>';
+                        else if (r.is_matched === false) matchBadge = '<span style="background:#fee2e2;color:#991b1b;padding:2px 6px;border-radius:4px;font-size:0.65rem;white-space:nowrap">غير متطابق</span>';
+                        return `<tr>
+                            <td>${i+1}</td>
+                            <td>${r.date || '-'}</td>
+                            <td>${r.doc_no || '-'}</td>
+                            <td>${r.doc_type_short || r.doc_type || '-'}</td>
+                            <td style="font-weight:600">${fmt(r.debit)}</td>
+                            <td style="font-weight:600">${fmt(r.credit)}</td>
+                            <td style="font-weight:800">${fmt(r.balance)}</td>
+                            <td style="text-align:center">${matchBadge}</td>
+                        </tr>`;
+                    }).join('');
                 const bar = document.getElementById('pur-rpt-info-bar');
                 if (bar) bar.innerHTML = '<span><span class="info-label">المورد:</span> ' + (d.supplier?.supplier_name || '') + '</span> | <span><span class="info-label">الرصيد الافتتاحي:</span> ' + fmt(d.opening_balance) + '</span> | <span><span class="info-label">الرصيد الختامي:</span> ' + fmt(d.closing_balance) + '</span>';
                 const foot = `<tr style="font-weight:bold;background:var(--bg-body)">
@@ -148,6 +154,7 @@
                     <td style="font-weight:600">${fmt(d.total_debit)}</td>
                     <td style="font-weight:600">${fmt(d.total_credit)}</td>
                     <td style="font-weight:800">${fmt(d.closing_balance)}</td>
+                    <td></td>
                 </tr>`;
                 renderTable(headers, body, foot);
                 _lastReportData = {

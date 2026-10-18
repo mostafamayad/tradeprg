@@ -180,4 +180,145 @@
         document.getElementById('modal-store-form').classList.add('open');
     }
 
+
+    viewHandlers['view-sales-serials'] = function () {
+        const form = document.getElementById('serial-track-form');
+        const input = document.getElementById('serial-search-input');
+        const resultBox = document.getElementById('serial-track-result');
+        const btn = document.getElementById('btn-track-serial');
+        if (!form || form.dataset.bound) return;
+        form.dataset.bound = '1';
+
+        async function doTrack() {
+            const val = (input.value || '').trim();
+            if (!val) {
+                alert('الرجاء إدخال رقم السيريال أو الباركود');
+                return;
+            }
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التتبع...';
+            resultBox.style.display = 'block';
+            resultBox.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-muted)"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><p style="margin-top:10px">جاري جلب سجل الحركة الكامل...</p></div>';
+
+            try {
+                const res = await req('/products/track/' + encodeURIComponent(val));
+                if (!res.success || !res.data) {
+                    resultBox.innerHTML = '<div class="alert alert-danger" style="padding:15px;border-radius:8px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca"><i class="fa-solid fa-circle-exclamation"></i> ' + (res.message || 'لم يتم العثور على أي بيانات لهذا الصنف أو السيريال') + '</div>';
+                    return;
+                }
+
+                const d = res.data;
+                const p = d.product || {};
+                const balances = d.storeBalances || [];
+                const purchases = d.purchases || [];
+                const sales = d.sales || [];
+                const movements = d.movements || [];
+
+                let html = '<div style="background:var(--card-bg);border:1px solid var(--border-color);border-radius:12px;padding:20px;margin-top:15px">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border-color);padding-bottom:15px;margin-bottom:15px">' +
+                        '<div>' +
+                            '<h3 style="margin:0;font-size:1.25rem;color:var(--text-main)">' + esc(p.product_name) + '</h3>' +
+                            '<div style="color:var(--text-muted);font-size:0.85rem;margin-top:4px">' +
+                                '<span>كود: <strong>' + esc(p.product_code || '-') + '</strong></span> &bull; ' +
+                                '<span>باركود: <strong>' + esc(p.barcode || '-') + '</strong></span> &bull; ' +
+                                '<span>الفئة: <strong>' + esc(p.category_name || '-') + '</strong></span>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div style="text-align:left">' +
+                            '<span style="font-size:0.85rem;color:var(--text-muted)">الرصيد الكلي:</span>' +
+                            '<div style="font-size:1.5rem;font-weight:700;color:var(--primary-color)">' + fmtInt(p.total_stock) + ' ' + esc(p.unit_name || 'قطعة') + '</div>' +
+                        '</div>' +
+                    '</div>' +
+
+                    '<div style="margin-bottom:20px">' +
+                        '<h4 style="font-size:0.95rem;margin-bottom:10px;color:var(--text-main)"><i class="fa-solid fa-warehouse"></i> الأرصدة الحالية بالمخازن</h4>' +
+                        '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
+                            (balances.length > 0 ? balances.map(b => 
+                                '<div style="background:var(--bg-light);border:1px solid var(--border-color);border-radius:8px;padding:10px 15px;min-width:140px">' +
+                                    '<div style="font-size:0.8rem;color:var(--text-muted)">' + esc(b.store_name) + '</div>' +
+                                    '<div style="font-size:1.1rem;font-weight:700;color:var(--text-main)">' + fmtPlain(b.quantity) + '</div>' +
+                                '</div>'
+                            ).join('') : '<div style="color:var(--text-muted)">لا توجد أرصدة بالمخازن</div>') +
+                        '</div>' +
+                    '</div>' +
+
+                    '<div style="margin-bottom:20px">' +
+                        '<h4 style="font-size:0.95rem;margin-bottom:10px;color:var(--text-main)"><i class="fa-solid fa-cart-shopping"></i> آخر حركات البيع (العملاء)</h4>' +
+                        '<div class="table-responsive">' +
+                            '<table class="data-table" style="font-size:0.85rem">' +
+                                '<thead><tr><th>رقم الفاتورة</th><th>التاريخ</th><th>العميل</th><th>الكمية</th><th>سعر البيع</th><th>الإجمالي</th></tr></thead>' +
+                                '<tbody>' +
+                                    (sales.length > 0 ? sales.map(s => 
+                                        '<tr>' +
+                                            '<td><strong>' + esc(s.invoice_no) + '</strong></td>' +
+                                            '<td>' + esc(s.invoice_date) + '</td>' +
+                                            '<td>' + esc(s.customer_name || 'عميل نقدي') + '</td>' +
+                                            '<td>' + fmtPlain(s.quantity) + '</td>' +
+                                            '<td>' + fmt(s.sell_price) + ' ج.م</td>' +
+                                            '<td><strong>' + fmt(s.line_total) + ' ج.م</strong></td>' +
+                                        '</tr>'
+                                    ).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">لا توجد مبيعات مسجلة</td></tr>') +
+                                '</tbody>' +
+                            '</table>' +
+                        '</div>' +
+                    '</div>' +
+
+                    '<div style="margin-bottom:20px">' +
+                        '<h4 style="font-size:0.95rem;margin-bottom:10px;color:var(--text-main)"><i class="fa-solid fa-truck"></i> آخر حركات الشراء (الموردين)</h4>' +
+                        '<div class="table-responsive">' +
+                            '<table class="data-table" style="font-size:0.85rem">' +
+                                '<thead><tr><th>رقم الفاتورة</th><th>التاريخ</th><th>المورد</th><th>الكمية</th><th>سعر الشراء</th><th>الإجمالي</th></tr></thead>' +
+                                '<tbody>' +
+                                    (purchases.length > 0 ? purchases.map(pu => 
+                                        '<tr>' +
+                                            '<td><strong>' + esc(pu.invoice_no) + '</strong></td>' +
+                                            '<td>' + esc(pu.invoice_date) + '</td>' +
+                                            '<td>' + esc(pu.supplier_name || '-') + '</td>' +
+                                            '<td>' + fmtPlain(pu.quantity) + '</td>' +
+                                            '<td>' + fmt(pu.cost_price) + ' ج.م</td>' +
+                                            '<td><strong>' + fmt(pu.line_total) + ' ج.م</strong></td>' +
+                                        '</tr>'
+                                    ).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">لا توجد مشتريات مسجلة</td></tr>') +
+                                '</tbody>' +
+                            '</table>' +
+                        '</div>' +
+                    '</div>' +
+
+                    '<div>' +
+                        '<h4 style="font-size:0.95rem;margin-bottom:10px;color:var(--text-main)"><i class="fa-solid fa-clock-rotate-left"></i> سجل الحركة الدقيق (Stock Movements)</h4>' +
+                        '<div class="table-responsive">' +
+                            '<table class="data-table" style="font-size:0.82rem">' +
+                                '<thead><tr><th>التاريخ</th><th>نوع الحركة</th><th>المستند</th><th>المخزن</th><th>وارد (+)</th><th>منصرف (-)</th><th>الرصيد بعد</th><th>ملاحظات</th></tr></thead>' +
+                                '<tbody>' +
+                                    (movements.length > 0 ? movements.map(m => 
+                                        '<tr>' +
+                                            '<td>' + esc(m.move_date) + '</td>' +
+                                            '<td><span class="badge-status ' + (m.qty_in > 0 ? 'paid' : 'pending') + '">' + esc(m.move_type) + '</span></td>' +
+                                            '<td><strong>' + esc(m.document_no || '-') + '</strong></td>' +
+                                            '<td>' + esc(m.store_name || '-') + '</td>' +
+                                            '<td class="text-success">' + (m.qty_in > 0 ? '+' + fmtPlain(m.qty_in) : '-') + '</td>' +
+                                            '<td class="text-danger">' + (m.qty_out > 0 ? '-' + fmtPlain(m.qty_out) : '-') + '</td>' +
+                                            '<td><strong>' + fmtPlain(m.balance_after) + '</strong></td>' +
+                                            '<td style="color:var(--text-muted)">' + esc(m.notes || '-') + '</td>' +
+                                        '</tr>'
+                                    ).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--text-muted)">لا توجد حركات مخزنية</td></tr>') +
+                                '</tbody>' +
+                            '</table>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+
+                resultBox.innerHTML = html;
+            } catch (err) {
+                resultBox.innerHTML = '<div class="alert alert-danger" style="padding:15px;border-radius:8px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca">خطأ أثناء جلب البيانات: ' + err.message + '</div>';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-search"></i> تتبع الصنف';
+            }
+        }
+
+        form.addEventListener('submit', doTrack);
+        btn.addEventListener('click', doTrack);
+    };
+
 })();

@@ -668,6 +668,7 @@ router.get('/trial-balance', asyncHandler(async (req, res) => {
                 a.account_code,
                 a.account_name,
                 a.account_type,
+                a.parent_id,
                 ISNULL(o.opening_debit, 0) AS opening_debit,
                 ISNULL(o.opening_credit, 0) AS opening_credit,
                 ISNULL(p.period_debit, 0) AS period_debit,
@@ -681,17 +682,21 @@ router.get('/trial-balance', asyncHandler(async (req, res) => {
 
         const result = await request.query(sqlQuery);
         const accounts = result.recordset.map(function (r) {
+            const cd = Number(r.opening_debit || 0) + Number(r.period_debit || 0);
+            const cc = Number(r.opening_credit || 0) + Number(r.period_credit || 0);
             return {
                 account_id: r.account_id,
                 account_code: r.account_code,
                 account_name: r.account_name,
                 account_type: r.account_type,
+                parent_id: r.parent_id,
                 opening_debit: Number(r.opening_debit || 0),
                 opening_credit: Number(r.opening_credit || 0),
                 period_debit: Number(r.period_debit || 0),
                 period_credit: Number(r.period_credit || 0),
-                closing_debit: Number(r.opening_debit || 0) + Number(r.period_debit || 0),
-                closing_credit: Number(r.opening_credit || 0) + Number(r.period_credit || 0)
+                closing_debit: cd,
+                closing_credit: cc,
+                net_balance: Math.round((cd - cc) * 100) / 100
             };
         });
 
@@ -803,6 +808,8 @@ router.get('/general-ledger', asyncHandler(async (req, res) => {
                     ORDER BY entry_date, journal_id
                     ROWS UNBOUNDED PRECEDING
                 ) AS running_net,
+                SUM(debit) OVER(PARTITION BY account_id) AS account_period_debit,
+                SUM(credit) OVER(PARTITION BY account_id) AS account_period_credit,
                 COUNT(*) OVER() AS total_count
             FROM period_raw
         )
@@ -891,12 +898,11 @@ router.get('/general-ledger', asyncHandler(async (req, res) => {
         // 5) Compute totals per account
         for (let oi = 0; oi < accountsOrder.length; oi++) {
             const a = accountsMap[accountsOrder[oi]];
-            let tDebit = 0, tCredit = 0;
-            for (let li = 0; li < a.lines.length; li++) {
-                tDebit = Math.round((tDebit + a.lines[li].debit) * 100) / 100;
-                tCredit = Math.round((tCredit + a.lines[li].credit) * 100) / 100;
-            }
-            a.totals = { debit: tDebit, credit: tCredit };
+            const movLine = a.lines.find(l => !l.is_opening);
+            const tDebit = movLine ? movLine.account_period_debit : 0;
+            const tCredit = movLine ? movLine.account_period_credit : 0;
+            
+            a.totals = { debit: Math.round(tDebit * 100) / 100, credit: Math.round(tCredit * 100) / 100 };
 
             const lastLine = a.lines[a.lines.length - 1];
             if (lastLine) {
@@ -1109,61 +1115,53 @@ router.get('/balance-sheet', asyncHandler(async (req, res) => {
             grouped[r.account_type].push(r);
         }
 
-        // Section/group configuration by code prefix
-        const config = [
-            {
-                type: 'asset', name: 'الأصول',
-                groups: [
-                    { match: function (c) { return c.indexOf('1.1') === 0 || c === '11' || (c.length > 2 && c.indexOf('11') === 0 && c !== '1'); }, name: 'الأصول المتداولة' },
-                    { match: function (c) { return c.indexOf('1.2') === 0 || c === '12' || (c.length > 2 && c.indexOf('12') === 0 && c !== '1'); }, name: 'الأصول الثابتة' },
-                    { match: function (c) { return c.indexOf('99') === 0; }, name: 'أصول أخرى' }
-                ]
-            },
-            {
-                type: 'liability', name: 'الخصوم',
-                groups: [
-                    { match: function (c) { return c.indexOf('2.1') === 0 || c === '21' || (c.length > 2 && c.indexOf('21') === 0 && c !== '2'); }, name: 'الخصوم المتداولة' },
-                    { match: function (c) { return c.indexOf('2.2') === 0 || c === '22' || (c.length > 2 && c.indexOf('22') === 0 && c !== '2'); }, name: 'الخصوم طويلة الأجل' }
-                ]
-            },
-            {
-                type: 'equity', name: 'حقوق الملكية',
-                groups: [
-                    { match: function (c) { return c.indexOf('3.1') === 0 || c === '31' || (c.length > 2 && c.indexOf('31') === 0 && c !== '3'); }, name: 'رأس المال' },
-                    { match: function (c) { return c.indexOf('3.2') === 0 || c === '32' || (c.length > 2 && c.indexOf('32') === 0 && c !== '3'); }, name: 'الأرباح المحتجزة' }
-                ]
-            }
+        // Build hierarchy map for dynamic grouping
+        const accById = {};
+        rows.forEach(r => accById[r.account_id] = r);
+
+        function findGroupAncestor(accId) {
+            var acc = accById[accId];
+            if (!acc) return null;
+            if (!acc.parent_id || !accById[acc.parent_id]) return acc; // Top level
+            var p = accById[acc.parent_id];
+            if (!p.parent_id || !accById[p.parent_id]) return acc; // This account is level 2
+            return findGroupAncestor(acc.parent_id);
+        }
+
+        const typeMap = [
+            { type: 'asset', name: 'الأصول' },
+            { type: 'liability', name: 'الخصوم' },
+            { type: 'equity', name: 'حقوق الملكية' }
         ];
 
         var sections = [];
         var totalAssets = { opening: 0, closing: 0 };
         var totalLiabEq = { opening: 0, closing: 0 };
 
-        for (var si = 0; si < config.length; si++) {
-            var cfg = config[si];
+        for (var si = 0; si < typeMap.length; si++) {
+            var cfg = typeMap[si];
             var accs = grouped[cfg.type] || [];
-
-            var secGroups = [];
+            
+            var groupsMap = {};
             var unassigned = [];
-
+            
             for (var ai = 0; ai < accs.length; ai++) {
                 var ac = accs[ai];
-                var assigned = false;
-                for (var gi = 0; gi < cfg.groups.length; gi++) {
-                    if (cfg.groups[gi].match(ac.account_code)) {
-                        if (!cfg.groups[gi]._items) cfg.groups[gi]._items = [];
-                        cfg.groups[gi]._items.push(ac);
-                        assigned = true;
-                        break;
-                    }
+                var l2 = findGroupAncestor(ac.account_id);
+                if (l2) {
+                    var gName = l2.account_name;
+                    if (!groupsMap[gName]) groupsMap[gName] = [];
+                    groupsMap[gName].push(ac);
+                } else {
+                    unassigned.push(ac);
                 }
-                if (!assigned) unassigned.push(ac);
             }
-
-            for (var gi = 0; gi < cfg.groups.length; gi++) {
-                var grp = cfg.groups[gi];
-                var items = grp._items || [];
-                if (items.length === 0) continue;
+            
+            var secGroups = [];
+            
+            // Build groups from map
+            for (var gName in groupsMap) {
+                var items = groupsMap[gName];
                 var gOpen = 0, gClose = 0;
                 var gAccs = [];
                 for (var ii = 0; ii < items.length; ii++) {
@@ -1174,9 +1172,9 @@ router.get('/balance-sheet', asyncHandler(async (req, res) => {
                     gClose = Math.round((gClose + netClose) * 100) / 100;
                     gAccs.push({ account_id: it.account_id, account_code: it.account_code, account_name: it.account_name, opening: netOpen, closing: netClose });
                 }
-                secGroups.push({ name: grp.name, accounts: gAccs, totals: { opening: gOpen, closing: gClose } });
+                secGroups.push({ name: gName, accounts: gAccs, totals: { opening: gOpen, closing: gClose } });
             }
-
+            
             if (unassigned.length > 0) {
                 var uOpen = 0, uClose = 0;
                 var uAccs = [];
@@ -1190,7 +1188,7 @@ router.get('/balance-sheet', asyncHandler(async (req, res) => {
                 }
                 secGroups.push({ name: 'أخرى', accounts: uAccs, totals: { opening: uOpen, closing: uClose } });
             }
-
+            
             var secOpen = 0, secClose = 0;
             for (var sgi = 0; sgi < secGroups.length; sgi++) {
                 secOpen = Math.round((secOpen + secGroups[sgi].totals.opening) * 100) / 100;
@@ -1372,8 +1370,8 @@ router.get('/income-statement', asyncHandler(async (req, res) => {
                 opening_credit: opC,
                 period_debit: perD,
                 period_credit: perC,
-                closing_debit: Math.round((opD + perD) * 100) / 100,
-                closing_credit: Math.round((opC + perC) * 100) / 100
+                closing_debit: perD, // Income Statement only measures period
+                closing_credit: perC
             };
         });
 

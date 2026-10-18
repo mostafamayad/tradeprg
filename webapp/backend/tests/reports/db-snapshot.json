@@ -1,40 +1,40 @@
 {
-  "timestamp": "2026-07-17T23:23:49.220Z",
+  "timestamp": "2026-08-06T21:06:52.086Z",
   "tableCounts": {
-    "sales_reps": 1,
-    "customers": 3,
-    "suppliers": 1,
-    "products": 1,
+    "sales_reps": 2,
+    "customers": 2,
+    "suppliers": 2,
+    "products": 2,
     "stores": 3,
-    "sales_invoices": 4,
-    "sales_invoice_items": 4,
-    "customer_collections": 7,
-    "collection_allocations": 1,
-    "sales_returns": 0,
-    "sales_return_items": 0,
-    "purchase_invoices": 1,
-    "purchase_invoice_items": 1,
+    "sales_invoices": 29,
+    "sales_invoice_items": 39,
+    "customer_collections": 2,
+    "collection_allocations": 2,
+    "sales_returns": 7,
+    "sales_return_items": 7,
+    "purchase_invoices": 5,
+    "purchase_invoice_items": 5,
     "purchase_returns": 0,
     "purchase_return_items": 0,
     "users": 2,
-    "settings": 0,
+    "settings": 31,
     "activity_logs": 0,
     "company_info": 1,
     "branches": 0,
     "categories": 0,
-    "inventory_balances": 1,
-    "stock_movements": 5,
+    "inventory_balances": 3,
+    "stock_movements": 123,
     "stock_transfers": 0,
     "stock_transfer_items": 0,
-    "damaged_stock": 0,
-    "stock_count": 0,
-    "stock_count_items": 0,
-    "stock_adjustments": 0,
-    "journal_entries": 23,
-    "journal_entry_lines": 46,
-    "chart_of_accounts": 57,
+    "damaged_stock": 7,
+    "stock_count": 7,
+    "stock_count_items": 38,
+    "stock_adjustments": 7,
+    "journal_entries": 225,
+    "journal_entry_lines": 467,
+    "chart_of_accounts": 54,
     "treasury_accounts": 1,
-    "treasury_transactions": 9,
+    "treasury_transactions": 16,
     "expenses": 0,
     "salary_slips": 0,
     "emp_loans": 0,
@@ -43,26 +43,26 @@
     "customer_visits": 0,
     "rep_targets": 0,
     "rep_settlements": 0,
-    "invoice_counters": 26,
+    "invoice_counters": 30,
     "customer_groups": 0,
-    "customer_activity_log": 15,
+    "customer_activity_log": 78,
     "customer_attachments": 0,
     "return_reasons": 0,
-    "sales_return_audit": 0
+    "sales_return_audit": 33
   },
   "tableSums": {
-    "sales_invoices.grand_total": 1320,
-    "customer_collections.amount": 2170,
-    "sales_returns.grand_total": 0,
-    "purchase_invoices.grand_total": 6000
+    "sales_invoices.grand_total": 21201.8,
+    "customer_collections.amount": 400,
+    "sales_returns.grand_total": 1610,
+    "purchase_invoices.grand_total": 16265.88
   },
   "lastIds": {
-    "sales_invoices": 9004,
-    "customer_collections": 3607,
-    "sales_returns": 0,
-    "customers": 1503,
-    "sales_reps": 5,
-    "products": 1
+    "sales_invoices": 1032,
+    "customer_collections": 1002,
+    "sales_returns": 11,
+    "customers": 2,
+    "sales_reps": 2,
+    "products": 2
   },
   "indexes": {
     "IX_sales_invoices_rep_id_status": false,
@@ -163,11 +163,53 @@
       "checksum": "cc6900f171e8527933d1f41b7196d557"
     },
     {
+      "version": 14,
+      "name": "014_commission_settings",
+      "applied_at": "2026-07-29T20:31:59.790Z",
+      "duration_ms": 23,
+      "checksum": "c1add27b4cac614efe442bf3fcf00e28"
+    },
+    {
       "version": 15,
       "name": "015_coa_restructure",
       "applied_at": "2026-07-17T23:42:09.860Z",
       "duration_ms": 35,
       "checksum": "93ba2d279c937802508ac740e3c1087a"
+    },
+    {
+      "version": 16,
+      "name": "016_performance_indexes",
+      "applied_at": "2026-07-29T20:31:59.950Z",
+      "duration_ms": 156,
+      "checksum": "7e520a407e5ed1fce982d33ce22928c5"
+    },
+    {
+      "version": 17,
+      "name": "017_rbac_system",
+      "applied_at": "2026-07-29T20:32:00.010Z",
+      "duration_ms": 57,
+      "checksum": "d1da910534960f4c89200aaf6d0e5d07"
+    },
+    {
+      "version": 18,
+      "name": "018_rbac_refinements",
+      "applied_at": "2026-07-29T20:32:48.810Z",
+      "duration_ms": 50,
+      "checksum": "7a323c85f5fb9896f37d9ddf376dd211"
+    },
+    {
+      "version": 19,
+      "name": "019_add_subledger_tracking",
+      "applied_at": "2026-07-29T20:32:48.903Z",
+      "duration_ms": 92,
+      "checksum": "c865eb224f38c10c8ed8f2748c36f264"
+    },
+    {
+      "version": 20,
+      "name": "020_validate_accounting_schema",
+      "applied_at": "2026-07-29T20:32:48.927Z",
+      "duration_ms": 19,
+      "checksum": "d435cc7371335f13706eac6f4d656a68"
     }
   ]
 }

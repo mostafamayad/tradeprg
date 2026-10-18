@@ -669,7 +669,7 @@
                         return (row.doc_no || '').toLowerCase().includes(sv) || d.includes(sv) || (row.description || '').toLowerCase().includes(sv) || pm;
                     });
 
-                    const headers = ['#', 'التاريخ', 'النوع', 'رقم المستند', 'البيان', 'مدين', 'دائن', 'الرصيد'];
+                    const headers = ['#', 'التاريخ', 'النوع', 'رقم المستند', 'البيان', 'مدين', 'دائن', 'الرصيد', 'التطابق'];
                     if (showDet) headers.push('');
                     const colSpan = headers.length;
 
@@ -684,6 +684,7 @@
                             '<td style="color:#9ca3af;padding:5px 7px">—</td>' +
                             '<td style="color:#9ca3af;padding:5px 7px">—</td>' +
                             '<td style="font-weight:700;direction:ltr;text-align:right;color:' + balColor(openingRow.balance) + ';padding:5px 7px">' + fmt(openingRow.balance) + '</td>' +
+                            '<td style="padding:5px 7px"></td>' +
                             (showDet ? '<td style="padding:5px 7px"></td>' : '') +
                         '</tr>';
                     }
@@ -697,6 +698,10 @@
                             const hasItems = showDet && r.items && r.items.length > 0;
                             const detailId = 'cs-dt-' + i;
 
+                            let matchBadge = '-';
+                            if (r.is_matched === true) matchBadge = '<span style="background:#d1fae5;color:#065f46;padding:2px 6px;border-radius:4px;font-size:0.65rem;white-space:nowrap">متطابق</span>';
+                            else if (r.is_matched === false) matchBadge = '<span style="background:#fee2e2;color:#991b1b;padding:2px 6px;border-radius:4px;font-size:0.65rem;white-space:nowrap">غير متطابق</span>';
+
                             bodyHtml += '<tr class="stmt-row" style="transition:background 0.15s">' +
                                 '<td style="color:#9ca3af;font-size:0.65rem;padding:5px 7px">' + (i + 1) + '</td>' +
                                 '<td style="white-space:nowrap;font-size:0.72rem;padding:5px 7px">' + fmtDt(r.date) + '</td>' +
@@ -709,6 +714,7 @@
                                 '<td style="font-weight:600;color:#059669;direction:ltr;text-align:right;font-size:0.75rem;padding:5px 7px">' + fmt(r.debit) + '</td>' +
                                 '<td style="font-weight:600;color:#ef4444;direction:ltr;text-align:right;font-size:0.75rem;padding:5px 7px">' + fmt(r.credit) + '</td>' +
                                 '<td style="font-weight:700;direction:ltr;text-align:right;color:' + balColor(r.balance) + ';font-size:0.78rem;padding:5px 7px">' + fmt(r.balance) + '</td>' +
+                                '<td style="text-align:center;padding:5px 7px">' + matchBadge + '</td>' +
                                 (showDet ? '<td style="text-align:center;width:26px;padding:5px 3px">' +
                                     (hasItems
                                         ? '<i class="fa-solid fa-chevron-down cs-toggle" data-target="' + detailId + '" style="cursor:pointer;color:var(--primary-color);transition:transform 0.2s;font-size:0.7rem"></i>'
@@ -771,6 +777,7 @@
                           '<td style="color:#059669;direction:ltr;text-align:right;padding:6px 8px">' + fmt(summary.total_debit) + '</td>' +
                           '<td style="color:#ef4444;direction:ltr;text-align:right;padding:6px 8px">' + fmt(summary.total_credit) + '</td>' +
                           '<td style="font-weight:800;direction:ltr;text-align:right;color:' + balColor(summary.closing_balance) + ';padding:6px 8px">' + fmt(summary.closing_balance) + '</td>' +
+                          '<td style="padding:6px 8px"></td>' +
                           (showDet ? '<td style="padding:6px 8px"></td>' : '') +
                         '</tr>'
                         : '';

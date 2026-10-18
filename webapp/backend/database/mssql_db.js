@@ -193,6 +193,31 @@ async function initializeDatabase() {
                     `);
                     console.log('[MSSQL] Inserted default treasury account.');
                 }
+
+                // ── Audit Log Table (auto-create if missing) ──
+                await pool.request().query(`
+                    IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[audit_log]') AND type in (N'U'))
+                    BEGIN
+                        CREATE TABLE [dbo].[audit_log](
+                            [id] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                            [user_id] [int] NULL,
+                            [user_name] [nvarchar](255) NULL,
+                            [role] [nvarchar](50) NULL,
+                            [module] [nvarchar](100) NULL,
+                            [operation] [nvarchar](50) NULL,
+                            [ref_no] [nvarchar](255) NULL,
+                            [affected_record] [nvarchar](max) NULL,
+                            [old_values] [nvarchar](max) NULL,
+                            [new_values] [nvarchar](max) NULL,
+                            [ip_address] [nvarchar](50) NULL,
+                            [device] [nvarchar](500) NULL,
+                            [status] [nvarchar](20) NULL DEFAULT ('SUCCESS'),
+                            [reason] [nvarchar](max) NULL,
+                            [created_at] [datetime] NULL DEFAULT (getdate())
+                        )
+                    END
+                `);
+
                 // ── Fixed Assets Tables (auto-create if missing) ──
                 const faTablesCheck = await pool.request().query(`SELECT 1 FROM sys.tables WHERE name = 'asset_categories'`);
                 if (faTablesCheck.recordset.length === 0) {

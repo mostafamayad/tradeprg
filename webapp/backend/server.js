@@ -60,26 +60,6 @@ licenseManager.onEvent(async (entry) => {
             .input('reason', sql.NVarChar(sql.MAX), '')
             .input('created_at', sql.DateTime, new Date(entry.timestamp))
             .query(`
-                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[audit_log]') AND type in (N'U'))
-                BEGIN
-                    CREATE TABLE [dbo].[audit_log](
-                        [id] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
-                        [user_id] [int] NULL,
-                        [user_name] [nvarchar](255) NULL,
-                        [role] [nvarchar](50) NULL,
-                        [module] [nvarchar](100) NULL,
-                        [operation] [nvarchar](50) NULL,
-                        [ref_no] [nvarchar](255) NULL,
-                        [affected_record] [nvarchar](max) NULL,
-                        [old_values] [nvarchar](max) NULL,
-                        [new_values] [nvarchar](max) NULL,
-                        [ip_address] [nvarchar](50) NULL,
-                        [device] [nvarchar](500) NULL,
-                        [status] [nvarchar](20) NULL DEFAULT ('SUCCESS'),
-                        [reason] [nvarchar](max) NULL,
-                        [created_at] [datetime] NULL DEFAULT (getdate())
-                    )
-                END
                 INSERT INTO audit_log (user_id, user_name, role, module, operation, ref_no, affected_record, old_values, new_values, ip_address, device, status, reason, created_at)
                 VALUES (@user_id, @user_name, @role, @module, @operation, @ref_no, @affected_record, @old_values, @new_values, @ip_address, @device, @status, @reason, @created_at)
             `);
@@ -90,13 +70,38 @@ licenseManager.onEvent(async (entry) => {
 
 // ─── Middleware ───────────────────────────────────────────────
 app.use(helmet({ contentSecurityPolicy: false })); // Allow serving frontend
+
+const compression = require('compression');
+app.use(compression({
+    threshold: 1024,
+    filter: (req, res) => {
+        if (req.headers['x-no-compression']) {
+            return false;
+        }
+        return compression.filter(req, res);
+    }
+}));
+
+const allowedOrigins = [
+    ...(process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean),
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+];
+
 app.use(cors({
     origin: function (origin, callback) {
-        // Always allow for Cloudflare tunnels and local access
-        callback(null, true);
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.some(allowed => origin === allowed || 
+            origin.startsWith('http://192.168.') || 
+            origin.startsWith('http://10.') || 
+            origin.match(/^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\./))) {
+            return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
     },
     credentials: true
 }));
+
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'tiny' : 'dev'));
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
@@ -180,6 +185,15 @@ app.get('/api/company/info', async (req, res) => {
         res.json({ success: true, data });
     } catch (e) {
         res.json({ success: true, data: { name: 'ERP System', logo: '' } });
+    }
+});
+
+// Public system branding (developer identity - hardcoded, unaffected by database reset)
+app.get('/api/system/branding', (req, res) => {
+    try {
+        res.json({ success: true, data: require('./systemBranding') });
+    } catch (e) {
+        res.json({ success: true, data: { name: '3SM Company', phone: '01060958097', email: '3smcompany.official@gmail.com' } });
     }
 });
 

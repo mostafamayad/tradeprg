@@ -279,10 +279,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const grpSel = document.getElementById('cust-group-filter');
                     if (grpSel) {
                         if (!grpSel.dataset) grpSel.dataset = {};
-                        if (grpSel.dataset.searchable) return;
-                        grpSel.dataset.searchable = '1';
-                        grpSel.innerHTML = '<option value="">كل المجموعات</option>' + grpRes.data.map(g => `<option value="${g.id}">${g.group_name}</option>`).join('');
-                        makeSearchableSelect(grpSel, grpRes.data.map(g => ({id: g.id, name: g.group_name})), 'ابحث عن مجموعة...');
+                        if (!grpSel.dataset.searchable) {
+                            grpSel.dataset.searchable = '1';
+                            grpSel.innerHTML = '<option value="">كل المجموعات</option>' + grpRes.data.map(g => `<option value="${g.id}">${g.group_name}</option>`).join('');
+                            makeSearchableSelect(grpSel, grpRes.data.map(g => ({id: g.id, name: g.group_name})), 'ابحث عن مجموعة...');
+                        }
                     }
                 }
             } catch (e) {}
@@ -1282,6 +1283,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (targetId === 'inventory-damaged' && typeof window.initInventoryDamaged === 'function') {
                     window.initInventoryDamaged();
                 }
+                if (targetId === 'stock-count' && window.viewHandlers && typeof window.viewHandlers['view-stock-count'] === 'function') {
+                    window.viewHandlers['view-stock-count']();
+                }
+                if (targetId === 'stock-adjust' && window.viewHandlers && typeof window.viewHandlers['view-stock-adjust'] === 'function') {
+                    window.viewHandlers['view-stock-adjust']();
+                }
                 if (targetId === 'activity-logs' && typeof window.loadActivityLogs === 'function') {
                     window.loadActivityLogs();
                 }
@@ -1383,10 +1390,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const afterDisc = subtotal * (1 - globalDisc / 100);
         
         const invType = document.getElementById('inv-type')?.value || 'normal';
-        let taxRate = 14;
-        if (window.AppData && window.AppData.settings && window.AppData.settings.tax_rate) {
-            taxRate = parseFloat(window.AppData.settings.tax_rate);
+        let taxRate = 0;
+        if (window.AppData && window.AppData.settings) {
+            const s = window.AppData.settings.tax_rate;
+            if (s !== undefined && s !== null && s !== '' && !isNaN(parseFloat(s))) {
+                taxRate = parseFloat(s);
+            }
         }
+        console.log('[S-CALC] taxRate from settings =', taxRate, '| invType=', invType);
         const tax = invType === 'tax' ? afterDisc * (taxRate / 100) : 0;
         
         const grand = afterDisc + tax;
@@ -1755,9 +1766,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 subtotalForTax += (it.quantity * it.unit_price) * (1 - it.discount_pct / 100);
             });
             const afterDiscForTax = subtotalForTax * (1 - globalDisc / 100);
-            let taxRate = 14;
-            if (window.AppData && window.AppData.settings && window.AppData.settings.tax_rate) {
-                taxRate = parseFloat(window.AppData.settings.tax_rate);
+            let taxRate = 0;
+            if (window.AppData && window.AppData.settings) {
+                const s = window.AppData.settings.tax_rate;
+                if (s !== undefined && s !== null && s !== '' && !isNaN(parseFloat(s))) {
+                    taxRate = parseFloat(s);
+                }
             }
             const taxAmount = invType === 'tax' ? afterDiscForTax * (taxRate / 100) : 0;
             
@@ -2311,7 +2325,6 @@ window.initSalesReturn = async function(invoiceNo) {
 
     // ── Full recalculation engine ──
     function recalcAll() {
-        const vatRate = 0.14;
         let subtotal = 0, discountTotal = 0, vatTotal = 0, grandTotal = 0;
         let itemCount = 0, balanceImpact = 0;
         const rows = srTbody.querySelectorAll('tr[data-product-id]');
@@ -3031,6 +3044,8 @@ window.initSalesReturn = async function(invoiceNo) {
                 if (res.success) {
                     await window.showAlert('تم إنشاء المرتجع بنجاح! رقم المرتجع: ' + (res.id || '') + (res.workflow_status === 'pending_approval' ? '\n(المرتجع بانتظار الاعتماد)' : ''), { type: 'success' });
                     clearForm();
+                    // تحديث سجل المرتجعات في نفس الشاشة تلقائياً
+                    loadReturnHistory(null, '');
                     EventBus.emit('sales:return:created', res);
                 } else {
                     await window.showAlert('خطأ: ' + (res.message || 'فشل إنشاء المرتجع'), { type: 'danger' });
@@ -3655,7 +3670,7 @@ window.initPurchasesReport = function() {
 };
 
 // ---- Purchase Invoice Logic ----
-window.initPurchaseInvoice = function() {
+window.initPurchaseInvoice = async function() {
     console.log('[TRACE] initPurchaseInvoice: ENTER');
     const btnAddRow = document.getElementById('btn-add-prow');
     const tbody = document.getElementById('pinvoice-items-body');
@@ -3663,8 +3678,25 @@ window.initPurchaseInvoice = function() {
     const selSupplier = document.getElementById('pinv-supplier');
     const pDate = document.getElementById('pinv-date');
     const pPayment = document.getElementById('pinv-payment');
+    const pInvType = document.getElementById('pinv-type');
+    const pVatRate = document.getElementById('p-vat-rate');
+    const pVatAmount = document.getElementById('p-vat-amount');
+    const pVatWarning = document.getElementById('p-vat-warning');
     const pAmountPaid = document.getElementById('p-amount-paid');
-    
+
+    // ── Single Source of Truth: reload tax rate from settings every time the view opens ──
+    if (pVatRate) {
+        try {
+            const sRes = await window.API.getSettings();
+            if (sRes && sRes.success && sRes.data) {
+                if (!window.AppData) window.AppData = {};
+                window.AppData.settings = sRes.data;
+            }
+        } catch (e) { console.error('[P-CALC] getSettings failed', e); }
+        loadDefaultVatRate();
+        if (typeof window.calcPTotals === 'function') window.calcPTotals();
+    }
+
     console.log('[TRACE] initPurchaseInvoice: btnAddRow=', !!btnAddRow, 'tbody=', !!tbody, 'selSupplier=', !!selSupplier, 'wired=', btnAddRow?.dataset?.wired || 'NOT SET');
     if (!btnAddRow || !tbody || btnAddRow.dataset.wired) {
         console.log('[TRACE] initPurchaseInvoice: EARLY RETURN — btnAddRow=', !!btnAddRow, 'tbody=', !!tbody, 'wired=', btnAddRow?.dataset?.wired);
@@ -3727,7 +3759,7 @@ window.initPurchaseInvoice = function() {
         }
     }
     
-    function calcPTotals() {
+    window.calcPTotals = function calcPTotals() {
         let subtotal = 0;
         tbody.querySelectorAll('tr').forEach((tr, idx) => {
             tr.firstElementChild.textContent = idx + 1;
@@ -3742,13 +3774,24 @@ window.initPurchaseInvoice = function() {
         const globalDiscEl = document.getElementById('p-global-discount');
         const globalDisc = parseFloat(globalDiscEl?.value) || 0;
         const discountAmt = subtotal * (globalDisc / 100);
-        const grandTotal = subtotal - discountAmt;
+
+        // VAT (input tax) — only for tax invoices
+        const invType = pInvType ? pInvType.value : 'normal';
+        let vatRate = parseFloat(pVatRate?.value) || 0;
+        const taxableAmount = subtotal - discountAmt;
+        const taxAmount = invType === 'tax' ? taxableAmount * (vatRate / 100) : 0;
+        const grandTotal = taxableAmount + taxAmount;
+
+        console.log('[P-CALC] invoice_type=', invType, '| subtotal=', subtotal, '| discount=', discountAmt,
+            '| vat_rate=', vatRate, '| taxable_amount=', taxableAmount, '| tax_amount=', taxAmount,
+            '| grand_total=', grandTotal, '| pInvTypeEl=', !!pInvType, '| pVatRateEl=', !!pVatRate);
 
         // Update display
         const pSubtotalEl = document.getElementById('p-subtotal');
         if (pSubtotalEl) pSubtotalEl.innerHTML = formatMoney(subtotal) + ' ج.م';
         const pDiscAmtEl = document.getElementById('p-discount-amount');
         if (pDiscAmtEl) pDiscAmtEl.textContent = formatMoney(discountAmt) + ' ج.م';
+        if (pVatAmount) pVatAmount.textContent = formatMoney(taxAmount) + ' ج.م';
         document.getElementById('p-grand-total').innerHTML = formatMoney(grandTotal) + ' ج.م';
 
         let paid = parseFloat(pAmountPaid.value) || 0;
@@ -3803,6 +3846,32 @@ window.initPurchaseInvoice = function() {
     btnAddRow.onclick = addPRow;
     pPayment.addEventListener('change', calcPTotals);
     pAmountPaid.addEventListener('input', calcPTotals);
+    // Wire vat rate + invoice type
+    if (pVatRate) pVatRate.addEventListener('input', calcPTotals);
+    if (pInvType) pInvType.addEventListener('change', () => {
+        console.log('[P-CALC] pinv-type change →', pInvType.value);
+        if (pInvType.value === 'tax' && pVatRate && (!pVatRate.value || parseFloat(pVatRate.value) === 0)) {
+            loadDefaultVatRate();
+        }
+        calcPTotals();
+    });
+// Load default VAT rate from settings (fallback 14). Warn if missing/zero.
+        function loadDefaultVatRate() {
+            if (!pVatRate) return;
+            let rate = 0;
+            let configured = false;
+            if (window.AppData && window.AppData.settings) {
+                const s = window.AppData.settings.tax_rate;
+                if (s !== undefined && s !== null && s !== '' && !isNaN(parseFloat(s))) {
+                    rate = parseFloat(s);
+                    configured = true;
+                }
+            }
+            pVatRate.value = rate;
+            if (pVatWarning) pVatWarning.style.display = configured ? 'none' : 'block';
+            console.log('[P-CALC] loadDefaultVatRate: settings.tax_rate=', window.AppData?.settings?.tax_rate, '→ rate=', rate, 'configured=', configured);
+        }
+    loadDefaultVatRate();
     // Wire global discount input
     const pGlobalDiscount = document.getElementById('p-global-discount');
     if (pGlobalDiscount) pGlobalDiscount.addEventListener('input', calcPTotals);
@@ -3834,12 +3903,20 @@ window.initPurchaseInvoice = function() {
         let pSubtotalVal = 0;
         items.forEach(it => { pSubtotalVal += it.quantity * it.cost_price; });
         const pDiscAmountVal = pSubtotalVal * (pGlobalDiscVal / 100);
+        const pAfterDiscVal = pSubtotalVal - pDiscAmountVal;
+        const pVatRateVal = parseFloat(pVatRate?.value) || 0;
+        const pTaxAmountVal = (pInvType ? pInvType.value : 'normal') === 'tax' ? pAfterDiscVal * (pVatRateVal / 100) : 0;
+        console.log('[P-CALC] SAVE: invoice_type=', pInvType?.value, '| subtotal=', pSubtotalVal, '| discount=', pDiscAmountVal,
+            '| vat_rate=', pVatRateVal, '| taxable=', pAfterDiscVal, '| tax_amount=', pTaxAmountVal);
         const data = {
             supplier_id,
             invoice_date: pDate.value,
             supplier_invoice_no: document.getElementById('pinv-supplier-doc').value,
             store_id: document.getElementById('pinv-store').value,
             payment_type: pPayment.value,
+            invoice_type: pInvType ? pInvType.value : 'normal',
+            vat_rate: pVatRateVal,
+            tax_amount: pTaxAmountVal,
             discount_amount: pDiscAmountVal,
             amount_paid: parseFloat(pAmountPaid.value) || 0,
             items
@@ -4588,6 +4665,10 @@ window.initPurchaseReturn = async function(invoiceNo) {
                         };
                     }
                     clearForm();
+                    // تحديث قائمة مرتجعات المشتريات تلقائياً إن كانت مفتوحة
+                    if (typeof window.loadPurchaseReturnsList === 'function') {
+                        window.loadPurchaseReturnsList();
+                    }
                 } else {
                     await window.showAlert(res.message || 'حدث خطأ', { type: 'danger' });
                 }
@@ -5072,6 +5153,10 @@ window.editPurchaseInvoice = function(det) {
     if (selStore && det.store_id) selStore.value = det.store_id;
     const selPay = document.getElementById('pinv-payment');
     if (selPay && det.payment_type) selPay.value = det.payment_type;
+    const selPType = document.getElementById('pinv-type');
+    if (selPType && det.invoice_type) selPType.value = det.invoice_type;
+    const pVatRateEdit = document.getElementById('p-vat-rate');
+    if (pVatRateEdit && det.vat_rate !== undefined && det.vat_rate !== null) pVatRateEdit.value = det.vat_rate;
     document.getElementById('p-amount-paid').value = det.amount_paid || 0;
     const tbody = document.getElementById('pinvoice-items-body');
     if (tbody && det.items) {
@@ -5087,7 +5172,7 @@ window.editPurchaseInvoice = function(det) {
                 '<td><input type="number" class="pitem-sell" value="' + (item.sell_price || 0) + '" min="0" readonly title="يتم تعديل سعر البيع من شاشة الأصناف أو شاشة التسعير فقط" style="background:#f5f5f5;cursor:not-allowed;"></td>' +
                 '<td><input type="text" class="pitem-total disabled-input" value="' + (item.line_total || (item.quantity * (item.cost_price || 0))).toFixed(2) + '" disabled></td>' +
                 '<td><button class="icon-btn text-danger btn-remove-prow"><i class="fa-solid fa-trash"></i></button></td>';
-            tr.querySelector('.btn-remove-prow').addEventListener('click', () => { tr.remove(); if (typeof calcPTotals === 'function') calcPTotals(); });
+            tr.querySelector('.btn-remove-prow').addEventListener('click', () => { tr.remove(); if (typeof window.calcPTotals === 'function') window.calcPTotals(); });
             const si = tr.querySelector('.pitem-search');
             si.addEventListener('input', (e) => {
                 const val = e.target.value;
@@ -5097,14 +5182,14 @@ window.editPurchaseInvoice = function(det) {
                     if (opt) {
                         tr.dataset.productId = opt.dataset.id;
                         tr.querySelector('.pitem-cost').value = opt.dataset.cost || 0;
-                        if (typeof calcPTotals === 'function') calcPTotals();
+                        if (typeof window.calcPTotals === 'function') window.calcPTotals();
                     }
                 }
             });
             tbody.appendChild(tr);
         });
     }
-    if (typeof calcPTotals === 'function') calcPTotals();
+    if (typeof window.calcPTotals === 'function') window.calcPTotals();
 };
 
 window.deletePurchaseReturn = async function(id) {

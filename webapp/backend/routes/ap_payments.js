@@ -201,25 +201,65 @@ router.get('/supplier/:id/unpaid', async (req, res) => {
 // (journal_entries on SYS_AP attributed to the supplier via je.supplier_id).
 router.get('/supplier/:id/statement', async (req, res) => {
     try {
-        const { from, to } = req.query;
+        const { from, to, showDetails } = req.query;
+        const supplierId = parseInt(req.params.id);
         const pool = await getPool();
-        const request = pool.request();
-        request.input('sid', sql.Int, req.params.id);
 
-        const supRes = await request.query('SELECT opening_balance FROM suppliers WHERE id = @sid');
-        const opening = supRes.recordset[0] ? supRes.recordset[0].opening_balance || 0 : 0;
+        // ── Supplier Info ──────────────────────────────────────────────
+        const supReq = pool.request();
+        supReq.input('sid', sql.Int, supplierId);
+        const supRes = await supReq.query(`
+            SELECT s.id, s.supplier_name, s.supplier_code, s.phone, s.email, s.address,
+                   s.opening_balance, s.tax_number,
+                   MAX(pi.invoice_date) AS last_invoice_date,
+                   MAX(ap.payment_date) AS last_payment_date
+            FROM suppliers s
+            LEFT JOIN purchase_invoices pi ON pi.supplier_id = s.id AND pi.status NOT IN ('cancelled','deleted')
+            LEFT JOIN ap_payments ap ON ap.supplier_id = s.id AND ap.status = 'active'
+            WHERE s.id = @sid
+            GROUP BY s.id, s.supplier_name, s.supplier_code, s.phone, s.email, s.address, s.opening_balance, s.tax_number
+        `);
+        const supplier = supRes.recordset[0];
+        if (!supplier) return res.status(404).json({ success: false, message: 'المورد غير موجود' });
+        const openingBalance = parseFloat(supplier.opening_balance || 0);
 
-        const apAccId = await getSystemAccountAsync(request, 'SYS_AP');
-        request.input('apAccId', sql.Int, apAccId);
+        // ── GL Lines via Journal Entries (the authoritative ledger) ────
+        const stmtReq = pool.request();
+        stmtReq.input('sid', sql.Int, supplierId);
+        const apAccId = await getSystemAccountAsync(stmtReq, 'SYS_AP');
+        stmtReq.input('apAccId', sql.Int, apAccId);
 
-        const GL_SELECT = `
-            SELECT je.entry_date AS doc_date,
+        // Opening balance = sum before the period
+        let openingBalance_period = openingBalance;
+        if (from) {
+            stmtReq.input('from_open', sql.NVarChar, from);
+            const openRes = await stmtReq.query(`
+                SELECT ISNULL(SUM(jl.credit - jl.debit), 0) AS net
+                FROM journal_entry_lines jl
+                JOIN journal_entries je ON je.id = jl.entry_id
+                WHERE jl.account_id = @apAccId
+                  AND je.supplier_id = @sid
+                  AND je.entry_date < @from_open
+                  AND (je.is_reversed IS NULL OR je.is_reversed = 0)
+                  AND (je.reversal_of_id IS NULL)
+                  AND (je.source_action IS NULL OR (je.source_action NOT LIKE '%_cancel' AND je.source_action <> 'cancel'))
+            `);
+            openingBalance_period = openingBalance + parseFloat(openRes.recordset[0]?.net || 0);
+        }
+
+        // Period rows
+        let periodSql = `
+            SELECT je.entry_date AS date,
                    CASE WHEN je.reference_type = 'manual_je' OR je.reference_type IS NULL
                         THEN je.entry_no
                         ELSE COALESCE(NULLIF(je.source_document, ''), je.entry_no)
                    END AS doc_no,
-                   je.reference_type, je.source_action,
-                   jl.debit, jl.credit
+                   je.reference_type AS ref_type,
+                   je.reference_id AS ref_id,
+                   je.source_action,
+                   je.description AS description,
+                   jl.debit,
+                   jl.credit
             FROM journal_entry_lines jl
             JOIN journal_entries je ON je.id = jl.entry_id
             WHERE jl.account_id = @apAccId
@@ -228,22 +268,106 @@ router.get('/supplier/:id/statement', async (req, res) => {
               AND (je.reversal_of_id IS NULL)
               AND (je.source_action IS NULL OR (je.source_action NOT LIKE '%_cancel' AND je.source_action <> 'cancel'))
         `;
+        if (from) { periodSql += ' AND je.entry_date >= @from'; stmtReq.input('from', sql.NVarChar, from); }
+        if (to)   { periodSql += ' AND je.entry_date <= @to';   stmtReq.input('to',   sql.NVarChar, to); }
+        periodSql += ' ORDER BY je.entry_date ASC, je.id ASC';
+        const glRes = await stmtReq.query(periodSql);
 
-        let periodSql = GL_SELECT;
-        if (from) { periodSql += ' AND je.entry_date >= @from'; request.input('from', sql.NVarChar, from); }
-        if (to)   { periodSql += ' AND je.entry_date <= @to';   request.input('to',   sql.NVarChar, to); }
-        periodSql += ' ORDER BY je.entry_date ASC, je.created_at ASC, je.entry_no ASC';
-        const result = await request.query(periodSql);
+        // ── Purchase Invoice Matching (is_matched) ─────────────────────
+        // An invoice is matched (fully paid) if remaining = 0
+        const matchReq = pool.request();
+        matchReq.input('msid', sql.Int, supplierId);
+        const matchRes = await matchReq.query(`
+            SELECT pi.id, pi.invoice_no,
+                   CASE WHEN pi.remaining <= 0.005 THEN 1 ELSE 0 END AS is_matched
+            FROM purchase_invoices pi
+            WHERE pi.supplier_id = @msid
+              AND pi.status NOT IN ('cancelled', 'deleted')
+        `);
+        const matchMap = {};
+        matchRes.recordset.forEach(r => { matchMap[r.invoice_no] = r.is_matched === 1; });
 
-        const rows = result.recordset.map(r => ({
-            type: r.reference_type || 'journal_entry',
-            doc_no: r.doc_no,
-            doc_date: r.doc_date,
-            amount: r.credit - r.debit,
-            ref_no: null
-        }));
+        // ── Build rows with running balance ───────────────────────────
+        let balance = openingBalance_period;
+        let totalPurchases = 0, totalReturns = 0, totalPayments = 0, totalNotes = 0;
 
-        res.json({ success: true, data: rows, opening_balance: opening });
+        const rows = glRes.recordset.map((r, i) => {
+            const debit  = parseFloat(r.debit  || 0);
+            const credit = parseFloat(r.credit || 0);
+            const balance_before = balance;
+            // For AP: credit increases balance (we owe more), debit decreases (we pay)
+            const impact = credit - debit;
+            balance += impact;
+
+            // Determine doc type label
+            const refType = r.ref_type || 'journal_entry';
+            let docTypeShort = 'حركة';
+            if (refType === 'purchase_invoice')  { docTypeShort = 'فاتورة'; totalPurchases += credit; }
+            else if (refType === 'purchase_return') { docTypeShort = 'مرتجع'; totalReturns += debit; }
+            else if (refType === 'ap_payment' || refType === 'supplier_payment') { docTypeShort = 'سند صرف'; totalPayments += debit; }
+            else if (refType === 'ap_note')      { docTypeShort = 'إشعار'; totalNotes += impact; }
+            else if (refType === 'journal_entry' || refType === 'manual_je') { docTypeShort = 'قيد'; }
+
+            // Description
+            const docNo = r.doc_no || '';
+            let description = r.description || '';
+            if (!description) {
+                if (refType === 'purchase_invoice')  description = 'استحقاق فاتورة ' + docNo;
+                else if (refType === 'purchase_return') description = 'مرتجع فاتورة ' + docNo;
+                else if (refType === 'ap_payment' || refType === 'supplier_payment') description = 'تسديد فاتورة مورد ' + docNo;
+                else if (refType === 'ap_note')      description = 'إشعار مورد ' + docNo;
+                else description = 'قيد محاسبي ' + docNo;
+            }
+
+            // Matching status: only for invoices/payments
+            let is_matched = null;
+            if (refType === 'purchase_invoice' && docNo) {
+                is_matched = matchMap[docNo] !== undefined ? matchMap[docNo] : null;
+            } else if (refType === 'ap_payment' || refType === 'supplier_payment') {
+                is_matched = true; // payments are always "matched" (they reduce balance)
+            }
+
+            return {
+                date: r.date,
+                ref_type: refType,
+                ref_id: r.ref_id,
+                doc_no: docNo,
+                doc_type_short: docTypeShort,
+                description,
+                debit,
+                credit,
+                balance_before,
+                impact,
+                balance,
+                is_matched
+            };
+        });
+
+        const closingBalance = balance;
+        const currentBalance = closingBalance;
+
+        // ── KPIs ──────────────────────────────────────────────────────
+        const kpis = {
+            opening_balance:    openingBalance_period,
+            closing_balance:    closingBalance,
+            current_balance:    currentBalance,
+            total_purchases:    totalPurchases,
+            total_returns:      totalReturns,
+            total_payments:     totalPayments,
+            total_notes:        totalNotes,
+            transaction_count:  rows.length
+        };
+
+        res.json({
+            success: true,
+            data: {
+                supplier,
+                rows,
+                opening_balance: openingBalance_period,
+                closing_balance: closingBalance,
+                kpis
+            }
+        });
     } catch (err) {
         logDetailedError('AP Statement', err);
         res.status(500).json({ success: false, message: 'خطأ في جلب كشف الحساب', error_detail: err.message });

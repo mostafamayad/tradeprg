@@ -444,9 +444,14 @@
                 const h = d.data;
                 const items = [
                     { label: 'توازن القيود', ok: h.journalBalance },
-                    { label: 'أرصدة العملاء', ok: h.customersBalanced },
-                    { label: 'أرصدة الموردين', ok: h.suppliersBalanced },
+                    { label: 'أرصدة العملاء (تشغيلي)', ok: h.customersBalanced },
+                    { label: 'أرصدة العملاء (GL)', ok: h.customersGlBalanced },
+                    { label: 'أرصدة الموردين (تشغيلي)', ok: h.suppliersBalanced },
+                    { label: 'أرصدة الموردين (GL)', ok: h.suppliersGlBalanced },
                     { label: 'أرصدة الخزينة', ok: h.treasuryBalanced },
+                    { label: 'أرصدة الخزينة (GL)', ok: h.treasuryGlBalanced },
+                    { label: 'أرصدة الحسابات (GL)', ok: h.coaGlBalanced },
+                    { label: 'المخزون (GL)', ok: h.inventoryBalanced },
                     { label: 'ميزان المراجعة', ok: h.trialBalanceBalanced }
                 ];
                 const allOk = h.allPassed;

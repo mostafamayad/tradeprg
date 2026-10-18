@@ -16,6 +16,9 @@ yarn-error.log
 
 # ─── Temp / Scratch files ──────────────────────────────────────
 tmp_*.js
+_tmp_*.js
+_fix_*.js
+_scratch_*.js
 test_restore.js
 test_sales_return_flow.js
 test_seed_comprehensive.js

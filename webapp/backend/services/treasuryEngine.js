@@ -4,6 +4,7 @@
 // Used by: Treasury, Sales, Purchases, Collections, CRM, AR/AP modules.
 
 const { sql } = require('../database/mssql_db');
+const { recalcTreasuryBalanceAsync } = require('./accountingEngine');
 
 /**
  * Create a treasury transaction.
@@ -79,6 +80,8 @@ async function reverseTreasuryTransactionAsync(txRequest, treasuryId) {
         documentNo: t.trans_no,
         description: `عكس ${t.description || t.trans_no}`
     });
+
+    await recalcTreasuryBalanceAsync(txRequest, t.account_id);
 }
 
 module.exports = { createTreasuryTransactionAsync, reverseTreasuryTransactionAsync };
