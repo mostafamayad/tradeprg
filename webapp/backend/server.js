@@ -16,6 +16,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
+const fs = require('fs');
 
 const { syncTime } = require('./utils/time');
 
