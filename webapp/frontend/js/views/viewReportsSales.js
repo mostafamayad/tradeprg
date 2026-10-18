@@ -529,9 +529,34 @@
                 const d = r.data;
                 const allRows = d.rows || [];
                 const cust = d.customer || {};
-                const kpis = d.kpis || {};
-                const summary = d.summary || {};
                 const showDet = !!(f.showDetails || document.getElementById('rpt-show-details')?.checked);
+
+                const toN = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+                const openingBal = toN(d.opening_balance ?? cust.opening_balance ?? 0);
+                const totalDebit = toN(d.total_debit ?? allRows.reduce((s, r) => s + toN(r.debit), 0));
+                const totalCredit = toN(d.total_credit ?? allRows.reduce((s, r) => s + toN(r.credit), 0));
+                const closingBal = toN(d.closing_balance ?? (openingBal + totalDebit - totalCredit));
+                const totalSales = toN(d.kpis?.total_sales ?? allRows.filter(r => r.ref_type === 'sales_invoice').reduce((s, r) => s + toN(r.debit), 0));
+                const totalCollections = toN(d.kpis?.total_collections ?? allRows.filter(r => r.ref_type === 'collection').reduce((s, r) => s + toN(r.credit), 0));
+                const totalReturns = toN(d.kpis?.total_returns ?? allRows.filter(r => r.ref_type === 'sales_return').reduce((s, r) => s + toN(r.credit), 0));
+
+                const kpis = {
+                    opening_balance: openingBal,
+                    current_balance: toN(d.kpis?.current_balance ?? cust.current_balance ?? closingBal),
+                    total_sales: totalSales,
+                    total_collections: totalCollections,
+                    total_returns: totalReturns,
+                    transaction_count: d.kpis?.transaction_count ?? allRows.length,
+                    ...d.kpis
+                };
+
+                const summary = {
+                    opening_balance: openingBal,
+                    total_debit: totalDebit,
+                    total_credit: totalCredit,
+                    closing_balance: closingBal,
+                    ...d.summary
+                };
 
                 function fmtDt(v) { return v ? String(v).slice(0, 10) : '-'; }
 
@@ -717,7 +742,7 @@
                                 '<td style="text-align:center;padding:5px 7px">' + matchBadge + '</td>' +
                                 (showDet ? '<td style="text-align:center;width:26px;padding:5px 3px">' +
                                     (hasItems
-                                        ? '<i class="fa-solid fa-chevron-down cs-toggle" data-target="' + detailId + '" style="cursor:pointer;color:var(--primary-color);transition:transform 0.2s;font-size:0.7rem"></i>'
+                                        ? '<i class="fa-solid fa-chevron-down cs-toggle" data-target="' + detailId + '" style="cursor:pointer;color:var(--primary-color);transition:transform 0.2s;font-size:0.7rem;transform:rotate(180deg)"></i>'
                                         : '<span style="color:#d1d5db;font-size:0.55rem">—</span>') +
                                 '</td>' : '') +
                             '</tr>';
@@ -726,7 +751,7 @@
                                 const itemTotal = r.items.reduce((s, it) => s + it.total, 0);
                                 const taxAmt = r.tax_amount || 0;
                                 const discAmt = r.discount_amount || 0;
-                                bodyHtml += '<tr id="' + detailId + '" style="display:none">' +
+                                bodyHtml += '<tr id="' + detailId + '" class="stmt-detail-row" style="display:table-row">' +
                                     '<td colspan="' + colSpan + '" style="padding:0;border:none;background:#fafbff">' +
                                         '<div style="padding:6px 10px">' +
                                             '<table style="width:100%;border-collapse:collapse;font-size:0.7rem">' +
@@ -814,16 +839,32 @@
                 // Accordion toggle (scoped)
                 out.addEventListener('click', function(e) {
                     const toggle = e.target.closest('.cs-toggle');
-                    if (!toggle || toggle.dataset.bound) return;
-                    toggle.dataset.bound = '1';
-                    const id = toggle.dataset.target;
+                    const rowClick = e.target.closest('tr.stmt-row');
+                    let targetToggle = toggle;
+                    if (!targetToggle && rowClick && !e.target.closest('a, button, input, select')) {
+                        targetToggle = rowClick.querySelector('.cs-toggle');
+                    }
+                    if (!targetToggle) return;
+                    const id = targetToggle.dataset.target;
+                    if (!id) return;
                     const row = out.querySelector('#' + CSS.escape(id));
                     if (row) {
-                        const h = row.style.display === 'none' || !row.style.display;
-                        row.style.display = h ? 'table-row' : 'none';
-                        toggle.style.transform = h ? 'rotate(180deg)' : 'rotate(0deg)';
+                        const isHidden = row.style.display === 'none';
+                        row.style.display = isHidden ? 'table-row' : 'none';
+                        targetToggle.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
                     }
                 });
+
+                const showDetailsCb = document.getElementById('rpt-show-details');
+                if (showDetailsCb && !showDetailsCb.dataset.boundChange) {
+                    showDetailsCb.dataset.boundChange = '1';
+                    showDetailsCb.addEventListener('change', () => {
+                        const activeItem = document.querySelector('#view-reports-sales .report-nav li.active');
+                        if (activeItem && activeItem.dataset.report === 'customer-statement') {
+                            activeItem.click();
+                        }
+                    });
+                }
 
                 // Export
                 const expRows = allRows.map((row, i) => {

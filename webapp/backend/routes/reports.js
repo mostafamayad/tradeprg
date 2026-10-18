@@ -83,7 +83,7 @@ router.get('/customer-statement/:id', asyncHandler(async (req, res) => {
     // Get AR account ID for journal entries
     const arAcc = await getSysAccId(rq, SYS_AR);
 
-    // â”€â”€ Build union of all transaction types â”€â”€
+    // ── Build union of all transaction types ──
     let sqlParts_arr = [];
     let wStr = '';
     if (from) wStr += ` AND invoice_date >= @from`;
@@ -94,7 +94,9 @@ router.get('/customer-statement/:id', asyncHandler(async (req, res) => {
              N'فاتورة مبيعات' AS doc_type, N'فاتورة' AS doc_type_short,
              grand_total AS debit, 0 AS credit,
              'sales_invoice' AS ref_type, id AS ref_id,
-             ISNULL(notes,'') AS description, '' AS created_by_name
+             ISNULL(notes,'') AS description, '' AS created_by_name,
+             COALESCE(tax_amount, 0) AS tax_amount,
+             COALESCE(discount_amount, 0) AS discount_amount
       FROM sales_invoices
       WHERE customer_id = @cid AND status NOT IN ('cancelled', 'deleted')${wStr}
     `);
@@ -108,7 +110,9 @@ router.get('/customer-statement/:id', asyncHandler(async (req, res) => {
              N'مرتجع مبيعات' AS doc_type, N'مرتجع' AS doc_type_short,
              0 AS debit, grand_total AS credit,
              'sales_return' AS ref_type, id AS ref_id,
-             ISNULL(return_reason,'') AS description, '' AS created_by_name
+             ISNULL(return_reason,'') AS description, '' AS created_by_name,
+             COALESCE(tax_amount, 0) AS tax_amount,
+             COALESCE(discount_amount, 0) AS discount_amount
       FROM sales_returns
       WHERE customer_id = @cid AND status NOT IN ('cancelled', 'deleted')${wStrR}
     `);
@@ -122,7 +126,9 @@ router.get('/customer-statement/:id', asyncHandler(async (req, res) => {
              N'تحصيل' AS doc_type, N'تحصيل' AS doc_type_short,
              0 AS debit, amount AS credit,
              'collection' AS ref_type, id AS ref_id,
-             ISNULL(notes,'') AS description, '' AS created_by_name
+             ISNULL(notes,'') AS description, '' AS created_by_name,
+             CAST(0 AS DECIMAL(18,2)) AS tax_amount,
+             CAST(0 AS DECIMAL(18,2)) AS discount_amount
       FROM customer_collections
       WHERE customer_id = @cid${wStrC}
     `);
@@ -140,7 +146,9 @@ router.get('/customer-statement/:id', asyncHandler(async (req, res) => {
                jl.debit, jl.credit,
                'journal_entry' AS ref_type, je.id AS ref_id,
                ISNULL(jl.description,'') AS description,
-               ISNULL(u.full_name,'') AS created_by_name
+               ISNULL(u.full_name,'') AS created_by_name,
+               CAST(0 AS DECIMAL(18,2)) AS tax_amount,
+               CAST(0 AS DECIMAL(18,2)) AS discount_amount
         FROM journal_entry_lines jl
         JOIN journal_entries je ON je.id = jl.entry_id
         LEFT JOIN users u ON je.created_by = u.id
@@ -178,12 +186,88 @@ router.get('/customer-statement/:id', asyncHandler(async (req, res) => {
         description: r.description,
         created_by: r.created_by_name,
         ref_type: r.ref_type,
-        ref_id: r.ref_id
+        ref_id: r.ref_id,
+        tax_amount: num(r.tax_amount),
+        discount_amount: num(r.discount_amount),
+        items: []
       };
     });
 
     const siIdsAll = statement.filter(r => r.ref_type === 'sales_invoice').map(r => r.ref_id);
+    const retIdsAll = statement.filter(r => r.ref_type === 'sales_return').map(r => r.ref_id);
     const payIdsAll = statement.filter(r => r.ref_type === 'collection').map(r => r.ref_id);
+
+    // Fetch items for invoices
+    if (siIdsAll.length > 0) {
+      const itemReq = pool.request();
+      const itemRows = (await itemReq.query(`
+        SELECT ii.invoice_id, ii.product_id, ii.quantity, ii.unit_price, 
+               COALESCE(ii.discount_amount, 0) AS discount,
+               COALESCE(ii.line_total, ii.quantity * ii.unit_price) AS total,
+               p.product_name, p.product_code, COALESCE(p.unit_name, '') AS unit
+        FROM sales_invoice_items ii
+        LEFT JOIN products p ON ii.product_id = p.id
+        WHERE ii.invoice_id IN (${siIdsAll.join(',')})
+        ORDER BY ii.id ASC
+      `)).recordset;
+
+      const itemsByInv = {};
+      itemRows.forEach(it => {
+        if (!itemsByInv[it.invoice_id]) itemsByInv[it.invoice_id] = [];
+        itemsByInv[it.invoice_id].push({
+          product_id: it.product_id,
+          product_name: it.product_name || 'صنف غير محدد',
+          product_code: it.product_code || '',
+          quantity: num(it.quantity),
+          unit: it.unit || '-',
+          unit_price: num(it.unit_price),
+          discount: num(it.discount),
+          total: num(it.total)
+        });
+      });
+
+      statement.forEach(r => {
+        if (r.ref_type === 'sales_invoice') {
+          r.items = itemsByInv[r.ref_id] || [];
+        }
+      });
+    }
+
+    // Fetch items for returns
+    if (retIdsAll.length > 0) {
+      const retItemReq = pool.request();
+      const retItemRows = (await retItemReq.query(`
+        SELECT ri.return_id, ri.product_id, ri.quantity, ri.unit_price,
+               COALESCE(ri.discount_amount_snapshot, 0) AS discount,
+               COALESCE(ri.line_total, ri.quantity * ri.unit_price) AS total,
+               p.product_name, p.product_code, COALESCE(p.unit_name, '') AS unit
+        FROM sales_return_items ri
+        LEFT JOIN products p ON ri.product_id = p.id
+        WHERE ri.return_id IN (${retIdsAll.join(',')})
+        ORDER BY ri.id ASC
+      `)).recordset;
+
+      const itemsByRet = {};
+      retItemRows.forEach(it => {
+        if (!itemsByRet[it.return_id]) itemsByRet[it.return_id] = [];
+        itemsByRet[it.return_id].push({
+          product_id: it.product_id,
+          product_name: it.product_name || 'صنف غير محدد',
+          product_code: it.product_code || '',
+          quantity: num(it.quantity),
+          unit: it.unit || '-',
+          unit_price: num(it.unit_price),
+          discount: num(it.discount),
+          total: num(it.total)
+        });
+      });
+
+      statement.forEach(r => {
+        if (r.ref_type === 'sales_return') {
+          r.items = itemsByRet[r.ref_id] || [];
+        }
+      });
+    }
 
     let matchByRef = { sales_invoice: {}, collection: {} };
     if (siIdsAll.length > 0) {
@@ -207,10 +291,32 @@ router.get('/customer-statement/:id', asyncHandler(async (req, res) => {
       r.is_matched = matchByRef[r.ref_type] ? (matchByRef[r.ref_type][r.ref_id] || false) : null;
     });
 
-
     const totalDebit  = statement.reduce((s, r) => s + r.debit, 0);
     const totalCredit = statement.reduce((s, r) => s + r.credit, 0);
     const closing     = num(cust.opening_balance) + totalDebit - totalCredit;
+
+    const totalSales = statement.filter(r => r.ref_type === 'sales_invoice').reduce((s, r) => s + r.debit, 0);
+    const totalCollections = statement.filter(r => r.ref_type === 'collection').reduce((s, r) => s + r.credit, 0);
+    const totalReturns = statement.filter(r => r.ref_type === 'sales_return').reduce((s, r) => s + r.credit, 0);
+
+    const lastInv = statement.filter(r => r.ref_type === 'sales_invoice').pop()?.date || null;
+    const lastCol = statement.filter(r => r.ref_type === 'collection').pop()?.date || null;
+
+    const kpis = {
+      opening_balance: num(cust.opening_balance),
+      current_balance: closing,
+      total_sales: totalSales,
+      total_collections: totalCollections,
+      total_returns: totalReturns,
+      transaction_count: statement.length
+    };
+
+    const summary = {
+      opening_balance: num(cust.opening_balance),
+      total_debit: totalDebit,
+      total_credit: totalCredit,
+      closing_balance: closing
+    };
 
     res.json({
       success: true,
@@ -221,9 +327,15 @@ router.get('/customer-statement/:id', asyncHandler(async (req, res) => {
           customer_name: cust.customer_name,
           phone: cust.phone,
           address: cust.address,
+          branch: cust.branch || '-',
+          governorate: cust.governorate || '-',
           credit_limit: num(cust.credit_limit),
-          current_balance: num(cust.current_balance)
+          current_balance: closing,
+          last_invoice_date: lastInv,
+          last_collection_date: lastCol
         },
+        kpis,
+        summary,
         opening_balance: num(cust.opening_balance),
         total_debit: totalDebit,
         total_credit: totalCredit,
