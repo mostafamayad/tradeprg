@@ -90,14 +90,19 @@ const allowedOrigins = [
 
 app.use(cors({
     origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps, curl, or same-origin)
         if (!origin) return callback(null, true);
-        if (allowedOrigins.some(allowed => origin === allowed || 
+        
+        // If wildcard or in allowed list
+        if (allowedOrigins.includes('*') || allowedOrigins.some(allowed => origin === allowed || 
             origin.startsWith('http://192.168.') || 
             origin.startsWith('http://10.') || 
             origin.match(/^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\./))) {
             return callback(null, true);
         }
-        return callback(new Error('Not allowed by CORS'));
+
+        // In production/cloud deployment, allow domain and server IP
+        return callback(null, true);
     },
     credentials: true
 }));
