@@ -140,7 +140,6 @@
             }
         };
 
-        const postGlBtn = document.getElementById('comm-postgl-btn');
         if (postGlBtn) {
             postGlBtn.onclick = async function() {
                 const ids = getSelectedIds(2, 2);
@@ -164,7 +163,7 @@
 
         settleBtn.onclick = async function() {
             const ids = getSelectedIds(2, 2);
-            if (ids.length === 0) { alert('اختر عمولات معتمدة فقط'; return; }
+            if (ids.length === 0) { alert('اختر عمولات معتمدة فقط'); return; }
             if (!confirm('تجميد ' + ids.length + ' عمولة؟')) return;
             const r = await req('/commissions/settle', 'POST', { ids });
             if (r.success) {

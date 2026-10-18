@@ -3673,7 +3673,7 @@
                                 <li data-report="pur-payables"><i class="fa-solid fa-scale-balanced"></i><span> أعمار الديون</span></li>
                                 <li data-report="pur-top-suppliers"><i class="fa-solid fa-trophy"></i><span> أفضل الموردين</span></li>
                                 <li data-report="pur-product-purchases"><i class="fa-solid fa-cube"></i><span> الأصناف المشتراة</span></li>
-                                <li data-report="pur-purchase-movement"><i class="fa-solid fa-right-left"></i><span> حرفة المشتريات</span></li>
+                                <li data-report="pur-purchase-movement"><i class="fa-solid fa-right-left"></i><span> حركة المشتريات</span></li>
                                 <li data-report="pur-vat"><i class="fa-solid fa-file-invoice-dollar"></i><span> VAT المشتريات</span></li>
                                 <li data-report="pur-matching-status"><i class="fa-solid fa-list-check"></i><span> تقرير حالة المطابقة</span></li>
                             </ul>
@@ -3713,7 +3713,7 @@
                                 </div>
                                 <div class="report-actions">
                                     <button class="btn btn-outline" id="pur-rpt-export-csv" title="تصدير CSV"><i class="fa-solid fa-file-csv"></i> <span>CSV</span></button>
-                                    <button class="btn btn-outline" id="pur-rpt-print" title="طباعة"><i class="fa-solid fa-print"></i> <span>باعة</span></button>
+                                    <button class="btn btn-outline" id="pur-rpt-print" title="طباعة"><i class="fa-solid fa-print"></i> <span>طباعة</span></button>
                                 </div>
                             </div>
 
@@ -5206,7 +5206,7 @@
                 'suppliers': 'loadSuppliersList',
                 'purchase-invoice': 'initPurchaseInvoice',
                 'purchase-return': 'initPurchaseReturn',
-                'reports-purchases': 'initPurchasesReport',
+                'reports-purchases': 'loadReportsPurchases',
                 'reports-inventory': 'initInventoryReport',
                 'inventory': 'loadInventory',
                 'inventory-card': 'initInventoryCard',
@@ -5329,16 +5329,18 @@
                 closeNavPopup();
 
                 var triggerRect = this.getBoundingClientRect();
-                var sidebarWidth = 80;
+                var sidebar = document.querySelector('.sidebar');
+                var sidebarRight = sidebar ? Math.max(0, window.innerWidth - sidebar.getBoundingClientRect().right) : 16;
+                var sidebarWidth = sidebar ? sidebar.offsetWidth : 80;
                 var popupTop = triggerRect.top - 8;
-                var popupMaxHeight = Math.min(window.innerHeight * 0.7, 520);
+                var popupMaxHeight = Math.min(window.innerHeight * 0.85, 560);
                 var viewportHeight = window.innerHeight;
                 if (popupTop < 10) popupTop = 10;
                 if (popupTop + popupMaxHeight > viewportHeight - 10) {
                     popupTop = Math.max(10, viewportHeight - popupMaxHeight - 10);
                 }
                 popup.style.top = popupTop + 'px';
-                popup.style.right = sidebarWidth + 'px';
+                popup.style.right = (sidebarRight + sidebarWidth + 8) + 'px';
 
                 popup.classList.add('active');
                 activeMenuPopup = menuId;

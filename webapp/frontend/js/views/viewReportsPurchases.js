@@ -33,18 +33,20 @@
                 });
             }
         }
-        await loadFilterOptions();
-
-        const supSel = document.getElementById('pur-rpt-supplier');
-        if (supSel && !supSel.dataset.searchable) {
-            supSel.dataset.searchable = '1';
-            window.makeSearchableSelect(supSel, Array.from(supSel.options).filter(o => o.value).map(o => ({id: o.value, name: o.textContent})), 'ابحث عن مورد...');
-        }
-        const storeSel = document.getElementById('pur-rpt-store');
-        if (storeSel && !storeSel.dataset.searchable) {
-            storeSel.dataset.searchable = '1';
-            window.makeSearchableSelect(storeSel, Array.from(storeSel.options).filter(o => o.value).map(o => ({id: o.value, name: o.textContent})), 'ابحث عن مخزن...');
-        }
+        loadFilterOptions().then(() => {
+            if (typeof window.makeSearchableSelect === 'function') {
+                const supSel = document.getElementById('pur-rpt-supplier');
+                if (supSel && !supSel.dataset.searchable) {
+                    supSel.dataset.searchable = '1';
+                    window.makeSearchableSelect(supSel, Array.from(supSel.options).filter(o => o.value).map(o => ({id: o.value, name: o.textContent})), 'ابحث عن مورد...');
+                }
+                const storeSel = document.getElementById('pur-rpt-store');
+                if (storeSel && !storeSel.dataset.searchable) {
+                    storeSel.dataset.searchable = '1';
+                    window.makeSearchableSelect(storeSel, Array.from(storeSel.options).filter(o => o.value).map(o => ({id: o.value, name: o.textContent})), 'ابحث عن مخزن...');
+                }
+            }
+        }).catch(e => console.warn('[PUR-RPT] loadFilterOptions error:', e));
 
         function show(id) { const e = document.getElementById(id); if (e) e.style.display = ''; }
         function hide(id) { const e = document.getElementById(id); if (e) e.style.display = 'none'; }
@@ -104,22 +106,30 @@
                     { label: 'صافي المشتريات', value: fmt(d.net_purchases) },
                     { label: 'المرتجعات', value: fmt(d.total_returns) },
                     { label: 'المدفوع', value: fmt(d.paid_amount) },
-                    { label: 'المستحق', value: fmt(d.outstanding_amount) },
-                    { label: 'الضريبة', value: fmt(d.total_vat) },
-                    { label: 'الفواتير', value: fmtInt(d.invoice_count) },
+                    { label: 'المستحق للموردين', value: fmt(d.outstanding_amount) },
+                    { label: 'ضريبة القيمة المضافة', value: fmt(d.total_vat) },
+                    { label: 'عدد الفواتير', value: fmtInt(d.invoice_count) },
                     { label: 'متوسط الفاتورة', value: fmt(d.avg_invoice) }
                 ];
                 const bar = document.getElementById('pur-rpt-info-bar');
-                if (bar) { bar.innerHTML = info.map(i => '<span><span class="info-label">' + i.label + ':</span> ' + i.value + '</span>').join(' | '); show('pur-rpt-info-bar'); }
-                hide('pur-rpt-state-loading'); hide('pur-rpt-state-error'); hide('pur-rpt-table-area'); hide('pur-rpt-supplier-statement-area');
-                show('pur-rpt-state-empty');
-                document.querySelector('#pur-rpt-state-empty h3').textContent = 'جميع التقارير متاحة';
-                document.querySelector('#pur-rpt-state-empty p').textContent = 'اختر تقريراً من القائمة الجانبية للبدء';
+                if (bar) {
+                    bar.innerHTML = info.map(i => '<span><span class="info-label">' + i.label + ':</span> ' + i.value + '</span>').join(' | ');
+                    show('pur-rpt-info-bar');
+                }
+                const headers = ['#', 'المؤشر', 'القيمة'];
+                const body = info.map((item, idx) => `<tr>
+                    <td>${idx + 1}</td>
+                    <td><strong>${item.label}</strong></td>
+                    <td style="font-weight:700;color:var(--primary-color);font-size:1.05em">${item.value}</td>
+                </tr>`).join('');
+                renderTable(headers, body);
                 _lastReportData = {
-                    title: 'بطاقة أداء تقارير المشتريات',
+                    title: 'لوحة مؤشرات وأداء المشتريات',
                     filters: [{ label: 'من تاريخ', value: f.from }, { label: 'إلى تاريخ', value: f.to }].filter(x => x.value),
                     summary: info,
-                    columns: [], rows: [], totals: info
+                    columns: headers,
+                    rows: info.map((item, idx) => [idx + 1, item.label, item.value]),
+                    totals: []
                 };
             },
             async 'pur-supplier-statement'() {
@@ -492,12 +502,13 @@
                         <td style="font-weight:bold;color:${i.remaining > 0 ? '#ef4444' : '#333'}">${fmt(i.remaining)}</td>
                         <td><span class="badge" style="background:${i.remaining <= 0 ? '#dcfce7' : '#fee2e2'}">${i.match_status}</span></td>
                     </tr>`).join('');
+                const tot = r.totals || {};
                 const foot = `<tr style="font-weight:bold;background:var(--bg-body)">
                     <td colspan="3" style="text-align:left">الإجمالي</td>
-                    <td>${fmt(r.totals.grand_total)}</td>
-                    <td style="color:#059669">${fmt(r.totals.allocated)}</td>
-                    <td style="color:#f59e0b">${fmt(r.totals.discount)}</td>
-                    <td style="color:#ef4444">${fmt(r.totals.remaining)}</td>
+                    <td>${fmt(tot.grand_total)}</td>
+                    <td style="color:#059669">${fmt(tot.allocated)}</td>
+                    <td style="color:#f59e0b">${fmt(tot.discount)}</td>
+                    <td style="color:#ef4444">${fmt(tot.remaining)}</td>
                     <td></td>
                 </tr>`;
                 renderTable(headers, body, foot);
@@ -543,7 +554,6 @@
 
         // ── Print Engine ──
         const printEngine = new ReportPrintEngine();
-        let _lastReportData = null;
 
         const printBtn = document.getElementById('pur-rpt-print');
         if (printBtn && !printBtn.dataset.bound) {
@@ -564,10 +574,12 @@
             });
         }
 
-        const firstActive = view.querySelector('.report-nav li.active');
-        if (!firstActive) {
-            const first = view.querySelector('.report-nav li');
-            if (first) first.click();
+        const activeItem = view.querySelector('.report-nav li.active') || view.querySelector('.report-nav li');
+        if (activeItem) {
+            activeItem.click();
         }
     };
+
+    window.loadReportsPurchases = viewHandlers['view-reports-purchases'];
+    window.initPurchasesReport = viewHandlers['view-reports-purchases'];
 })();

@@ -1260,8 +1260,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         window.loadSuppliersList();
                     }
                 }
-                if (targetId === 'reports-purchases' && typeof window.initPurchasesReport === 'function') {
-                    window.initPurchasesReport();
+                if (targetId === 'reports-purchases') {
+                    if (typeof window.loadReportsPurchases === 'function') window.loadReportsPurchases();
+                    else if (typeof window.initPurchasesReport === 'function') window.initPurchasesReport();
                 }
                 if (targetId === 'purchase-invoice') {
                     if (typeof window.initPurchaseInvoice === 'function') window.initPurchaseInvoice();
@@ -3601,6 +3602,7 @@ window.loadSuppliers = async function() {
 
 // ---- Purchases Report Logic ----
 window.initPurchasesReport = function() {
+    if (typeof window.loadReportsPurchases === 'function') return window.loadReportsPurchases();
     const btnRun = document.getElementById('btn-run-pur-report');
     if (!btnRun || btnRun.dataset.wired) return;
     btnRun.dataset.wired = '1';
