@@ -21,7 +21,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 let pool;
 
 // ─── Tenant Pools (Cloud/Multi-Tenant support) ────────────────
-// Only used when BUILD_PROFILE=cloud
+const { AsyncLocalStorage } = require('async_hooks');
+const tenantStorage = new AsyncLocalStorage();
 const tenantPools = {};
 
 async function createPool(dbOverride) {
@@ -542,8 +543,14 @@ const initPromise = new Promise((resolve) => {
 
 module.exports = {
     sql,
-    getPool: async () => {
+    tenantStorage,
+    getPool: async (dbOverride) => {
         await initPromise;
+        const store = tenantStorage.getStore();
+        const activeDb = dbOverride || (store && store.db_name);
+        if (activeDb && activeDb.toLowerCase() !== database.toLowerCase()) {
+            return getTenantPool(activeDb);
+        }
         if (!pool) {
             throw new Error('Database connection is not available (degraded mode)');
         }

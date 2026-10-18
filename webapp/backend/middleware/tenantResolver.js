@@ -1,4 +1,6 @@
 const { getMasterPool, sql } = require('../database/master_db');
+const { tenantStorage } = require('../database/mssql_db');
+const jwt = require('jsonwebtoken');
 
 async function tenantResolver(req, res, next) {
     try {
@@ -9,13 +11,31 @@ async function tenantResolver(req, res, next) {
         } else if (req.query.tenant) {
             tenantDbName = req.query.tenant;
         } else {
-            const parts = req.hostname.split('.');
-            if (parts.length >= 3) { 
-                const sub = parts[0].toLowerCase();
-                if (sub !== 'www' && sub !== 'app') {
-                    tenantDbName = sub;
+            // Check Authorization Bearer token for tenant_db
+            const authHeader = req.headers.authorization;
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                try {
+                    const token = authHeader.split(' ')[1];
+                    const decoded = jwt.decode(token);
+                    if (decoded && decoded.tenant_db) {
+                        tenantDbName = decoded.tenant_db;
+                    }
+                } catch(e) {}
+            }
+            if (tenantDbName === 'TradePro') {
+                const parts = (req.hostname || '').split('.');
+                if (parts.length >= 3) { 
+                    const sub = parts[0].toLowerCase();
+                    if (sub !== 'www' && sub !== 'app') {
+                        tenantDbName = sub;
+                    }
                 }
             }
+        }
+
+        if (tenantDbName === 'TradePro' || tenantDbName === 'localhost' || tenantDbName === '127') {
+            req.tenant = { db_name: 'TradePro', company_name: 'الشركة الرئيسية', plan_name: 'pro', is_active: true };
+            return tenantStorage.run({ db_name: 'TradePro' }, () => next());
         }
 
         const masterPool = await getMasterPool();
@@ -24,10 +44,6 @@ async function tenantResolver(req, res, next) {
             .query('SELECT * FROM tenants WHERE db_name = @dbName');
             
         if (tenantRes.recordset.length === 0) {
-            if (tenantDbName === 'TradePro' || tenantDbName === 'localhost' || tenantDbName === '127') {
-                req.tenant = { db_name: 'TradePro', plan_name: 'pro', is_active: true };
-                return next();
-            }
             return res.status(404).json({ success: false, message: 'الشركة غير مسجلة في النظام' });
         }
         
@@ -41,7 +57,7 @@ async function tenantResolver(req, res, next) {
         }
         
         req.tenant = tenant;
-        next();
+        tenantStorage.run({ db_name: tenant.db_name }, () => next());
     } catch (err) {
         console.error('[TenantResolver] Error:', err);
         res.status(500).json({ success: false, message: 'خطأ في خادم النظام (Tenant Resolver): ' + err.message });

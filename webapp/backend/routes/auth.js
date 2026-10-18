@@ -116,6 +116,7 @@ router.post('/login', asyncHandler(async (req, res) => {
             .input('now', sql.DateTime, new Date())
             .query('UPDATE users SET last_login_at = @now, last_login_ip = @ip WHERE id = @id');
 
+        const tenantDb = req.tenant?.db_name || 'TradePro';
         const token = jwt.sign(
             {
                 id: user.id,
@@ -125,7 +126,8 @@ router.post('/login', asyncHandler(async (req, res) => {
                 permissions: permissions,
                 role_ids: role_ids,
                 is_super_admin: is_super_admin,
-                permissions_version: permVersion
+                permissions_version: permVersion,
+                tenant_db: tenantDb
             },
             JWT_SECRET,
             { expiresIn: '7d' }
@@ -139,6 +141,10 @@ router.post('/login', asyncHandler(async (req, res) => {
         res.json({
             success: true,
             token,
+            tenant: {
+                db_name: tenantDb,
+                company_name: req.tenant?.company_name || 'TradePro'
+            },
             user: {
                 id: user.id,
                 email: user.username,

@@ -14,7 +14,9 @@ window.API = {
         let parseFailed = false;
         try {
             const token = localStorage.getItem('auth_token');
-            const tenant = new URLSearchParams(window.location.search).get('tenant');
+            const urlTenant = new URLSearchParams(window.location.search).get('tenant');
+            if (urlTenant) localStorage.setItem('tenant_id', urlTenant);
+            const tenant = urlTenant || localStorage.getItem('tenant_id');
             const headers = { 
                 'Content-Type': 'application/json',
                 'Authorization': token ? 'Bearer ' + token : ''
