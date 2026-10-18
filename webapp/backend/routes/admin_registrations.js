@@ -32,10 +32,14 @@ router.get('/', async (req, res) => {
             OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
         `);
 
-        const countQuery = status === 'all' 
-            ? 'SELECT COUNT(*) AS total FROM registration_requests' 
-            : `SELECT COUNT(*) AS total FROM registration_requests WHERE status = '${status}'`;
-        const countResult = await pool.request().query(countQuery);
+        let countResult;
+        if (status === 'all') {
+            countResult = await pool.request().query('SELECT COUNT(*) AS total FROM registration_requests');
+        } else {
+            countResult = await pool.request()
+                .input('cntStatus', sql.NVarChar(20), status)
+                .query('SELECT COUNT(*) AS total FROM registration_requests WHERE status = @cntStatus');
+        }
 
         res.json({ success: true, data: result.recordset, total: countResult.recordset[0]?.total || 0 });
     } catch (err) {
@@ -90,6 +94,13 @@ router.post('/:id/activate', async (req, res) => {
 
         let userId;
         const initialPassword = password || 'User@123456';
+        if (password) {
+            const { validatePassword } = require('../utils/passwordPolicy');
+            const pwCheck = validatePassword(password);
+            if (!pwCheck.valid) {
+                return res.status(400).json({ success: false, message: pwCheck.message });
+            }
+        }
         if (existingUser.recordset.length > 0) {
             userId = existingUser.recordset[0].id;
         } else {

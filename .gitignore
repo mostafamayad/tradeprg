@@ -1,4 +1,4 @@
-﻿# Git ignore for TradePro ERP repository root
+# Git ignore for TradePro ERP repository root
 BACKUP/
 Datatrial/
 _legacy_archive/
@@ -23,11 +23,17 @@ vps_deploy/
 tools/
 test/
 
-# Backend runtime files
+# Backend runtime & environment files
+.env
+.env.*
+*.env
+**/.env
+**/.env.*
+webapp/backend/.env
+webapp/backend/.token
 webapp/backend/*.log
 webapp/backend/*.err
 webapp/backend/*.txt
-webapp/backend/.env
-webapp/backend/.token
+webapp/backend/logs/
 webapp/backend/tmp_*
 webapp/backend/_drop_ci.js

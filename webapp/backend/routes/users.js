@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { sql, getPool } = require('../database/mssql_db');
 const bcrypt = require('bcryptjs');
+const { validatePassword } = require('../utils/passwordPolicy');
 const logActivity = require('../middleware/logger');
 const asyncHandler = require('../utils/asyncHandler');
 
@@ -79,8 +80,9 @@ router.post('/', asyncHandler(async (req, res) => {
             logActivity(req, 'CREATE', 'users', null, 'Create user failed - incomplete data', null, { email, name }, 'FAILED', 'Incomplete data');
             return res.status(400).json({ success: false, message: 'البيانات غير مكتملة' });
         }
-        if (password.length < 6) {
-            return res.status(400).json({ success: false, message: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' });
+        const pwCheck = validatePassword(password);
+        if (!pwCheck.valid) {
+            return res.status(400).json({ success: false, message: pwCheck.message });
         }
 
         const pool = await getPool();
@@ -285,8 +287,9 @@ router.put('/:id/password', asyncHandler(async (req, res) => {
             logActivity(req, 'UPDATE', 'users', null, 'Change password failed for user ID: ' + targetId, null, null, 'FAILED', 'Password not provided');
             return res.status(400).json({ success: false, message: 'كلمة المرور مطلوبة' });
         }
-        if (password.length < 6) {
-            return res.status(400).json({ success: false, message: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' });
+        const pwCheck = validatePassword(password);
+        if (!pwCheck.valid) {
+            return res.status(400).json({ success: false, message: pwCheck.message });
         }
 
         const pool = await getPool();

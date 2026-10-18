@@ -307,6 +307,22 @@
                     <input type="hidden" id="selected-package-name" value="أساسي">
                 </div>
 
+                <div class="form-group" id="captcha-group" style="margin-top: 14px;">
+                    <label>التحقق الأمني (CAPTCHA) <span style="color: #ef4444;">*</span></label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <div id="captcha-img-container" style="background: rgba(255,255,255,0.05); padding: 2px; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;" title="انقر لتحديث الرمز" onclick="refreshCaptcha()">
+                            <img id="captcha-img" src="" alt="CAPTCHA" style="height: 38px; display: block; border-radius: 6px;">
+                        </div>
+                        <button type="button" onclick="refreshCaptcha()" style="background: none; border: 1px solid var(--border-color); color: #94a3b8; border-radius: 8px; width: 38px; height: 38px; cursor: pointer;" title="تحديث الرمز">
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                        <div class="input-wrapper" style="flex: 1;">
+                            <input type="text" id="reg-captcha-answer" required placeholder="الناتج..." style="text-align: center; font-weight: bold; font-size: 16px;">
+                        </div>
+                    </div>
+                    <input type="hidden" id="captcha-token" value="">
+                </div>
+
                 <button type="submit" id="btn-submit-reg" class="btn-submit">
                     <span>متابعة إلى الجولة الاستكشافية</span>
                     <i class="fa-solid fa-arrow-left"></i>
@@ -359,6 +375,21 @@
         }
         loadPackages();
 
+        async function refreshCaptcha() {
+            try {
+                const res = await fetch('/api/captcha');
+                const data = await res.json();
+                if (data.success && data.data) {
+                    document.getElementById('captcha-img').src = data.data.svg;
+                    document.getElementById('captcha-token').value = data.data.token;
+                    document.getElementById('reg-captcha-answer').value = '';
+                }
+            } catch (e) {
+                console.warn('Captcha load failed:', e);
+            }
+        }
+        refreshCaptcha();
+
         async function handleRegister(e) {
             e.preventDefault();
             const alertBox = document.getElementById('alert-box');
@@ -373,6 +404,8 @@
             const company = document.getElementById('reg-company').value.trim();
             const pkgId = document.getElementById('selected-package-id').value;
             const pkgName = document.getElementById('selected-package-name').value;
+            const captchaToken = document.getElementById('captcha-token')?.value || '';
+            const captchaAnswer = document.getElementById('reg-captcha-answer')?.value.trim() || '';
 
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التسجيل...';
@@ -387,7 +420,9 @@
                         phone: phone,
                         company_name: company,
                         package_id: pkgId,
-                        package_name: pkgName
+                        package_name: pkgName,
+                        captcha_token: captchaToken,
+                        captcha_answer: captchaAnswer
                     })
                 });
 
@@ -423,6 +458,7 @@
                     alertBox.style.display = 'block';
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = '<span>متابعة إلى الجولة الاستكشافية</span> <i class="fa-solid fa-arrow-left"></i>';
+                    refreshCaptcha();
                 }
             } catch (err) {
                 alertBox.className = 'alert-box error';
@@ -430,6 +466,7 @@
                 alertBox.style.display = 'block';
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<span>متابعة إلى الجولة الاستكشافية</span> <i class="fa-solid fa-arrow-left"></i>';
+                refreshCaptcha();
             }
         }
     </script>

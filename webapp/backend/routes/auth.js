@@ -2,6 +2,7 @@ const router = require('express').Router();
 const { sql, getPool } = require('../database/mssql_db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { verifyCaptcha } = require('../utils/captcha');
 const logActivity = require('../middleware/logger');
 const asyncHandler = require('../utils/asyncHandler');
 const parsePermissions = require('../utils/parsePermissions');
@@ -72,10 +73,16 @@ async function resolveUserRolesDisplay(pool, userId, isSuperAdmin) {
 
 router.post('/login', asyncHandler(async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, captcha_token, captcha_answer } = req.body;
         if (!email || !password) {
             logActivity(req, 'LOGIN', 'auth', null, null, null, null, 'FAILED', 'Missing email or password');
             return res.status(400).json({ success: false, message: 'اسم المستخدم وكلمة المرور مطلوبة' });
+        }
+
+        if (captcha_token !== undefined || captcha_answer !== undefined) {
+            if (!captcha_token || !captcha_answer || !verifyCaptcha(captcha_token, captcha_answer)) {
+                return res.status(400).json({ success: false, message: 'رمز التحقق (CAPTCHA) غير صحيح أو انتهت صلاحيته' });
+            }
         }
 
         const pool = await getPool();

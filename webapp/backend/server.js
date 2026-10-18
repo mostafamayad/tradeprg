@@ -68,8 +68,22 @@ licenseManager.onEvent(async (entry) => {
     }
 });
 
-// ─── Middleware ───────────────────────────────────────────────
-app.use(helmet({ contentSecurityPolicy: false })); // Allow serving frontend
+// ─── Security & Core Configuration ────────────────────────────
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+
+const blockSensitiveFiles = require('./middleware/blockSensitiveFiles');
+app.use(blockSensitiveFiles);
+
+app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    xssFilter: true,
+    noSniff: true,
+    hidePoweredBy: true,
+    frameguard: { action: 'sameorigin' }
+}));
 
 const compression = require('compression');
 app.use(compression({
@@ -84,25 +98,34 @@ app.use(compression({
 
 const allowedOrigins = [
     ...(process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean),
+    'https://elawadigroup.com',
+    'https://www.elawadigroup.com',
+    'http://20.240.59.143',
+    'https://20.240.59.143',
     'http://localhost:3000',
     'http://127.0.0.1:3000'
 ];
 
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps, curl, or same-origin)
+        // Allow requests with no origin (like mobile apps, curl, or same-origin direct browser access)
         if (!origin) return callback(null, true);
         
-        // If wildcard or in allowed list
-        if (allowedOrigins.includes('*') || allowedOrigins.some(allowed => origin === allowed || 
+        // Exact match or localhost/private networks
+        if (allowedOrigins.includes('*') || 
+            allowedOrigins.includes(origin) || 
             origin.startsWith('http://192.168.') || 
             origin.startsWith('http://10.') || 
-            origin.match(/^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\./))) {
+            origin.match(/^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\./)) {
             return callback(null, true);
         }
 
-        // In production/cloud deployment, allow domain and server IP
-        return callback(null, true);
+        // Domain or server IP validation
+        if (origin.endsWith('elawadigroup.com') || origin.includes('20.240.59.143')) {
+            return callback(null, true);
+        }
+
+        return callback(new Error('غير مسموح بالاتصال من هذا المصدر (CORS blocked)'));
     },
     credentials: true
 }));
@@ -110,6 +133,9 @@ app.use(cors({
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'tiny' : 'dev'));
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+
+const sanitizeInput = require('./middleware/sanitize');
+app.use(sanitizeInput);
 
 // ─── Health Check (public, no auth) ─────────────────────────
 const { getHealth } = require('./database/mssql_db');
@@ -139,7 +165,21 @@ const loginLimiter = rateLimit({
     handler: (req, res, next, opts) => {
         const retryAfter = Math.ceil(opts.windowMs / 1000);
         res.set('Retry-After', String(retryAfter));
-        res.status(429).json({ success: false, message: 'Too many requests', retryAfter });
+        res.status(429).json({ success: false, message: 'تم تجاوز الحد المسموح به لمحاولات الدخول، يُرجى المحاولة بعد دقيقة', retryAfter });
+    }
+});
+
+// Registration endpoint: 10 attempts/hour/IP (prevent bot abuse)
+const registerLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    message: { success: false, message: 'تم تجاوز الحد المسموح به لطلبات التسجيل', retryAfter: 3600 },
+    standardHeaders: false,
+    legacyHeaders: false,
+    handler: (req, res, next, opts) => {
+        const retryAfter = Math.ceil(opts.windowMs / 1000);
+        res.set('Retry-After', String(retryAfter));
+        res.status(429).json({ success: false, message: 'تم تجاوز الحد المسموح به لطلبات التسجيل، يُرجى المحاولة لاحقاً', retryAfter });
     }
 });
 
@@ -157,9 +197,16 @@ const apiLimiter = rateLimit({
     }
 });
 
-// Apply login limiter before general API limiter (more specific takes precedence)
+// Apply rate limiters
 app.use('/api/auth/login', loginLimiter);
+app.use('/api/register', registerLimiter);
 app.use('/api', apiLimiter);
+
+// ─── Public CAPTCHA ──────────────────────────────────────────
+const { generateCaptcha } = require('./utils/captcha');
+app.get('/api/captcha', (req, res) => {
+    res.json({ success: true, data: generateCaptcha() });
+});
 
 // ─── Cloud/Multi-Tenant (only when BUILD_PROFILE=cloud) ────────
 if (process.env.BUILD_PROFILE === 'cloud') {
@@ -268,13 +315,33 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
-// ─── Global Error Handler ─────────────────────────────────────
+// ─── Global Error Handler & Secure Logging ────────────────────
+const logDir = path.join(__dirname, 'logs');
+if (!fs.existsSync(logDir)) {
+    try { fs.mkdirSync(logDir, { recursive: true }); } catch (_) {}
+}
+
 app.use((err, req, res, next) => {
-    const msg = (typeof err === 'string' ? err : err && err.message) || 'حدث خطأ في الخادم';
-    console.error('[ERROR]', msg);
-    if (res.headersSent) { return next(err); }
+    const isProd = process.env.NODE_ENV === 'production';
+    const rawMsg = (typeof err === 'string' ? err : err && err.message) || 'Internal Server Error';
+    const timestamp = new Date().toISOString();
+    const logEntry = `[${timestamp}] [${req.method} ${req.originalUrl}] IP: ${req.ip} Error: ${rawMsg}\n${err && err.stack ? err.stack : ''}\n`;
+
+    // Secure internal logging
     try {
-        res.status(500).json({ success: false, message: String(msg) });
+        fs.appendFileSync(path.join(logDir, 'error.log'), logEntry, 'utf8');
+    } catch (_) {}
+    console.error('[SERVER_ERROR]', rawMsg);
+
+    if (res.headersSent) { return next(err); }
+
+    // Mask internal error details from end users in production
+    const clientMessage = isProd
+        ? 'حدث خطأ غير متوقع أثناء معالجة الطلب، يُرجى المحاولة لاحقاً'
+        : String(rawMsg);
+
+    try {
+        res.status(err.status || 500).json({ success: false, message: clientMessage });
     } catch (_) {
         res.status(500).end(JSON.stringify({ success: false, message: 'حدث خطأ في الخادم' }));
     }

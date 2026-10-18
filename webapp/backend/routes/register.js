@@ -4,6 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const { getPool, sql } = require('../database/mssql_db');
+const { verifyCaptcha } = require('../utils/captcha');
 
 // GET /api/packages - Return active subscription packages
 router.get('/packages', async (req, res) => {
@@ -31,9 +32,15 @@ router.get('/packages', async (req, res) => {
 // POST /api/register - Save registration request
 router.post('/register', async (req, res) => {
     try {
-        const { full_name, email, phone, company_name, package_id, package_name } = req.body;
+        const { full_name, email, phone, company_name, package_id, package_name, captcha_token, captcha_answer } = req.body;
         if (!full_name || !email) {
             return res.status(400).json({ success: false, message: 'الاسم والبريد الإلكتروني مطلوبان' });
+        }
+
+        if (captcha_token !== undefined || captcha_answer !== undefined) {
+            if (!captcha_token || !captcha_answer || !verifyCaptcha(captcha_token, captcha_answer)) {
+                return res.status(400).json({ success: false, message: 'رمز التحقق (CAPTCHA) غير صحيح أو انتهت صلاحيته' });
+            }
         }
 
         const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
