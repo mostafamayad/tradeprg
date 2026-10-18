@@ -1292,6 +1292,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (targetId === 'activity-logs' && typeof window.loadActivityLogs === 'function') {
                     window.loadActivityLogs();
                 }
+                if (targetId === 'registration-requests' && typeof window.loadRegistrationRequests === 'function') {
+                    window.loadRegistrationRequests();
+                }
             }
 
             // Close sidebar on mobile

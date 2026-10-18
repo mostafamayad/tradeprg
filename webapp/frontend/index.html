@@ -105,9 +105,19 @@
                             <span id="login-btn-text" data-i18n="login_btn">تسجيل الدخول</span>
                             <span class="btn-spinner"></span>
                         </button>
-                    </form>
-
                     <div id="login-error"></div>
+
+                    <div class="login-register-prompt" style="margin-top: 18px; text-align: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 14px;">
+                        <span style="font-size: 13px; color: #94a3b8;">ليس لديك حساب في النظام حتى الآن؟</span>
+                        <div style="margin-top: 10px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                            <a href="/register.html" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 13px; font-weight: 700; border-radius: 8px; text-decoration: none; background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); transition: all 0.2s;">
+                                <i class="fa-solid fa-user-plus"></i> إنشاء حساب جديد
+                            </a>
+                            <a href="/tour.html" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 13px; font-weight: 700; border-radius: 8px; text-decoration: none; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); transition: all 0.2s;">
+                                <i class="fa-solid fa-compass"></i> جولة في البرنامج
+                            </a>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Right Features -->
@@ -568,6 +578,7 @@
             <a href="#" class="popup-item" data-target="settings"><i class="fa-solid fa-sliders"></i> الإعدادات</a>
             <a href="#" class="popup-item" data-target="view-users"><i class="fa-solid fa-users-gear"></i> المستخدمين والصلاحيات</a>
             <a href="#" class="popup-item admin-only" data-target="license"><i class="fa-solid fa-key"></i> إدارة الترخيص</a>
+            <a href="#" class="popup-item admin-only" data-target="registration-requests"><i class="fa-solid fa-user-clock"></i> طلبات التسجيل والاشتراك</a>
             <a href="#" class="popup-item admin-only" data-target="activity-logs"><i class="fa-solid fa-list-check"></i> سجل الحركات</a>
             <a href="#" class="popup-item" data-target="new-year"><i class="fa-solid fa-calendar-xmark"></i> إقفال السنة المالية</a>
         </div>
@@ -4916,6 +4927,75 @@
                         <div id="comm-summary" style="padding:12px 16px;border-top:1px solid var(--border-color);display:flex;gap:24px;font-size:0.85rem;color:var(--text-muted)"></div>
                     </div>
                 </div>
+
+                <!-- ======================================================== -->
+                <!--  VIEW: REGISTRATION REQUESTS (طلبات التسجيل)             -->
+                <!-- ======================================================== -->
+                <div class="view" id="view-registration-requests">
+                    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+                        <div>
+                            <h1 class="page-title"><i class="fa-solid fa-user-clock" style="color:var(--primary);margin-left:8px"></i> طلبات التسجيل وباقات الاشتراك</h1>
+                            <p class="page-subtitle">متابعة العملاء الجدد المسجلين عبر الموقع وتفعيل حساباتهم في النظام</p>
+                        </div>
+                        <div style="display:flex;gap:10px">
+                            <button class="btn btn-outline" onclick="loadRegistrationRequests()"><i class="fa-solid fa-arrows-rotate"></i> تحديث</button>
+                            <a href="/tour.html" target="_blank" class="btn btn-primary" style="text-decoration:none"><i class="fa-solid fa-compass"></i> معاينة الجولة والباقات</a>
+                        </div>
+                    </div>
+
+                    <!-- KPI / Stat Cards -->
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px">
+                        <div class="card" style="padding:16px;text-align:center">
+                            <div style="font-size:13px;color:var(--text-muted);margin-bottom:6px">إجمالي الطلبات</div>
+                            <div style="font-size:26px;font-weight:800;color:var(--primary)" id="reg-stat-total">0</div>
+                        </div>
+                        <div class="card" style="padding:16px;text-align:center;border-top:3px solid #f59e0b">
+                            <div style="font-size:13px;color:var(--text-muted);margin-bottom:6px">قيد الانتظار</div>
+                            <div style="font-size:26px;font-weight:800;color:#f59e0b" id="reg-stat-pending">0</div>
+                        </div>
+                        <div class="card" style="padding:16px;text-align:center;border-top:3px solid #10b981">
+                            <div style="font-size:13px;color:var(--text-muted);margin-bottom:6px">تم التفعيل</div>
+                            <div style="font-size:26px;font-weight:800;color:#10b981" id="reg-stat-activated">0</div>
+                        </div>
+                        <div class="card" style="padding:16px;text-align:center;border-top:3px solid #ef4444">
+                            <div style="font-size:13px;color:var(--text-muted);margin-bottom:6px">مرفوضة</div>
+                            <div style="font-size:26px;font-weight:800;color:#ef4444" id="reg-stat-rejected">0</div>
+                        </div>
+                    </div>
+
+                    <!-- Filter tabs & Table Card -->
+                    <div class="card">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+                            <div style="display:flex;gap:6px">
+                                <button class="btn btn-sm btn-outline reg-filter-btn active" data-status="all" onclick="filterRegistrations('all')">الكل</button>
+                                <button class="btn btn-sm btn-outline reg-filter-btn" data-status="pending" onclick="filterRegistrations('pending')">قيد الانتظار</button>
+                                <button class="btn btn-sm btn-outline reg-filter-btn" data-status="activated" onclick="filterRegistrations('activated')">تم التفعيل</button>
+                                <button class="btn btn-sm btn-outline reg-filter-btn" data-status="rejected" onclick="filterRegistrations('rejected')">مرفوض</button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th style="width:40px">#</th>
+                                        <th>التاريخ</th>
+                                        <th>الاسم</th>
+                                        <th>البريد الإلكتروني</th>
+                                        <th>الهاتف / واتساب</th>
+                                        <th>الشركة</th>
+                                        <th>الباقة</th>
+                                        <th>الحالة</th>
+                                        <th>الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reg-requests-tbody">
+                                    <tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted)">جاري التحميل...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div><!-- end #view-container -->
 
     <!-- Treasury modal save handler (global fallback) -->
@@ -5020,6 +5100,7 @@
     <script src="js/views/viewFixedAssets.js"></script>
     <script src="js/views/viewHR.js"></script>
     <script src="js/views/viewUsers.js"></script>
+    <script src="js/views/viewRegistrationRequests.js"></script>
     <script>
         if (window.location.protocol === 'file:') {
             alert('âڑ ï¸ڈ افتح البرنامج من المتصفح عبر:\nhttp://localhost:3000\n\nوليس بفتح ملف index.html مباشرة');
@@ -5157,7 +5238,8 @@
                 'hr-vacations': 'loadVacations',
                 'hr-penalties': 'loadPenalties',
                 'hr-rewards': 'loadRewards',
-                'license': 'loadLicense'
+                'license': 'loadLicense',
+                'registration-requests': 'loadRegistrationRequests'
             };
             var fnName = loaders[targetId];
             if (fnName && typeof window[fnName] === 'function') {

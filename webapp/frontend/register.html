@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إنشاء حساب جديد - TradePro ERP | 3SM Company</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --primary-light: rgba(37, 99, 235, 0.1);
+            --bg-dark: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.85);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+        body {
+            background: radial-gradient(circle at 20% 20%, #1e293b 0%, #0f172a 100%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            position: relative;
+            overflow-x: hidden;
+        }
+        /* Background decorative circles */
+        body::before, body::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.15;
+            z-index: 0;
+            pointer-events: none;
+        }
+        body::before { width: 450px; height: 450px; background: #3b82f6; top: -100px; right: -100px; }
+        body::after { width: 400px; height: 400px; background: #10b981; bottom: -80px; left: -80px; }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            position: relative;
+            z-index: 1;
+        }
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; }
+            .info-panel { display: none; }
+        }
+
+        /* Side Info Panel */
+        .info-panel {
+            background: linear-gradient(145deg, rgba(37, 99, 235, 0.15), rgba(15, 23, 42, 0.8));
+            padding: 40px 32px;
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .brand-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .brand-header img { width: 48px; height: 48px; object-fit: contain; }
+        .brand-header h2 { font-size: 20px; font-weight: 800; color: #fff; }
+        .brand-header p { font-size: 13px; color: var(--text-muted); }
+        .perks { list-style: none; display: flex; flex-direction: column; gap: 16px; margin: 30px 0; }
+        .perks li { display: flex; align-items: flex-start; gap: 12px; font-size: 14px; line-height: 1.6; color: #cbd5e1; }
+        .perks li i { color: #34d399; font-size: 16px; margin-top: 3px; }
+        .support-box {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 13px;
+        }
+        .support-box a { color: #60a5fa; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+
+        /* Form Section */
+        .form-section {
+            padding: 40px 36px;
+        }
+        .form-header {
+            margin-bottom: 24px;
+        }
+        .form-header h1 { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
+        .form-header p { font-size: 14px; color: var(--text-muted); }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 6px;
+        }
+        .input-wrapper {
+            position: relative;
+        }
+        .input-wrapper i {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+        .input-wrapper input, .input-wrapper select, .input-wrapper textarea {
+            width: 100%;
+            padding: 11px 40px 11px 14px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        .input-wrapper input:focus, .input-wrapper select:focus, .input-wrapper textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+            background: rgba(15, 23, 42, 0.9);
+        }
+
+        .packages-radio-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 6px;
+        }
+        .package-option {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 10px 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .package-option:hover {
+            border-color: rgba(37, 99, 235, 0.5);
+        }
+        .package-option.selected {
+            background: rgba(37, 99, 235, 0.15);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 1px var(--primary);
+        }
+        .package-option .pkg-title { font-size: 13px; font-weight: 700; color: #fff; }
+        .package-option .pkg-price { font-size: 12px; color: #34d399; margin-top: 2px; }
+
+        .btn-submit {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+            margin-top: 22px;
+            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+        }
+        .btn-submit:hover {
+            background: linear-gradient(135deg, #1d4ed8, #1e40af);
+            transform: translateY(-1px);
+        }
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .alert-box {
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .alert-box.error { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; }
+        .alert-box.success { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #86efac; }
+
+        .footer-links {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .footer-links a { color: #60a5fa; text-decoration: none; font-weight: 600; }
+        .footer-links a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Side Info Panel -->
+        <div class="info-panel">
+            <div>
+                <div class="brand-header">
+                    <img src="img/logo.png" alt="TradePro ERP" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💼</text></svg>'">
+                    <div>
+                        <h2>TradePro ERP</h2>
+                        <p>نظام إدارة الأعمال الشامل</p>
+                    </div>
+                </div>
+
+                <ul class="perks">
+                    <li><i class="fa-solid fa-check-circle"></i> <span>جولة استكشافية حية للميزات بدون أي التزام مسبق</span></li>
+                    <li><i class="fa-solid fa-check-circle"></i> <span>إدارة المبيعات، المخزون، الحسابات والرواتب في نظام واحد</span></li>
+                    <li><i class="fa-solid fa-check-circle"></i> <span>تفعيل فوري ودعم فني مخصص عبر واتساب خطوة بخطوة</span></li>
+                    <li><i class="fa-solid fa-check-circle"></i> <span>بياناتك محمية ونسخ احتياطي دوري لقواعد البيانات</span></li>
+                </ul>
+            </div>
+
+            <div class="support-box">
+                <p style="margin-bottom: 6px; color: #cbd5e1;">هل لديك استفسار سريع قبل التسجيل؟</p>
+                <a href="https://wa.me/201060958097?text=مرحباً%20مصطفى،%20لدي%20استفسار%20عن%20برنامج%20TradePro" target="_blank">
+                    <i class="fa-brands fa-whatsapp" style="font-size: 16px; color: #22c55e;"></i> تواصل معنا عبر واتساب: 01060958097
+                </a>
+            </div>
+        </div>
+
+        <!-- Form Section -->
+        <div class="form-section">
+            <div class="form-header">
+                <h1>إنشاء حساب جديد</h1>
+                <p>سجل بياناتك للبدء في جولة استكشافية واختيار الباقة المناسبة لعملك</p>
+            </div>
+
+            <div id="alert-box" class="alert-box"></div>
+
+            <form id="register-form" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label>الاسم بالكامل <span style="color: #ef4444;">*</span></label>
+                    <div class="input-wrapper">
+                        <i class="fa-regular fa-user"></i>
+                        <input type="text" id="reg-name" required placeholder="مثال: مصطفى محمد">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>البريد الإلكتروني <span style="color: #ef4444;">*</span></label>
+                    <div class="input-wrapper">
+                        <i class="fa-regular fa-envelope"></i>
+                        <input type="email" id="reg-email" required placeholder="name@company.com">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>رقم الهاتف / واتساب <span style="color: #ef4444;">*</span></label>
+                    <div class="input-wrapper">
+                        <i class="fa-brands fa-whatsapp"></i>
+                        <input type="tel" id="reg-phone" required placeholder="010XXXXXXXX">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>اسم الشركة أو النشاط التجاري</label>
+                    <div class="input-wrapper">
+                        <i class="fa-regular fa-building"></i>
+                        <input type="text" id="reg-company" placeholder="مثال: شركة النور للتجارة">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>الباقة المهتم بها</label>
+                    <div class="packages-radio-group" id="packages-selector">
+                        <div class="package-option selected" data-id="1" data-name="أساسي" onclick="selectPackage(this, 1, 'أساسي')">
+                            <div class="pkg-title">أساسي</div>
+                            <div class="pkg-price">299 ج.م/شهري</div>
+                        </div>
+                        <div class="package-option" data-id="2" data-name="احترافي" onclick="selectPackage(this, 2, 'احترافي')">
+                            <div class="pkg-title">احترافي</div>
+                            <div class="pkg-price">599 ج.م/شهري</div>
+                        </div>
+                        <div class="package-option" data-id="3" data-name="مؤسسي" onclick="selectPackage(this, 3, 'مؤسسي')">
+                            <div class="pkg-title">مؤسسي</div>
+                            <div class="pkg-price">1299 ج.م/شهري</div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="selected-package-id" value="1">
+                    <input type="hidden" id="selected-package-name" value="أساسي">
+                </div>
+
+                <button type="submit" id="btn-submit-reg" class="btn-submit">
+                    <span>متابعة إلى الجولة الاستكشافية</span>
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+            </form>
+
+            <div class="footer-links">
+                لديك حساب بالفعل ومفعل؟ <a href="/index.html">تسجيل الدخول هنا</a>
+                <br>
+                <a href="/tour.html" style="display: inline-block; margin-top: 8px; color: #34d399;">
+                    <i class="fa-solid fa-compass"></i> أو خوض الجولة الاستكشافية مباشرة بدون تسجيل
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedPkgId = 1;
+        let selectedPkgName = 'أساسي';
+
+        function selectPackage(el, id, name) {
+            document.querySelectorAll('.package-option').forEach(p => p.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedPkgId = id;
+            selectedPkgName = name;
+            document.getElementById('selected-package-id').value = id;
+            document.getElementById('selected-package-name').value = name;
+        }
+
+        // Load live packages from server if available
+        async function loadPackages() {
+            try {
+                const res = await fetch('/api/packages');
+                const data = await res.json();
+                if (data.success && data.data && data.data.length > 0) {
+                    const container = document.getElementById('packages-selector');
+                    container.innerHTML = data.data.map((p, idx) => `
+                        <div class="package-option ${idx === 1 ? 'selected' : (idx === 0 && data.data.length === 1 ? 'selected' : '')}"
+                             onclick="selectPackage(this, ${p.id}, '${p.name}')">
+                            <div class="pkg-title">${p.name}</div>
+                            <div class="pkg-price">${p.price} ج.م/${p.period}</div>
+                        </div>
+                    `).join('');
+                    const firstSelected = container.querySelector('.selected') || container.firstElementChild;
+                    if (firstSelected) firstSelected.click();
+                }
+            } catch (e) {
+                // Keep default
+            }
+        }
+        loadPackages();
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const alertBox = document.getElementById('alert-box');
+            const submitBtn = document.getElementById('btn-submit-reg');
+
+            alertBox.style.display = 'none';
+            alertBox.className = 'alert-box';
+
+            const fullName = document.getElementById('reg-name').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const phone = document.getElementById('reg-phone').value.trim();
+            const company = document.getElementById('reg-company').value.trim();
+            const pkgId = document.getElementById('selected-package-id').value;
+            const pkgName = document.getElementById('selected-package-name').value;
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التسجيل...';
+
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        full_name: fullName,
+                        email: email,
+                        phone: phone,
+                        company_name: company,
+                        package_id: pkgId,
+                        package_name: pkgName
+                    })
+                });
+
+                const data = await res.json();
+
+                // Save lead details to sessionStorage for tour and whatsapp prefill
+                sessionStorage.setItem('lead_name', fullName);
+                sessionStorage.setItem('lead_email', email);
+                sessionStorage.setItem('lead_phone', phone);
+                sessionStorage.setItem('lead_company', company);
+                sessionStorage.setItem('lead_package', pkgName);
+
+                if (res.ok && data.success) {
+                    alertBox.className = 'alert-box success';
+                    alertBox.textContent = 'تم تسجيل بياناتك بنجاح! جاري نقلك إلى الجولة الاستكشافية...';
+                    alertBox.style.display = 'block';
+
+                    setTimeout(() => {
+                        window.location.href = `/tour.html?name=${encodeURIComponent(fullName)}&package=${encodeURIComponent(pkgName)}`;
+                    }, 1200);
+                } else if (res.status === 409) {
+                    // Already registered - still let them enter tour!
+                    alertBox.className = 'alert-box success';
+                    alertBox.textContent = data.message || 'بريدك مسجل بالفعل. جاري نقلك للجولة والباقات...';
+                    alertBox.style.display = 'block';
+
+                    setTimeout(() => {
+                        window.location.href = `/tour.html?name=${encodeURIComponent(fullName)}&package=${encodeURIComponent(pkgName)}`;
+                    }, 1500);
+                } else {
+                    alertBox.className = 'alert-box error';
+                    alertBox.textContent = data.message || 'حدث خطأ أثناء التسجيل';
+                    alertBox.style.display = 'block';
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<span>متابعة إلى الجولة الاستكشافية</span> <i class="fa-solid fa-arrow-left"></i>';
+                }
+            } catch (err) {
+                alertBox.className = 'alert-box error';
+                alertBox.textContent = 'تعذر الاتصال بالخادم. يرجى التأكد من تشغيل السيرفر والمحاولة ثانية.';
+                alertBox.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>متابعة إلى الجولة الاستكشافية</span> <i class="fa-solid fa-arrow-left"></i>';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -198,6 +198,7 @@ app.get('/api/system/branding', (req, res) => {
 });
 
 app.use('/api/license', require('./routes/license'));
+app.use('/api', require('./routes/register')); // Public self-registration & packages
 
 app.use('/api', authenticate); // Protect all API routes
 app.use('/api', autoLogger); // Automatically log all modifications
@@ -248,6 +249,7 @@ app.use('/api/hr',                 applyPermissions('settings'),    require('./r
 app.use('/api/commissions',        applyPermissions('commission'),  require('./routes/commissions'));
 app.use('/api/commission-plans',   applyPermissions('commission'),  require('./routes/commission_plans'));
 app.use('/api/rbac',               require('./routes/rbac'));
+app.use('/api/admin/registrations', require('./routes/admin_registrations'));
 
 // ─── SPA Fallback (for direct URL access) ────────────────────
 app.get('*', (req, res) => {

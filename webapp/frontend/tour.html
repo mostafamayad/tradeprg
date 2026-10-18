@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>جولة استكشافية وباقات الاشتراك - TradePro ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --emerald: #10b981;
+            --emerald-hover: #059669;
+            --bg-dark: #0b1120;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; scroll-behavior: smooth; }
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Top Bar */
+        .top-navbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(11, 17, 32, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--card-border);
+            padding: 14px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .top-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: #fff;
+        }
+        .top-brand img { width: 36px; height: 36px; object-fit: contain; }
+        .top-brand h1 { font-size: 18px; font-weight: 800; }
+        .top-nav-links {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .top-nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+        .top-nav-links a:hover { color: #fff; }
+        .btn-pricing-cta {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff !important;
+            padding: 8px 18px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+        }
+        .btn-login-nav {
+            border: 1px solid var(--card-border);
+            padding: 7px 16px;
+            border-radius: 8px;
+        }
+
+        /* Hero Header */
+        .hero-section {
+            text-align: center;
+            padding: 60px 20px 40px;
+            max-width: 900px;
+            margin: 0 auto;
+            position: relative;
+        }
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 30px;
+            background: rgba(37, 99, 235, 0.15);
+            border: 1px solid rgba(37, 99, 235, 0.3);
+            color: #60a5fa;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+        .hero-title {
+            font-size: 38px;
+            font-weight: 900;
+            line-height: 1.3;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #fff 40%, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero-subtitle {
+            font-size: 17px;
+            color: var(--text-muted);
+            max-width: 700px;
+            margin: 0 auto 30px;
+        }
+        .hero-actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .btn-hero-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #fff;
+            padding: 12px 28px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 700;
+            box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.4);
+            transition: all 0.2s;
+        }
+        .btn-hero-primary:hover { transform: translateY(-2px); }
+        .btn-hero-whatsapp {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #25D366;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+        .btn-hero-whatsapp:hover { background: #1eb855; transform: translateY(-2px); }
+
+        /* Feature Tabs Carousel */
+        .tour-container {
+            max-width: 1200px;
+            margin: 40px auto 80px;
+            padding: 0 24px;
+        }
+        .tour-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .tour-tab-btn {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid var(--card-border);
+            color: var(--text-muted);
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .tour-tab-btn:hover { color: #fff; border-color: rgba(255,255,255,0.2); }
+        .tour-tab-btn.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+        }
+
+        /* Slide Card */
+        .tour-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 36px;
+            backdrop-filter: blur(16px);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 36px;
+            align-items: center;
+            box-shadow: 0 20px 40px -15px rgba(0,0,0,0.5);
+            transition: opacity 0.3s ease;
+        }
+        @media (max-width: 900px) {
+            .tour-card { grid-template-columns: 1fr; }
+        }
+        .tour-info h3 {
+            font-size: 26px;
+            font-weight: 800;
+            margin-bottom: 14px;
+            color: #fff;
+        }
+        .tour-info p {
+            font-size: 15px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            line-height: 1.8;
+        }
+        .feature-bullets {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+        .feature-bullets li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            color: #e2e8f0;
+        }
+        .feature-bullets li i {
+            color: #38bdf8;
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .tour-preview-box {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 24px;
+            min-height: 320px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .preview-mock-ui {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .mock-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding-bottom: 10px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+        .mock-kpis {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .mock-kpi {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .mock-kpi .val { font-size: 16px; font-weight: 800; color: #34d399; }
+        .mock-kpi .lbl { font-size: 11px; color: #94a3b8; }
+
+        /* Slide navigation buttons */
+        .tour-nav-controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 24px;
+        }
+        .btn-slide-nav {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid var(--card-border);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .btn-slide-nav:hover { background: rgba(37, 99, 235, 0.2); border-color: var(--primary); }
+
+        /* Pricing Section */
+        .pricing-section {
+            padding: 80px 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .section-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        .section-header h2 {
+            font-size: 34px;
+            font-weight: 900;
+            margin-bottom: 12px;
+        }
+        .section-header p {
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 28px;
+            align-items: stretch;
+        }
+        @media (max-width: 900px) {
+            .pricing-grid { grid-template-columns: 1fr; max-width: 450px; margin: 0 auto; }
+        }
+
+        .pricing-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 36px 28px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .pricing-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(37, 99, 235, 0.4);
+            box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.5);
+        }
+        .pricing-card.featured {
+            border-color: var(--primary);
+            background: linear-gradient(180deg, rgba(37, 99, 235, 0.12), rgba(30, 41, 59, 0.8));
+            box-shadow: 0 20px 40px -10px rgba(37, 99, 235, 0.3);
+        }
+        .featured-badge {
+            position: absolute;
+            top: -14px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #fff;
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .pkg-header h3 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+        .pkg-header p { font-size: 13px; color: var(--text-muted); min-height: 38px; }
+        .pkg-price-wrap {
+            margin: 24px 0;
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+        }
+        .pkg-price-wrap .amount { font-size: 42px; font-weight: 900; color: #fff; }
+        .pkg-price-wrap .currency { font-size: 16px; color: #94a3b8; }
+        .pkg-price-wrap .period { font-size: 13px; color: var(--text-muted); }
+
+        .pkg-features-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 32px;
+            border-top: 1px solid var(--card-border);
+            padding-top: 20px;
+        }
+        .pkg-features-list li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: #cbd5e1;
+        }
+        .pkg-features-list li i { color: #10b981; font-size: 14px; }
+
+        .btn-choose-plan {
+            width: 100%;
+            padding: 13px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        .btn-choose-plan.primary {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #fff;
+            box-shadow: 0 8px 16px rgba(37, 99, 235, 0.3);
+        }
+        .btn-choose-plan.primary:hover { background: linear-gradient(135deg, #1d4ed8, #1e40af); }
+        .btn-choose-plan.secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: #fff;
+            border: 1px solid var(--card-border);
+        }
+        .btn-choose-plan.secondary:hover { background: rgba(255, 255, 255, 0.12); }
+
+        /* Floating WhatsApp Button */
+        .floating-whatsapp {
+            position: fixed;
+            bottom: 28px;
+            left: 28px;
+            z-index: 100;
+            background: #25D366;
+            color: #fff;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            box-shadow: 0 10px 25px rgba(37, 211, 102, 0.4);
+            text-decoration: none;
+            transition: transform 0.2s;
+        }
+        .floating-whatsapp:hover { transform: scale(1.1); }
+
+        /* Activation Notice Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(8px);
+            z-index: 200;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-content {
+            background: #1e293b;
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            max-width: 500px;
+            width: 100%;
+            padding: 32px;
+            text-align: center;
+            position: relative;
+        }
+        .modal-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: rgba(16, 185, 129, 0.15);
+            border: 2px solid #10b981;
+            color: #10b981;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 18px;
+        }
+        .modal-title { font-size: 22px; font-weight: 800; margin-bottom: 10px; }
+        .modal-desc { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.7; }
+        .btn-modal-wa {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: #25D366;
+            color: #fff;
+            font-weight: 800;
+            font-size: 16px;
+            padding: 14px 28px;
+            border-radius: 12px;
+            text-decoration: none;
+            width: 100%;
+            box-shadow: 0 8px 18px rgba(37, 211, 102, 0.3);
+        }
+        .modal-close-btn {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--card-border);
+            padding: 40px 24px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+        footer a { color: #60a5fa; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+    <!-- Top Navigation -->
+    <nav class="top-navbar">
+        <a href="/index.html" class="top-brand">
+            <img src="img/logo.png" alt="3SM Logo" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💼</text></svg>'">
+            <div>
+                <h1>TradePro ERP</h1>
+            </div>
+        </a>
+        <div class="top-nav-links">
+            <a href="#tour">مميزات النظام</a>
+            <a href="#pricing" class="btn-pricing-cta">باقات الاشتراك</a>
+            <a href="/register.html" class="btn-login-nav">إنشاء حساب</a>
+            <a href="/index.html" class="btn-login-nav"><i class="fa-solid fa-arrow-right-to-bracket"></i> دخول</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero-section">
+        <div class="hero-badge">
+            <i class="fa-solid fa-sparkles"></i>
+            <span>جولة استكشافية شاملة في نظام TradePro ERP</span>
+        </div>
+        <h2 class="hero-title">نظام إدارة متكامل مصمم خصيصاً لتنمية تجارتك وأعمالك</h2>
+        <p class="hero-subtitle">
+            تحكم كامل في المبيعات، المشتريات، المخازن المتعددة، الحسابات العامة، وإدارة الموظفين والرواتب بدقة وأمان مالي فائق.
+        </p>
+        <div class="hero-actions">
+            <a href="#pricing" class="btn-hero-primary">
+                <i class="fa-solid fa-gem"></i> استعراض الباقات والاشتراك
+            </a>
+            <a href="https://wa.me/201060958097?text=مرحباً%20مصطفى،%20أريد%20الاستفسار%20عن%20برنامج%20TradePro" target="_blank" class="btn-hero-whatsapp">
+                <i class="fa-brands fa-whatsapp"></i> تواصل فوري مع المطور
+            </a>
+        </div>
+    </header>
+
+    <!-- Feature Tour Tabs -->
+    <section class="tour-container" id="tour">
+        <div class="tour-tabs">
+            <button class="tour-tab-btn active" onclick="switchSlide(0)"><i class="fa-solid fa-chart-line"></i> لوحة التحكم والتحليلات</button>
+            <button class="tour-tab-btn" onclick="switchSlide(1)"><i class="fa-solid fa-cash-register"></i> المبيعات ونقاط البيع</button>
+            <button class="tour-tab-btn" onclick="switchSlide(2)"><i class="fa-solid fa-boxes-stacked"></i> المخازن والمشتريات</button>
+            <button class="tour-tab-btn" onclick="switchSlide(3)"><i class="fa-solid fa-scale-balanced"></i> المحاسبة والمالية</button>
+            <button class="tour-tab-btn" onclick="switchSlide(4)"><i class="fa-solid fa-users-gear"></i> الموارد البشرية والرواتب</button>
+            <button class="tour-tab-btn" onclick="switchSlide(5)"><i class="fa-solid fa-address-book"></i> العملاء و CRM</button>
+        </div>
+
+        <div class="tour-card" id="tour-card-content">
+            <!-- Dynamically populated by switchSlide() -->
+        </div>
+
+        <div class="tour-nav-controls">
+            <button class="btn-slide-nav" onclick="prevSlide()"><i class="fa-solid fa-arrow-right"></i> السابق</button>
+            <div id="slide-indicator" style="font-size: 14px; color: var(--text-muted); font-weight: 700;">1 من 6</div>
+            <button class="btn-slide-nav" onclick="nextSlide()">التالي <i class="fa-solid fa-arrow-left"></i></button>
+        </div>
+    </section>
+
+    <!-- Pricing Packages Section -->
+    <section class="pricing-section" id="pricing">
+        <div class="section-header">
+            <h2>باقات الاشتراك المرنة</h2>
+            <p>اختر الباقة المناسبة لحجم أعمالك مع إمكانية الترقية أو التخصيص في أي وقت</p>
+        </div>
+
+        <div class="pricing-grid" id="pricing-grid-container">
+            <!-- Loaded dynamically from /api/packages or fallback -->
+        </div>
+    </section>
+
+    <!-- Floating WhatsApp -->
+    <a href="https://wa.me/201060958097?text=مرحباً%20مصطفى،%20أود%20تفعيل%20حسابي%20في%20TradePro" target="_blank" class="floating-whatsapp" title="تواصل عبر واتساب">
+        <i class="fa-brands fa-whatsapp"></i>
+    </a>
+
+    <!-- Activation WhatsApp Dialog -->
+    <div class="modal-overlay" id="whatsapp-modal">
+        <div class="modal-content">
+            <button class="modal-close-btn" onclick="closeModal()">&times;</button>
+            <div class="modal-icon">
+                <i class="fa-brands fa-whatsapp"></i>
+            </div>
+            <h3 class="modal-title" id="modal-plan-title">باقة احترافي</h3>
+            <p class="modal-desc" id="modal-plan-desc">
+                شكراً لاختيارك هذه الباقة! اضغط على الزر أدناه لإرسال طلب التفعيل المباشر إلى المطور (مصطفى عياد) عبر واتساب، وسيتم تفعيل حسابك وإضافة بريدك الإلكتروني في النظام فوراً.
+            </p>
+            <a href="#" target="_blank" id="modal-wa-link" class="btn-modal-wa">
+                <i class="fa-brands fa-whatsapp"></i> إرسال الطلب عبر واتساب الآن
+            </a>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>TradePro ERP — جميع الحقوق محفوظة لشركة <strong>3SM Company</strong> © 2026</p>
+        <p style="margin-top: 8px;">
+            تطوير وإشراف: م. مصطفى عياد | هاتف: <a href="tel:01060958097">01060958097</a> | بريد: <a href="mailto:3smcompany.official@gmail.com">3smcompany.official@gmail.com</a>
+        </p>
+    </footer>
+
+    <script>
+        const slides = [
+            {
+                title: "لوحة التحكم والتحليلات المالية والتدفق النقدي",
+                desc: "نظرة شمولية لحظية على كافة مؤشرات الأداء الحيوية في شركتك. شاشات مخصصة لصافي الأرباح، حركة السيولة، التوقعات المالية، وتحليلات المخزون التنفيذية.",
+                bullets: [
+                    "مؤشرات السيولة والربحية والمبيعات في الوقت الفعلي",
+                    "رسم بياني لتحليل التدفقات النقدية الداخلة والخارجة",
+                    "تنبيهات فورية بالمنتجات الراكدة أو التي قاربت على النفاد",
+                    "لوحة تحكم تنفيذية مخصصة للإدارة العليا"
+                ],
+                mockTitle: "لوحة مؤشرات الأداء المالي",
+                kpis: [
+                    { val: "385,400 ج.م", lbl: "إجمالي مبيعات الشهر" },
+                    { val: "94,200 ج.م", lbl: "صافي الربح التقديري" },
+                    { val: "98.2%", lbl: "معدل التحصيل" }
+                ],
+                mockDetail: "تحليل ذكي للحسابات والسيولة مدعوم بتقارير المقارنة التلقائية."
+            },
+            {
+                title: "المبيعات، نقاط البيع السريعة وسريالات التتبع",
+                desc: "إصدار فواتير البيع بدقة فائقة مع دعم كامل لضريبة القيمة المضافة، الخصومات المتعددة، عروض الأسعار، وتتبع السيريال نمبر والأجهزة الإلكترونية.",
+                bullets: [
+                    "نظام نقاط بيع POS فائق السرعة يدعم الباركود والطابعات الحرارية",
+                    "تتبع كامل للمنتجات بالسيريال نمبر من الشراء وحتى البيع للعميل",
+                    "إدارة المندوبين وحساب العمولات ونسب التحصيل بدقة",
+                    "إشعارات دائنة ومرتجع مبيعات مربوط آلياً بحركة المخزون"
+                ],
+                mockTitle: "نظام نقاط البيع وإدارة الفواتير",
+                kpis: [
+                    { val: "1,420", lbl: "فاتورة مكتملة" },
+                    { val: "320", lbl: "عميل نشط" },
+                    { val: "0 ثوانٍ", lbl: "زمن طباعة الإيصال" }
+                ],
+                mockDetail: "دعم شاشات اللمس، الباركود، وطباعة A4 والإيصالات الحرارية."
+            },
+            {
+                title: "إدارة المخازن المتعددة وعمليات الشراء",
+                desc: "تحكم دقيق في الأرصدة عبر الفروع والمستودعات المختلفة. تحويلات بين المخازن، تسويات جردية، ومتابعة دقيقة لمشتريات الموردين وفواتيرهم.",
+                bullets: [
+                    "متابعة أرصدة المخازن المتعددة مع حد إعادة الطلب",
+                    "أوامر الشراء واعتماد الفواتير وحساب تكلفة البضاعة بدقة",
+                    "جرد دوري وسنوي مع تسوية العجز والزيادة المحاسبية",
+                    "إدارة تواريخ الصلاحية وأرقام التشغيلات (Batches)"
+                ],
+                mockTitle: "مركز مراقبة المستودعات والمخازن",
+                kpis: [
+                    { val: "5", lbl: "مستودعات مركزية" },
+                    { val: "4,250", lbl: "صنف معرف" },
+                    { val: "100%", lbl: "دقة مطابقة الأرصدة" }
+                ],
+                mockDetail: "حساب تكلفة المخزون بطريقة المتوسط المرجح بدقة متناهية."
+            },
+            {
+                title: "المحاسبة العامة وشجرة الحسابات والقيود المزدوجة",
+                desc: "محرك محاسبي متوافق تماماً مع المعايير المحاسبية الدولية. قيود يومية تلقائية لكل حركة بيع أو شراء أو قبض، ميزان مراجعة، قائمة الدخل، والميزانية العمومية.",
+                bullets: [
+                    "شجرة حسابات شجرية متعددة المستويات قابلة للتخصيص",
+                    "إنشاء القيود اليومية آلياً بدون الحاجة للتدخل اليدوي",
+                    "ميزان المراجعة، الأستاذ العام، وقوائم الأرباح والخسائر",
+                    "إدارة أوراق القبض والدفع والشيكات تحت التحصيل"
+                ],
+                mockTitle: "المحرك المالي والمحاسبي",
+                kpis: [
+                    { val: "100%", lbl: "توازن القيود الآلي" },
+                    { val: "فوري", lbl: "إصدار ميزان المراجعة" },
+                    { val: "آمن", lbl: "إقفال الفترات المالية" }
+                ],
+                mockDetail: "توليد تلقائي للقيود المحاسبية لضمان سلامة القوائم المالية."
+            },
+            {
+                title: "الموارد البشرية، الرواتب، وسجلات الحضور",
+                desc: "إدارة متكاملة لملفات الموظفين، مسيرات الرواتب الشهرية، تتبع السلف، الإجازات، المكافآت، والجزاءات وترحيل الرواتب آلياً للحسابات العامة.",
+                bullets: [
+                    "ملف إلكتروني شامل لكل موظف بكافة وثائقه ومستحقاته",
+                    "توليد مسير الرواتب بضغطة زر مع احتساب الخصومات والإضافي",
+                    "تسجيل الحضور والانصراف، الإجازات، والجزاءات",
+                    "إدارة سلف الموظفين وخصم الأقساط من الراتب شهرياً"
+                ],
+                mockTitle: "منظومة الموارد البشرية والرواتب",
+                kpis: [
+                    { val: "بضغطة زر", lbl: "توليد مسير الرواتب" },
+                    { val: "آلي", lbl: "ترحيل للقيود المحاسبية" },
+                    { val: "دقيق", lbl: "تتبع السلف والخصومات" }
+                ],
+                mockDetail: "تصدير كشوف المرتبات وإصدار قسائم الرواتب للموظفين."
+            },
+            {
+                title: "إدارة علاقات العملاء CRM وخطط العمل",
+                desc: "متابعة العملاء المحتملين، خطط الزيارات للمندوبين، أهداف المبيعات (Targets)، وتسويات الحسابات لتعزيز نمو وتوسع أعمالك.",
+                bullets: [
+                    "سجل تاريخي كامل لتعاملات واتصالات كل عميل",
+                    "تحديد أهداف المبيعات ومراقبة تحقيق المندوبين للتارجت",
+                    "خطط العمل والزيارات اليومية لفرق المبيعات الميدانية",
+                    "نظام التنبيهات بالديون المتأخرة وتواريخ السداد"
+                ],
+                mockTitle: "منظومة علاقات العملاء والمبيعات",
+                kpis: [
+                    { val: "360°", lbl: "رؤية شاملة للعميل" },
+                    { val: "+35%", lbl: "زيادة إنتاجية المندوبين" },
+                    { val: "فوري", lbl: "تنبيهات الاستحقاق" }
+                ],
+                mockDetail: "بناء علاقات طويلة الأمد مع عملائك وزيادة تكرار عمليات الشراء."
+            }
+        ];
+
+        let currentSlide = 0;
+
+        function renderSlide(idx) {
+            const s = slides[idx];
+            const container = document.getElementById('tour-card-content');
+            container.innerHTML = `
+                <div class="tour-info">
+                    <h3>${s.title}</h3>
+                    <p>${s.desc}</p>
+                    <ul class="feature-bullets">
+                        ${s.bullets.map(b => `<li><i class="fa-solid fa-circle-check"></i> <span>${b}</span></li>`).join('')}
+                    </ul>
+                    <a href="#pricing" class="btn-hero-primary" style="padding: 10px 22px; font-size: 14px;">
+                        <i class="fa-solid fa-gem"></i> اختر الباقة المناسبة
+                    </a>
+                </div>
+                <div class="tour-preview-box">
+                    <div class="preview-mock-ui">
+                        <div class="mock-header">
+                            <span><i class="fa-solid fa-window-maximize"></i> ${s.mockTitle}</span>
+                            <span style="color: #34d399;"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> نظام نشط</span>
+                        </div>
+                        <div class="mock-kpis">
+                            ${s.kpis.map(k => `
+                                <div class="mock-kpi">
+                                    <div class="val">${k.val}</div>
+                                    <div class="lbl">${k.lbl}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <p style="font-size: 13px; color: #94a3b8; text-align: center; margin-top: 10px;">
+                            ${s.mockDetail}
+                        </p>
+                    </div>
+                </div>
+            `;
+            document.querySelectorAll('.tour-tab-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', i === idx);
+            });
+            document.getElementById('slide-indicator').textContent = `${idx + 1} من ${slides.length}`;
+        }
+
+        function switchSlide(idx) {
+            currentSlide = idx;
+            renderSlide(currentSlide);
+        }
+        function nextSlide() {
+            currentSlide = (currentSlide + 1) % slides.length;
+            renderSlide(currentSlide);
+        }
+        function prevSlide() {
+            currentSlide = (currentSlide - 1 + slides.length) % slides.length;
+            renderSlide(currentSlide);
+        }
+
+        renderSlide(0);
+
+        // ─── Packages Loading & WhatsApp Action ──────────────────────────────
+        const defaultPackages = [
+            {
+                id: 1,
+                name: "أساسي",
+                description: "مناسب للمحلات والشركات الناشئة التي تحتاج لإدارة الفواتير والمخزون",
+                price: 299,
+                period: "شهري",
+                features: ["المبيعات ونقاط البيع POS", "إدارة المشتريات والموردين", "مخزن واحد رئيسي", "حسابات العملاء والموردين", "تقارير المبيعات والأرباح الأساسية", "مستخدم واحد", "دعم فني عبر واتساب"]
+            },
+            {
+                id: 2,
+                name: "احترافي",
+                description: "الخيار الأفضل للشركات المتوسطة التي تبحث عن أتمتة كاملة ومحاسبة دقيقة",
+                price: 599,
+                period: "شهري",
+                is_featured: true,
+                features: ["جميع ميزات الباقة الأساسية", "شجرة الحسابات والقيود المحاسبية", "الموارد البشرية ومسيرات الرواتب", "إدارة علاقات العملاء CRM والمندوبين", "تتبع السيريال نمبر والأجهزة", "حتى 5 مستخدمين بصلاحيات مخصصة", "دعم فني ذو أولوية وتدريب"]
+            },
+            {
+                id: 3,
+                name: "مؤسسي",
+                description: "للشركات الكبيرة والمؤسسات بدون أي قيود مع تحليلات أعمال متقدمة",
+                price: 1299,
+                period: "شهري",
+                features: ["جميع ميزات الباقة الاحترافية", "مستخدمون غير محدودون", "مخازن وفروع غير محدودة", "إدارة الأصول الثابتة وإهلاكها", "لوحة تحكم تنفيذية وتوقعات السيولة", "نسخ احتياطي سحابي تلقائي", "مدير حساب مخصص وتخصيصات خاصة"]
+            }
+        ];
+
+        async function loadPackages() {
+            let pkgs = defaultPackages;
+            try {
+                const res = await fetch('/api/packages');
+                const data = await res.json();
+                if (data.success && data.data && data.data.length > 0) {
+                    pkgs = data.data;
+                }
+            } catch (e) {}
+
+            const container = document.getElementById('pricing-grid-container');
+            container.innerHTML = pkgs.map((p, idx) => {
+                const isFeatured = p.is_featured || idx === 1;
+                return `
+                    <div class="pricing-card ${isFeatured ? 'featured' : ''}">
+                        ${isFeatured ? '<div class="featured-badge">الأكثر طلباً ⭐</div>' : ''}
+                        <div>
+                            <div class="pkg-header">
+                                <h3>${p.name}</h3>
+                                <p>${p.description || ''}</p>
+                            </div>
+                            <div class="pkg-price-wrap">
+                                <span class="amount">${p.price}</span>
+                                <span class="currency">ج.م</span>
+                                <span class="period">/ ${p.period || 'شهري'}</span>
+                            </div>
+                            <ul class="pkg-features-list">
+                                ${(p.features || []).map(f => `<li><i class="fa-solid fa-check"></i> <span>${f}</span></li>`).join('')}
+                            </ul>
+                        </div>
+                        <button class="btn-choose-plan ${isFeatured ? 'primary' : 'secondary'}"
+                                onclick="openPackageModal('${p.name}', ${p.price}, '${p.period || 'شهري'}')">
+                            <i class="fa-brands fa-whatsapp"></i> اشترك وتواصل عبر واتساب
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+        loadPackages();
+
+        // ─── WhatsApp Activation Flow ────────────────────────────────────────
+        function openPackageModal(name, price, period) {
+            const leadName = sessionStorage.getItem('lead_name') || '';
+            const leadEmail = sessionStorage.getItem('lead_email') || '';
+            const leadPhone = sessionStorage.getItem('lead_phone') || '';
+            const leadCompany = sessionStorage.getItem('lead_company') || '';
+
+            document.getElementById('modal-plan-title').textContent = `باقة ${name} (${price} ج.م/${period})`;
+
+            let waText = `مرحباً م. مصطفى، أود تفعيل اشتراكي في نظام TradePro ERP:\n`;
+            waText += `• الباقة المختارة: ${name} (${price} ج.م/${period})\n`;
+            if (leadName) waText += `• الاسم: ${leadName}\n`;
+            if (leadEmail) waText += `• البريد الإلكتروني: ${leadEmail}\n`;
+            if (leadPhone) waText += `• الهاتف: ${leadPhone}\n`;
+            if (leadCompany) waText += `• الشركة: ${leadCompany}\n`;
+            waText += `أرجو تفعيل الحساب وإضافة البريد في قاعدة البيانات.`;
+
+            const waUrl = `https://wa.me/201060958097?text=${encodeURIComponent(waText)}`;
+            document.getElementById('modal-wa-link').href = waUrl;
+            document.getElementById('whatsapp-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('whatsapp-modal').style.display = 'none';
+        }
+
+        // Close modal on click outside
+        window.onclick = function(e) {
+            const modal = document.getElementById('whatsapp-modal');
+            if (e.target === modal) closeModal();
+        };
+    </script>
+</body>
+</html>
