@@ -1258,10 +1258,20 @@
             document.getElementById('createModal').style.display = 'flex';
         });
 
+        let dbNameManuallyEdited = false;
+        document.getElementById('newDbName').addEventListener('input', () => {
+            dbNameManuallyEdited = true;
+        });
+
         document.getElementById('newCompanyName').addEventListener('input', (e) => {
+            if (dbNameManuallyEdited) return;
             const val = e.target.value.trim();
             if (val) {
-                const clean = 'tp_' + Math.abs(val.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0)).toString(36) + '_' + Date.now().toString(36).slice(-3);
+                // If typed in english, use it directly
+                let clean = val.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+                if (!clean || clean.length < 2) {
+                    clean = 'tp_' + Math.abs(val.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0)).toString(36);
+                }
                 document.getElementById('newDbName').value = clean;
                 document.getElementById('newAdminUser').value = 'admin@' + clean + '.com';
             }
