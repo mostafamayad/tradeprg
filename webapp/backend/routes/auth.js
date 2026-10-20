@@ -6,6 +6,7 @@ const { verifyCaptcha } = require('../utils/captcha');
 const logActivity = require('../middleware/logger');
 const asyncHandler = require('../utils/asyncHandler');
 const parsePermissions = require('../utils/parsePermissions');
+const sessionTracker = require('../services/sessionTracker');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -117,6 +118,11 @@ router.post('/login', asyncHandler(async (req, res) => {
             .query('UPDATE users SET last_login_at = @now, last_login_ip = @ip WHERE id = @id');
 
         const tenantDb = req.tenant?.db_name || 'TradePro';
+        if (sessionTracker.isUserBlocked(tenantDb, user.id)) {
+            logActivity(req, 'LOGIN', 'auth', null, 'Login attempt: ' + email, null, null, 'FAILED', 'Blocked by Super Admin');
+            return res.status(403).json({ success: false, message: 'تم إيقاف هذا الحساب بواسطة مدير النظام العام (Super Admin).' });
+        }
+
         const token = jwt.sign(
             {
                 id: user.id,
@@ -133,8 +139,9 @@ router.post('/login', asyncHandler(async (req, res) => {
             { expiresIn: '7d' }
         );
 
-        req.user = { id: user.id, username: user.username };
+        req.user = { id: user.id, username: user.username, full_name: user.full_name, role: user.role };
         logActivity(req, 'LOGIN', 'auth', null, 'User login: ' + user.email, null, null, 'SUCCESS', null);
+        sessionTracker.recordActivity(req, 'تسجيل الدخول إلى النظام');
 
         const displayRoles = await resolveUserRolesDisplay(pool, user.id, is_super_admin);
 

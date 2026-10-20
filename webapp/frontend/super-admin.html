@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradePro — لوحة السوبر أدمن لإدارة الشركات</title>
+    <title>TradePro — لوحة السوبر أدمن المتقدمة (مراقبة المستخدمين والشركات)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-body: #0b1120;
@@ -98,7 +98,7 @@
 
         .form-group {
             text-align: right;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
         }
 
         .form-label {
@@ -131,9 +131,9 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            padding: 12px 20px;
+            padding: 10px 18px;
             border-radius: var(--radius-md);
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
             cursor: pointer;
             border: none;
@@ -141,50 +141,23 @@
             text-decoration: none;
         }
 
-        .btn-primary {
-            background: var(--primary);
-            color: #fff;
-        }
-        .btn-primary:hover {
-            background: var(--primary-hover);
-            transform: translateY(-1px);
-        }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-hover); }
 
-        .btn-success {
-            background: var(--success);
-            color: #fff;
-        }
-        .btn-success:hover {
-            background: #059669;
-        }
+        .btn-success { background: var(--success); color: #fff; }
+        .btn-success:hover { background: #059669; }
 
-        .btn-danger {
-            background: var(--danger);
-            color: #fff;
-        }
-        .btn-danger:hover {
-            background: #dc2626;
-        }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-danger:hover { background: #dc2626; }
 
-        .btn-secondary {
-            background: #1e293b;
-            color: #cbd5e1;
-            border: 1px solid var(--border);
-        }
-        .btn-secondary:hover {
-            background: #27354f;
-            color: #fff;
-        }
+        .btn-warning { background: var(--warning); color: #000; font-weight: 800; }
+        .btn-warning:hover { background: #d97706; }
 
-        .btn-sm {
-            padding: 6px 12px;
-            font-size: 12px;
-            border-radius: 8px;
-        }
+        .btn-secondary { background: #1e293b; color: #cbd5e1; border: 1px solid var(--border); }
+        .btn-secondary:hover { background: #27354f; color: #fff; }
 
-        .btn-block {
-            width: 100%;
-        }
+        .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 8px; }
+        .btn-block { width: 100%; }
 
         .alert {
             padding: 12px 16px;
@@ -194,16 +167,8 @@
             text-align: right;
             display: none;
         }
-        .alert-danger {
-            background: var(--danger-light);
-            border: 1px solid var(--danger);
-            color: #fca5a5;
-        }
-        .alert-success {
-            background: var(--success-light);
-            border: 1px solid var(--success);
-            color: #6ee7b7;
-        }
+        .alert-danger { background: var(--danger-light); border: 1px solid var(--danger); color: #fca5a5; }
+        .alert-success { background: var(--success-light); border: 1px solid var(--success); color: #6ee7b7; }
 
         /* ─── Dashboard Shell ─── */
         #dashboardScreen {
@@ -215,7 +180,7 @@
         .navbar {
             background: var(--bg-card);
             border-bottom: 1px solid var(--border);
-            padding: 16px 28px;
+            padding: 14px 28px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -241,16 +206,8 @@
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
 
-        .nav-logo svg {
-            width: 22px;
-            height: 22px;
-            fill: #fff;
-        }
-
-        .nav-title {
-            font-size: 18px;
-            font-weight: 800;
-        }
+        .nav-logo svg { width: 22px; height: 22px; fill: #fff; }
+        .nav-title { font-size: 17px; font-weight: 800; }
 
         .nav-badge {
             font-size: 11px;
@@ -268,59 +225,102 @@
             gap: 12px;
         }
 
+        /* ─── Tabs Navigation ─── */
+        .tabs-bar {
+            background: #0d1527;
+            border-bottom: 1px solid var(--border);
+            padding: 0 28px;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 14px 20px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: #fff;
+            background: rgba(255,255,255,0.02);
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            background: rgba(59, 130, 246, 0.08);
+        }
+
+        .pulse-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--success);
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
         .main-container {
             flex: 1;
-            max-width: 1400px;
+            max-width: 1440px;
             width: 100%;
             margin: 0 auto;
-            padding: 28px;
+            padding: 24px;
         }
 
         /* ─── Stats Grid ─── */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 20px;
-            margin-bottom: 28px;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
         }
 
         .stat-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: var(--radius-lg);
-            padding: 20px 24px;
+            padding: 18px 22px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
-        .stat-info h4 {
-            font-size: 13px;
-            color: var(--text-muted);
-            margin-bottom: 6px;
-            font-weight: 600;
-        }
-
-        .stat-info .num {
-            font-size: 28px;
-            font-weight: 800;
-            color: #fff;
-        }
+        .stat-info h4 { font-size: 13px; color: var(--text-muted); margin-bottom: 4px; font-weight: 600; }
+        .stat-info .num { font-size: 26px; font-weight: 800; color: #fff; }
 
         .stat-icon {
-            width: 50px;
-            height: 50px;
+            width: 46px;
+            height: 46px;
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
-        .stat-icon svg { width: 24px; height: 24px; }
+        .stat-icon svg { width: 22px; height: 22px; }
         .stat-icon.blue { background: var(--primary-light); color: var(--primary); }
         .stat-icon.green { background: var(--success-light); color: var(--success); }
         .stat-icon.red { background: var(--danger-light); color: var(--danger); }
-        .stat-icon.yellow { background: var(--warning-light); color: var(--warning); }
+        .stat-icon.purple { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
 
         /* ─── Table & Controls Card ─── */
         .card {
@@ -329,10 +329,11 @@
             border-radius: var(--radius-lg);
             overflow: hidden;
             box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+            margin-bottom: 24px;
         }
 
         .card-header {
-            padding: 20px 24px;
+            padding: 18px 24px;
             border-bottom: 1px solid var(--border);
             display: flex;
             flex-wrap: wrap;
@@ -341,27 +342,19 @@
             gap: 16px;
         }
 
-        .card-title-group h3 {
-            font-size: 18px;
-            font-weight: 800;
-            margin-bottom: 4px;
-        }
-
-        .card-title-group p {
-            font-size: 13px;
-            color: var(--text-muted);
-        }
+        .card-title-group h3 { font-size: 17px; font-weight: 800; margin-bottom: 4px; }
+        .card-title-group p { font-size: 13px; color: var(--text-muted); }
 
         .card-toolbar {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             flex-wrap: wrap;
         }
 
         .search-box {
             position: relative;
-            min-width: 260px;
+            min-width: 250px;
         }
 
         .search-box input {
@@ -369,7 +362,7 @@
             background: #0b1120;
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
-            padding: 10px 38px 10px 14px;
+            padding: 9px 36px 9px 12px;
             color: #fff;
             font-size: 13px;
             outline: none;
@@ -386,20 +379,11 @@
         }
 
         /* ─── Table ─── */
-        .table-wrap {
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: right;
-            font-size: 14px;
-        }
-
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: right; font-size: 13px; }
         th {
             background: #0d1527;
-            padding: 14px 20px;
+            padding: 12px 18px;
             color: var(--text-muted);
             font-weight: 700;
             font-size: 12px;
@@ -407,39 +391,61 @@
             border-bottom: 1px solid var(--border);
             white-space: nowrap;
         }
-
         td {
-            padding: 16px 20px;
+            padding: 14px 18px;
             border-bottom: 1px solid var(--border);
             vertical-align: middle;
             color: #e2e8f0;
         }
-
-        tr:hover td {
-            background: var(--bg-card-hover);
-        }
+        tr:hover td { background: var(--bg-card-hover); }
 
         .badge {
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            padding: 4px 10px;
+            padding: 3px 8px;
             border-radius: 20px;
             font-size: 12px;
             font-weight: 700;
         }
-
         .badge-success { background: var(--success-light); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
         .badge-danger { background: var(--danger-light); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); }
         .badge-info { background: var(--primary-light); color: var(--primary); border: 1px solid rgba(59, 130, 246, 0.3); }
         .badge-warning { background: var(--warning-light); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .badge-purple { background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.3); }
+
+        .alias-tag {
+            background: #1e1b4b;
+            color: #a5b4fc;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-weight: 800;
+            font-size: 13px;
+            border: 1px solid #4338ca;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .action-chip {
+            background: #090e1a;
+            border: 1px solid #1e293b;
+            padding: 4px 10px;
+            border-radius: 6px;
+            color: #38bdf8;
+            font-weight: 600;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
 
         .db-tag {
             font-family: monospace;
             direction: ltr;
             text-align: left;
             background: #090e1a;
-            padding: 4px 10px;
+            padding: 3px 8px;
             border-radius: 6px;
             border: 1px solid #1e293b;
             color: #38bdf8;
@@ -449,7 +455,8 @@
         .action-btns {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
+            flex-wrap: wrap;
         }
 
         /* ─── Modal ─── */
@@ -470,7 +477,7 @@
             border: 1px solid var(--border);
             border-radius: var(--radius-lg);
             width: 100%;
-            max-width: 600px;
+            max-width: 580px;
             box-shadow: 0 25px 50px rgba(0,0,0,0.6);
             overflow: hidden;
             animation: modalFadeIn 0.25s ease-out;
@@ -482,108 +489,41 @@
         }
 
         .modal-header {
-            padding: 20px 24px;
+            padding: 18px 24px;
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
-
-        .modal-header h3 {
-            font-size: 18px;
-            font-weight: 800;
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            font-size: 24px;
-            cursor: pointer;
-            line-height: 1;
-        }
+        .modal-header h3 { font-size: 17px; font-weight: 800; }
+        .close-btn { background: none; border: none; color: var(--text-muted); font-size: 24px; cursor: pointer; }
         .close-btn:hover { color: #fff; }
 
-        .modal-body {
-            padding: 24px;
-            max-height: 75vh;
-            overflow-y: auto;
-        }
-
+        .modal-body { padding: 22px; max-height: 75vh; overflow-y: auto; }
         .modal-footer {
-            padding: 16px 24px;
+            padding: 14px 24px;
             border-top: 1px solid var(--border);
             background: #0d1527;
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            gap: 12px;
+            gap: 10px;
         }
 
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         @media (max-width: 640px) {
             .grid-2 { grid-template-columns: 1fr; }
             .card-header { flex-direction: column; align-items: stretch; }
             .search-box { min-width: auto; }
         }
 
-        /* ─── Progress Box ─── */
-        .progress-box {
-            display: none;
-            text-align: center;
-            padding: 24px;
-        }
-
+        .progress-box { display: none; text-align: center; padding: 20px; }
         .spinner {
-            width: 44px;
-            height: 44px;
-            border: 4px solid var(--border);
-            border-top-color: var(--primary);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 16px;
+            width: 40px; height: 40px; border: 4px solid var(--border);
+            border-top-color: var(--primary); border-radius: 50%;
+            animation: spin 0.8s linear infinite; margin: 0 auto 14px;
         }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .progress-step {
-            font-size: 14px;
-            color: var(--text-muted);
-            margin-top: 8px;
-        }
-
-        /* ─── Credentials Card (After Creation) ─── */
-        .creds-box {
-            background: #090e1a;
-            border: 1px solid #1e293b;
-            border-radius: var(--radius-md);
-            padding: 16px;
-            margin-top: 16px;
-            text-align: right;
-        }
-
-        .creds-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px dashed #1e293b;
-            font-size: 13px;
-        }
-        .creds-row:last-child { border-bottom: none; }
-        .creds-val {
-            font-family: monospace;
-            color: #38bdf8;
-            direction: ltr;
-            font-weight: 700;
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -597,7 +537,7 @@
                 </svg>
             </div>
             <h1 class="login-title">TradePro Super Admin</h1>
-            <p class="login-subtitle">لوحة الإدارة العليا والتحكم في الشركات وقواعد البيانات</p>
+            <p class="login-subtitle">لوحة المراقبة العليا والتحكم في الشركات والمستخدمين المتصلين</p>
 
             <div id="loginAlert" class="alert alert-danger"></div>
 
@@ -607,9 +547,6 @@
                     <input type="password" id="superKeyInput" class="form-control" placeholder="أدخل المفتاح السري هنا..." required autocomplete="current-password">
                 </div>
                 <button type="submit" class="btn btn-primary btn-block" id="loginBtn">
-                    <svg style="width:18px;height:18px;" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
-                    </svg>
                     دخول إلى لوحة التحكم
                 </button>
             </form>
@@ -622,150 +559,266 @@
         <header class="navbar">
             <div class="nav-brand">
                 <div class="nav-logo">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/>
-                    </svg>
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/></svg>
                 </div>
                 <div>
                     <div style="display:flex;align-items:center;gap:8px;">
-                        <span class="nav-title">TradePro Multi-Tenant Admin</span>
-                        <span class="nav-badge">سوبر أدمن</span>
+                        <span class="nav-title">TradePro Control Hub</span>
+                        <span class="nav-badge">سوبر أدمن عام</span>
                     </div>
-                    <div style="font-size:12px;color:var(--text-muted);">إدارة الشركات وقواعد البيانات المنفصلة</div>
+                    <div style="font-size:12px;color:var(--text-muted);">مراقبة المستخدمين، تسمية الأشخاص، وعزل الشركات</div>
                 </div>
             </div>
             <div class="nav-actions">
-                <a href="/index.html" target="_blank" class="btn btn-secondary btn-sm">
-                    <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
-                    </svg>
-                    فتح النظام الرئيسي
-                </a>
-                <button class="btn btn-secondary btn-sm" id="logoutBtn">
-                    <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
-                    </svg>
-                    تسجيل الخروج
-                </button>
+                <div style="display:flex;align-items:center;gap:6px;font-size:12px;background:#0d1527;padding:5px 12px;border-radius:20px;border:1px solid var(--border);">
+                    <span class="pulse-dot"></span>
+                    <span style="color:#fff;font-weight:700;" id="topLiveCount">0</span>
+                    <span style="color:var(--text-muted);">متصلين الآن</span>
+                </div>
+                <a href="/index.html" target="_blank" class="btn btn-secondary btn-sm">النظام الرئيسي</a>
+                <button class="btn btn-secondary btn-sm" id="logoutBtn">خروج</button>
             </div>
         </header>
 
-        <!-- Main Content -->
+        <!-- Navigation Tabs -->
+        <nav class="tabs-bar">
+            <button class="tab-btn active" id="tabBtnLive" onclick="switchTab('live')">
+                <span class="pulse-dot"></span>
+                المتصلين الآن وما يفعلونه (Live Activity)
+            </button>
+            <button class="tab-btn" id="tabBtnTenants" onclick="switchTab('tenants')">
+                🏢 إدارة الشركات وقواعد البيانات
+            </button>
+            <button class="tab-btn" id="tabBtnUsers" onclick="switchTab('users')">
+                👥 دليل المستخدمين والتسميات (Aliases & Block)
+            </button>
+        </nav>
+
+        <!-- Main Container -->
         <main class="main-container">
-            <!-- Stats Grid -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <h4>إجمالي الشركات</h4>
-                        <div class="num" id="statTotalTenants">0</div>
-                    </div>
-                    <div class="stat-icon blue">
-                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <h4>الشركات النشطة</h4>
-                        <div class="num" id="statActiveTenants" style="color:var(--success);">0</div>
-                    </div>
-                    <div class="stat-icon green">
-                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <h4>الشركات الموقوفة</h4>
-                        <div class="num" id="statSuspendedTenants" style="color:var(--danger);">0</div>
-                    </div>
-                    <div class="stat-icon red">
-                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8 0-1.85.63-3.55 1.69-4.9L16.9 18.31C15.55 19.37 13.85 20 12 20zm6.31-3.1L7.1 5.69C8.45 4.63 10.15 4 12 4c4.42 0 8 3.58 8 8 0 1.85-.63 3.55-1.69 4.9z"/></svg>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Main Table Card -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title-group">
-                        <h3>قائمة الشركات والمستأجرين</h3>
-                        <p>كل شركة تعمل بقاعدة بيانات MSSQL منفصلة تماماً مع عزل كامل للبيانات والمستخدمين</p>
-                    </div>
-                    <div class="card-toolbar">
-                        <div class="search-box">
-                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                            <input type="text" id="searchInput" placeholder="ابحث باسم الشركة أو قاعدة البيانات...">
+            <!-- ─── TAB 1: Live Sessions & Real-Time Actions ─── -->
+            <section id="tabViewLive">
+                <!-- Stats Grid -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h4>المتصلين حالياً</h4>
+                            <div class="num" id="statOnlineNow" style="color:var(--success);">0</div>
                         </div>
-                        <button class="btn btn-primary" id="openCreateModalBtn">
-                            <svg style="width:18px;height:18px;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                            إنشاء شركة جديدة بداتا بيز منفصلة
-                        </button>
-                        <button class="btn btn-secondary" id="refreshBtn" title="تحديث البيانات">
-                            <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-                        </button>
+                        <div class="stat-icon green"><span class="pulse-dot" style="width:14px;height:14px;"></span></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h4>المستخدمين المسميين بلقب</h4>
+                            <div class="num" id="statAliasedCount" style="color:#a78bfa;">0</div>
+                        </div>
+                        <div class="stat-icon purple">🏷️</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h4>المستخدمين المحظورين</h4>
+                            <div class="num" id="statBlockedCount" style="color:var(--danger);">0</div>
+                        </div>
+                        <div class="stat-icon red">🚫</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h4>إجمالي الشركات النشطة</h4>
+                            <div class="num" id="statActiveTenantsMini">0</div>
+                        </div>
+                        <div class="stat-icon blue">🏢</div>
                     </div>
                 </div>
 
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>اسم الشركة</th>
-                                <th>قاعدة البيانات (Database)</th>
-                                <th>الباقة والحد</th>
-                                <th>الحالة</th>
-                                <th>انتهاء الاشتراك</th>
-                                <th>رابط الدخول المباشر</th>
-                                <th>الإجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tenantsTableBody">
-                            <tr>
-                                <td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);">
-                                    جاري تحميل البيانات...
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <span class="pulse-dot"></span>
+                                <h3>المستخدمون المتصلون الآن وحركتهم الفعلية</h3>
+                            </div>
+                            <p>يعرض هذا الجدول الأشخاص المتصلين حالياً على كل الشركات، ماذا يفعلون الآن، وتسمية كل شخص لعدم حظره بالخطأ</p>
+                        </div>
+                        <div class="card-toolbar">
+                            <div class="search-box">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                                <input type="text" id="searchLiveInput" placeholder="ابحث بالاسم، اللقب، أو الشركة...">
+                            </div>
+                            <button class="btn btn-secondary" onclick="loadLiveSessions(true)" title="تحديث فوري">🔄 تحديث</button>
+                        </div>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>حالة الاتصال</th>
+                                    <th>الشخص واللقب المخصص 🏷️</th>
+                                    <th>الشركة وقاعدة البيانات</th>
+                                    <th>ماذا يفعل الآن تحديداً؟</th>
+                                    <th>الجهاز والـ IP</th>
+                                    <th>آخر ظهور</th>
+                                    <th>الإجراءات الفورية</th>
+                                </tr>
+                            </thead>
+                            <tbody id="liveSessionsTableBody">
+                                <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">جاري تحميل الجلسات الحية...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
+            </section>
+
+            <!-- ─── TAB 2: Tenants & Companies Management ─── -->
+            <section id="tabViewTenants" style="display:none;">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <h3>قائمة الشركات والمستأجرين</h3>
+                            <p>إنشاء وإدارة الشركات بداتا بيز MSSQL منفصلة تماماً مع عزل كامل</p>
+                        </div>
+                        <div class="card-toolbar">
+                            <div class="search-box">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                                <input type="text" id="searchTenantsInput" placeholder="ابحث باسم الشركة أو قاعدة البيانات...">
+                            </div>
+                            <button class="btn btn-primary" id="openCreateModalBtn">+ إنشاء شركة جديدة بداتا بيز منفصلة</button>
+                            <button class="btn btn-secondary" onclick="loadTenants()">🔄 تحديث</button>
+                        </div>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>اسم الشركة</th>
+                                    <th>قاعدة البيانات (Database)</th>
+                                    <th>الباقة والحد</th>
+                                    <th>الحالة</th>
+                                    <th>انتهاء الاشتراك</th>
+                                    <th>رابط الدخول المباشر</th>
+                                    <th>الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tenantsTableBody">
+                                <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);">جاري تحميل الشركات...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ─── TAB 3: All Users & Aliases Management ─── -->
+            <section id="tabViewUsers" style="display:none;">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <h3>دليل المستخدمين والتسميات (كل الشركات)</h3>
+                            <p>هنا يمكنك تسمية أي مستخدم باسمه الحقيقي (صاحب المحل، المحاسب، الكاشير) وحظر أو فك حظر أي شخص</p>
+                        </div>
+                        <div class="card-toolbar">
+                            <div class="search-box">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                                <input type="text" id="searchUsersInput" placeholder="ابحث بالاسم الحقيقي أو اللقب أو الإيميل...">
+                            </div>
+                            <button class="btn btn-secondary" onclick="loadAllUsers()">🔄 تحديث</button>
+                        </div>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>الشركة</th>
+                                    <th>اسم المستخدم الأصلي</th>
+                                    <th>الاسم بالسيستم</th>
+                                    <th>اللقب المخصص (تسميتك له) 🏷️</th>
+                                    <th>الحالة</th>
+                                    <th>آخر تسجيل دخول</th>
+                                    <th>الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allUsersTableBody">
+                                <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">جاري تحميل المستخدمين...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
         </main>
     </div>
 
-    <!-- ─── Create Tenant Modal ─── -->
+    <!-- ─── Modal 1: Assign Friendly Alias (تسمية المستخدم) ─── -->
+    <div id="aliasModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>تسمية وتحديد هوية المستخدم 🏷️</h3>
+                <button class="close-btn" onclick="closeModal('aliasModal')">&times;</button>
+            </div>
+            <form id="aliasForm">
+                <input type="hidden" id="aliasTenantDb">
+                <input type="hidden" id="aliasUserId">
+                <input type="hidden" id="aliasUsername">
+                <input type="hidden" id="aliasFullName">
+
+                <div class="modal-body">
+                    <div id="aliasAlert" class="alert alert-danger"></div>
+
+                    <div style="background:#090e1a;border:1px solid #1e293b;padding:12px;border-radius:var(--radius-md);margin-bottom:16px;">
+                        <div style="font-size:12px;color:var(--text-muted);">المستخدم المستهدف:</div>
+                        <div style="font-weight:800;color:#fff;font-size:15px;" id="aliasTargetDisplay">-</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">اللقب أو الاسم الحقيقي للشخص (عشان تعرفه وما تحظروش بالغلط) *</label>
+                        <input type="text" id="aliasNameInput" class="form-control" placeholder="مثال: الحاج إبراهيم - صاحب الشركة، أو المحاسب أحمد" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">ملاحظات خاصة بك (اختياري)</label>
+                        <textarea id="aliasNotesInput" class="form-control" rows="2" placeholder="مثال: مسموح له بالدخول دائمًا، متفق على التجديد شهرياً..."></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('aliasModal')">إلغاء</button>
+                    <button type="submit" class="btn btn-primary" id="saveAliasBtn">حفظ التسمية الآن 🏷️</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ─── Modal 2: Create Tenant ─── -->
     <div id="createModal" class="modal-overlay">
         <div class="modal">
             <div class="modal-header">
-                <h3>إنشاء شركة جديدة بقاعدة بيانات منفصلة</h3>
+                <h3>إنشاء شركة جديدة بداتا بيز منفصلة</h3>
                 <button class="close-btn" onclick="closeModal('createModal')">&times;</button>
             </div>
-            
             <form id="createTenantForm">
                 <div class="modal-body">
                     <div id="createAlert" class="alert alert-danger"></div>
 
                     <div class="form-group">
                         <label class="form-label">اسم الشركة / المؤسسة *</label>
-                        <input type="text" id="newCompanyName" class="form-control" placeholder="مثال: شركة النور للتجارة والتوزيع" required>
+                        <input type="text" id="newCompanyName" class="form-control" placeholder="مثال: شركة النور للتجارة" required>
                     </div>
 
                     <div class="form-group">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                            <label class="form-label" style="margin-bottom:0;">اسم قاعدة البيانات في SQL Server (إنجليزي) *</label>
-                            <span style="font-size:11px;color:var(--text-muted);">حروف إنجليزية وأرقام وعلامة _ فقط</span>
-                        </div>
-                        <div style="position:relative;">
-                            <input type="text" id="newDbName" class="form-control" placeholder="مثال: alnour_trade" required style="direction:ltr;font-family:monospace;">
-                        </div>
+                        <label class="form-label">اسم قاعدة البيانات في SQL Server (إنجليزي) *</label>
+                        <input type="text" id="newDbName" class="form-control" placeholder="alnour_trade" required style="direction:ltr;font-family:monospace;">
                     </div>
 
                     <div class="grid-2">
                         <div class="form-group">
-                            <label class="form-label">خطة الاشتراك</label>
+                            <label class="form-label">الباقة</label>
                             <select id="newPlanName" class="form-control">
-                                <option value="basic">أساسي (Basic)</option>
-                                <option value="pro" selected>احترافي (Pro)</option>
-                                <option value="enterprise">مؤسسي (Enterprise)</option>
+                                <option value="basic">أساسي</option>
+                                <option value="pro" selected>احترافي</option>
+                                <option value="enterprise">مؤسسي</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -777,7 +830,7 @@
                     <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">اسم مستخدم المدير الأولي</label>
-                            <input type="text" id="newAdminUser" class="form-control" placeholder="admin@elnour.com" style="direction:ltr;">
+                            <input type="text" id="newAdminUser" class="form-control" placeholder="admin@domain.com" style="direction:ltr;">
                         </div>
                         <div class="form-group">
                             <label class="form-label">كلمة سر المدير</label>
@@ -785,86 +838,15 @@
                         </div>
                     </div>
 
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">بريد التواصل (اختياري)</label>
-                            <input type="email" id="newContactEmail" class="form-control" placeholder="info@elnour.com" style="direction:ltr;">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">رقم الهاتف (اختياري)</label>
-                            <input type="text" id="newContactPhone" class="form-control" placeholder="01012345678" style="direction:ltr;">
-                        </div>
-                    </div>
-
-                    <!-- Progress Indicator -->
                     <div id="createProgress" class="progress-box">
                         <div class="spinner"></div>
-                        <div style="font-weight:700;font-size:15px;color:#fff;">جاري إنشاء وتجهيز الشركة...</div>
-                        <div id="progressStepText" class="progress-step">إنشاء قاعدة البيانات في SQL Server وتطبيق الجداول (قد يستغرق 10-15 ثانية)...</div>
+                        <div style="font-weight:700;color:#fff;">جاري إنشاء وتجهيز الشركة بالكامل...</div>
                     </div>
                 </div>
 
                 <div class="modal-footer" id="createModalFooter">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('createModal')">إلغاء</button>
-                    <button type="submit" class="btn btn-primary" id="submitCreateBtn">
-                        <svg style="width:18px;height:18px;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                        إنشاء وتجهيز الشركة الآن
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- ─── Success / Credentials Modal ─── -->
-    <div id="credsModal" class="modal-overlay">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 style="color:var(--success);">تم إنشاء الشركة بنجاح! 🎉</h3>
-                <button class="close-btn" onclick="closeModal('credsModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p style="font-size:14px;color:#cbd5e1;margin-bottom:12px;">
-                    تم إنشاء قاعدة البيانات بالكامل وتجهيز الحساب الإداري. يمكنك نسخ البيانات بالأسفل وإرسالها للعميل مباشرة:
-                </p>
-
-                <div class="creds-box" id="credsDetails"></div>
-
-                <div style="margin-top:20px;text-align:center;">
-                    <button class="btn btn-success btn-block" id="copyCredsBtn">
-                        <svg style="width:18px;height:18px;" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                        نسخ بيانات الدخول ورابط الشركة
-                    </button>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('credsModal')">إغلاق</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ─── Reset Password Modal ─── -->
-    <div id="resetPassModal" class="modal-overlay">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>إعادة تعيين كلمة مرور مدير الشركة</h3>
-                <button class="close-btn" onclick="closeModal('resetPassModal')">&times;</button>
-            </div>
-            <form id="resetPassForm">
-                <input type="hidden" id="resetTenantId">
-                <div class="modal-body">
-                    <div id="resetAlert" class="alert alert-danger"></div>
-                    <div class="form-group">
-                        <label class="form-label">اسم المستخدم أو البريد الإلكتروني</label>
-                        <input type="text" id="resetUsername" class="form-control" required style="direction:ltr;">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">كلمة المرور الجديدة</label>
-                        <input type="text" id="resetNewPass" class="form-control" required style="direction:ltr;" placeholder="أدخل كلمة المرور الجديدة...">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('resetPassModal')">إلغاء</button>
-                    <button type="submit" class="btn btn-primary" id="submitResetBtn">حفظ كلمة المرور</button>
+                    <button type="submit" class="btn btn-primary" id="submitCreateBtn">إنشاء وتجهيز الشركة الآن</button>
                 </div>
             </form>
         </div>
@@ -873,52 +855,23 @@
     <!-- ─── JavaScript Logic ─── -->
     <script>
         let currentKey = sessionStorage.getItem('super_admin_key') || localStorage.getItem('super_admin_key') || '';
+        let liveSessions = [];
         let tenantsList = [];
+        let allUsersList = [];
+        let livePollingTimer = null;
 
-        // ─── DOM Elements ───
         const loginScreen = document.getElementById('loginScreen');
         const dashboardScreen = document.getElementById('dashboardScreen');
         const loginForm = document.getElementById('loginForm');
         const superKeyInput = document.getElementById('superKeyInput');
         const loginAlert = document.getElementById('loginAlert');
-        const tenantsTableBody = document.getElementById('tenantsTableBody');
-        const searchInput = document.getElementById('searchInput');
 
-        // ─── Init Check ───
         window.addEventListener('DOMContentLoaded', () => {
             if (currentKey) {
                 verifyAndEnter(currentKey);
             }
         });
 
-        // Auto-slug DB Name from Company Name
-        document.getElementById('newCompanyName').addEventListener('input', (e) => {
-            const val = e.target.value.trim();
-            const dbInput = document.getElementById('newDbName');
-            const adminInput = document.getElementById('newAdminUser');
-            if (val && !dbInput.dataset.touched) {
-                const clean = 'tp_' + Math.abs(hashCode(val)).toString(36) + '_' + Date.now().toString(36).slice(-4);
-                dbInput.value = clean;
-                if (!adminInput.value) {
-                    adminInput.value = 'admin@' + clean + '.com';
-                }
-            }
-        });
-
-        document.getElementById('newDbName').addEventListener('input', (e) => {
-            e.target.dataset.touched = 'true';
-        });
-
-        function hashCode(str) {
-            let hash = 0;
-            for (let i = 0; i < str.length; i++) {
-                hash = ((hash << 5) - hash) + str.charCodeAt(i);
-                hash |= 0;
-            }
-            return hash;
-        }
-
-        // ─── Login Submission ───
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const key = superKeyInput.value.trim();
@@ -946,130 +899,146 @@
                     localStorage.setItem('super_admin_key', key);
                     loginScreen.style.display = 'none';
                     dashboardScreen.style.display = 'flex';
-                    loadDashboard();
+                    switchTab('live');
+                    startLivePolling();
                 } else {
-                    showLoginAlert(data.message || 'المفتاح السري غير صحيح');
+                    loginAlert.innerText = data.message || 'المفتاح السري غير صحيح';
+                    loginAlert.style.display = 'block';
                 }
             } catch (err) {
-                showLoginAlert('تعذر الاتصال بالخادم: ' + err.message);
+                loginAlert.innerText = 'تعذر الاتصال بالخادم: ' + err.message;
+                loginAlert.style.display = 'block';
             }
-        }
-
-        function showLoginAlert(msg) {
-            loginAlert.innerText = msg;
-            loginAlert.style.display = 'block';
         }
 
         document.getElementById('logoutBtn').addEventListener('click', () => {
             sessionStorage.removeItem('super_admin_key');
             localStorage.removeItem('super_admin_key');
             currentKey = '';
+            clearInterval(livePollingTimer);
             dashboardScreen.style.display = 'none';
             loginScreen.style.display = 'flex';
-            superKeyInput.value = '';
         });
 
-        // ─── Load Dashboard ───
-        async function loadDashboard() {
-            await Promise.all([loadStats(), loadTenants()]);
-        }
+        // ─── Tab Switching ───
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tabViewLive').style.display = 'none';
+            document.getElementById('tabViewTenants').style.display = 'none';
+            document.getElementById('tabViewUsers').style.display = 'none';
 
-        document.getElementById('refreshBtn').addEventListener('click', () => {
-            loadDashboard();
-        });
-
-        async function loadStats() {
-            try {
-                const res = await fetch('/api/superadmin/stats', {
-                    headers: { 'x-super-admin-key': currentKey }
-                });
-                const json = await res.json();
-                if (json.success && json.data) {
-                    document.getElementById('statTotalTenants').innerText = json.data.total_tenants || 0;
-                    document.getElementById('statActiveTenants').innerText = json.data.active_tenants || 0;
-                    document.getElementById('statSuspendedTenants').innerText = json.data.suspended_tenants || 0;
-                }
-            } catch(e) {
-                console.error('Failed to load stats:', e);
+            if (tab === 'live') {
+                document.getElementById('tabBtnLive').classList.add('active');
+                document.getElementById('tabViewLive').style.display = 'block';
+                loadLiveSessions();
+            } else if (tab === 'tenants') {
+                document.getElementById('tabBtnTenants').classList.add('active');
+                document.getElementById('tabViewTenants').style.display = 'block';
+                loadTenants();
+            } else if (tab === 'users') {
+                document.getElementById('tabBtnUsers').classList.add('active');
+                document.getElementById('tabViewUsers').style.display = 'block';
+                loadAllUsers();
             }
         }
 
-        async function loadTenants() {
+        function startLivePolling() {
+            if (livePollingTimer) clearInterval(livePollingTimer);
+            livePollingTimer = setInterval(() => {
+                if (document.getElementById('tabViewLive').style.display !== 'none') {
+                    loadLiveSessions(false);
+                }
+            }, 4000);
+        }
+
+        // ─── Load Live Sessions ───
+        async function loadLiveSessions(showLoading = false) {
+            const tbody = document.getElementById('liveSessionsTableBody');
+            if (showLoading && liveSessions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;">جاري التحميل...</td></tr>';
+            }
+
             try {
-                const res = await fetch('/api/superadmin/tenants', {
+                const res = await fetch('/api/superadmin/live-sessions', {
                     headers: { 'x-super-admin-key': currentKey }
                 });
                 const json = await res.json();
-                if (json.success && json.data) {
-                    tenantsList = json.data;
-                    renderTenantsTable(tenantsList);
-                } else {
-                    tenantsTableBody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--danger);">${json.message || 'فشل تحميل الشركات'}</td></tr>`;
+                if (json.success) {
+                    liveSessions = json.data || [];
+                    renderLiveSessions(liveSessions);
+
+                    const onlineCount = liveSessions.filter(s => s.status === 'online').length;
+                    document.getElementById('topLiveCount').innerText = onlineCount;
+                    document.getElementById('statOnlineNow').innerText = onlineCount;
+                    document.getElementById('statAliasedCount').innerText = liveSessions.filter(s => s.alias_name).length;
+                    document.getElementById('statBlockedCount').innerText = liveSessions.filter(s => s.is_blocked).length;
                 }
-            } catch (err) {
-                tenantsTableBody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--danger);">خطأ في الاتصال: ${err.message}</td></tr>`;
+            } catch (e) {
+                console.error('Live sessions poll error:', e);
             }
         }
 
-        function renderTenantsTable(list) {
-            if (!list || list.length === 0) {
-                tenantsTableBody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);">لا توجد شركات مضافة حتى الآن. انقر على زر "إنشاء شركة جديدة" للبدء.</td></tr>`;
+        function renderLiveSessions(list) {
+            const tbody = document.getElementById('liveSessionsTableBody');
+            const search = (document.getElementById('searchLiveInput').value || '').toLowerCase().trim();
+
+            const filtered = list.filter(s => {
+                if (!search) return true;
+                return (s.full_name && s.full_name.toLowerCase().includes(search)) ||
+                       (s.username && s.username.toLowerCase().includes(search)) ||
+                       (s.alias_name && s.alias_name.toLowerCase().includes(search)) ||
+                       (s.company_name && s.company_name.toLowerCase().includes(search)) ||
+                       (s.tenant_db && s.tenant_db.toLowerCase().includes(search));
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">لا يوجد أي مستخدم متصل في الوقت الحالي. بمجرد دخول أي شخص على السيستم سيظهر هنا فوراً بما يفعله بالثواني!</td></tr>';
                 return;
             }
 
-            const origin = window.location.origin;
+            tbody.innerHTML = filtered.map(s => {
+                const isOnline = s.status === 'online';
+                const statusBadge = isOnline 
+                    ? '<span class="badge badge-success"><span class="pulse-dot" style="width:6px;height:6px;"></span> متصل الآن</span>'
+                    : '<span class="badge badge-warning">خامل 🟡</span>';
 
-            tenantsTableBody.innerHTML = list.map((t, idx) => {
-                const isActive = t.is_active;
-                const statusBadge = isActive 
-                    ? '<span class="badge badge-success">● نشط</span>'
-                    : '<span class="badge badge-danger">● موقوف</span>';
-
-                const planMap = { basic: 'أساسي', pro: 'احترافي', enterprise: 'مؤسسي' };
-                const planName = planMap[t.plan_name] || t.plan_name || 'عام';
-
-                const expStr = t.expires_at ? new Date(t.expires_at).toLocaleDateString('ar-EG') : 'غير محدد';
-                const tenantUrl = `${origin}/index.html?tenant=${encodeURIComponent(t.db_name)}`;
+                const aliasHtml = s.alias_name 
+                    ? `<div class="alias-tag" title="${s.alias_notes || ''}">🏷️ ${s.alias_name}</div>`
+                    : '<button class="btn btn-secondary btn-sm" style="font-size:11px;padding:2px 8px;" onclick="openAliasModal(\'' + s.tenant_db + '\', ' + s.user_id + ', \'' + escapeStr(s.username) + '\', \'' + escapeStr(s.full_name) + '\', \'\', \'\')">+ تسمية هذا الشخص</button>';
 
                 return `
-                    <tr>
-                        <td style="font-weight:700;color:var(--text-muted);">${idx + 1}</td>
-                        <td style="font-weight:700;color:#fff;">${t.company_name}</td>
-                        <td><span class="db-tag">${t.db_name}</span></td>
-                        <td>
-                            <span class="badge badge-info">${planName}</span>
-                            <span style="font-size:12px;color:var(--text-muted);margin-right:4px;">(${t.max_users || 5} مستخدم)</span>
-                        </td>
+                    <tr style="${s.is_blocked ? 'background:rgba(239, 68, 68, 0.1);' : ''}">
                         <td>${statusBadge}</td>
-                        <td style="font-size:13px;">${expStr}</td>
                         <td>
-                            <div style="display:flex;align-items:center;gap:6px;">
-                                <a href="${tenantUrl}" target="_blank" class="btn btn-secondary btn-sm" title="فتح رابط الشركة">
-                                    <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
-                                    دخول
-                                </a>
-                                <button class="btn btn-secondary btn-sm" onclick="copyText('${tenantUrl}')" title="نسخ رابط الشركة">
-                                    <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                                    نسخ
-                                </button>
+                            <div style="font-weight:700;color:#fff;font-size:14px;">${s.full_name || s.username}</div>
+                            <div style="font-size:12px;color:var(--text-muted);">${s.username}</div>
+                            <div style="margin-top:4px;">${aliasHtml}</div>
+                        </td>
+                        <td>
+                            <div style="font-weight:700;">${s.company_name}</div>
+                            <span class="db-tag">${s.tenant_db}</span>
+                        </td>
+                        <td>
+                            <div class="action-chip">
+                                <span class="pulse-dot" style="width:6px;height:6px;background:#38bdf8;"></span>
+                                ${s.last_action || 'تصفح النظام'}
                             </div>
                         </td>
+                        <td style="font-size:12px;">
+                            <div>${s.browser} على ${s.os} (${s.device})</div>
+                            <span style="font-family:monospace;color:var(--text-muted);">${s.ip_address}</span>
+                        </td>
+                        <td style="font-size:12px;color:var(--text-muted);">${s.status_text}</td>
                         <td>
                             <div class="action-btns">
-                                ${isActive ? `
-                                    <button class="btn btn-secondary btn-sm" style="color:#fca5a5;" onclick="suspendTenant(${t.id})" title="إيقاف حساب الشركة">
-                                        إيقاف
-                                    </button>
-                                ` : `
-                                    <button class="btn btn-success btn-sm" onclick="activateTenant(${t.id})" title="تنشيط الشركة">
-                                        تفعيل
-                                    </button>
-                                `}
-                                <button class="btn btn-secondary btn-sm" onclick="openResetModal(${t.id}, '${t.company_name}')" title="تغيير كلمة سر المدير">
-                                    كلمة السر
+                                <button class="btn btn-secondary btn-sm" onclick="openAliasModal('${s.tenant_db}', ${s.user_id}, '${escapeStr(s.username)}', '${escapeStr(s.full_name)}', '${escapeStr(s.alias_name)}', '${escapeStr(s.alias_notes)}')" title="تسمية الشخص">
+                                    🏷️ تسمية
                                 </button>
-                                <button class="btn btn-danger btn-sm" onclick="deleteTenant(${t.id}, '${t.company_name}')" title="حذف الشركة">
-                                    حذف
+                                <button class="btn btn-warning btn-sm" onclick="kickUser('${s.tenant_db}', ${s.user_id}, '${escapeStr(s.alias_name || s.full_name)}')" title="طرد الجلسة فوراً">
+                                    ⛔ طرد
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="blockUser('${s.tenant_db}', ${s.user_id}, '${escapeStr(s.alias_name || s.full_name)}', true)" title="حظر نهائي ومنع الدخول">
+                                    🚫 حظر
                                 </button>
                             </div>
                         </td>
@@ -1078,221 +1047,261 @@
             }).join('');
         }
 
-        // Search Filter
-        searchInput.addEventListener('input', (e) => {
-            const query = e.target.value.toLowerCase().trim();
-            if (!query) {
-                renderTenantsTable(tenantsList);
-                return;
-            }
-            const filtered = tenantsList.filter(t => 
-                (t.company_name && t.company_name.toLowerCase().includes(query)) ||
-                (t.db_name && t.db_name.toLowerCase().includes(query))
-            );
-            renderTenantsTable(filtered);
+        document.getElementById('searchLiveInput').addEventListener('input', () => {
+            renderLiveSessions(liveSessions);
         });
 
-        // ─── Modal Open/Close ───
+        // ─── Load Tenants ───
+        async function loadTenants() {
+            const tbody = document.getElementById('tenantsTableBody');
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;">جاري التحميل...</td></tr>';
+            try {
+                const res = await fetch('/api/superadmin/tenants', { headers: { 'x-super-admin-key': currentKey } });
+                const json = await res.json();
+                if (json.success) {
+                    tenantsList = json.data || [];
+                    document.getElementById('statActiveTenantsMini').innerText = tenantsList.filter(t => t.is_active).length;
+                    renderTenantsTable(tenantsList);
+                }
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--danger);">خطأ: ' + e.message + '</td></tr>';
+            }
+        }
+
+        function renderTenantsTable(list) {
+            const tbody = document.getElementById('tenantsTableBody');
+            const origin = window.location.origin;
+            if (!list || list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;">لا توجد شركات مضافة.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = list.map((t, idx) => {
+                const tenantUrl = `${origin}/index.html?tenant=${encodeURIComponent(t.db_name)}`;
+                return `
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td style="font-weight:700;color:#fff;">${t.company_name}</td>
+                        <td><span class="db-tag">${t.db_name}</span></td>
+                        <td><span class="badge badge-info">${t.plan_name}</span> (${t.max_users} مستخدم)</td>
+                        <td>${t.is_active ? '<span class="badge badge-success">● نشط</span>' : '<span class="badge badge-danger">● موقوف</span>'}</td>
+                        <td>${t.expires_at ? new Date(t.expires_at).toLocaleDateString('ar-EG') : 'دائم'}</td>
+                        <td><a href="${tenantUrl}" target="_blank" class="btn btn-secondary btn-sm">دخول الشركة</a></td>
+                        <td>
+                            <div class="action-btns">
+                                ${t.is_active 
+                                    ? `<button class="btn btn-secondary btn-sm" onclick="suspendTenant(${t.id})">إيقاف</button>`
+                                    : `<button class="btn btn-success btn-sm" onclick="activateTenant(${t.id})">تفعيل</button>`}
+                                <button class="btn btn-danger btn-sm" onclick="deleteTenant(${t.id}, '${t.company_name}')">حذف</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ─── Load All Users ───
+        async function loadAllUsers() {
+            const tbody = document.getElementById('allUsersTableBody');
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;">جاري تحميل قائمة المستخدمين من كل الشركات...</td></tr>';
+
+            try {
+                const res = await fetch('/api/superadmin/users', { headers: { 'x-super-admin-key': currentKey } });
+                const json = await res.json();
+                if (json.success) {
+                    allUsersList = json.data || [];
+                    renderAllUsers(allUsersList);
+                }
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--danger);">خطأ: ' + e.message + '</td></tr>';
+            }
+        }
+
+        function renderAllUsers(list) {
+            const tbody = document.getElementById('allUsersTableBody');
+            const search = (document.getElementById('searchUsersInput').value || '').toLowerCase().trim();
+
+            const filtered = list.filter(u => {
+                if (!search) return true;
+                return (u.full_name && u.full_name.toLowerCase().includes(search)) ||
+                       (u.username && u.username.toLowerCase().includes(search)) ||
+                       (u.alias_name && u.alias_name.toLowerCase().includes(search)) ||
+                       (u.company_name && u.company_name.toLowerCase().includes(search));
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;">لا يوجد مستخدمون مطابقون للبحث.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(u => {
+                const isBlocked = u.is_blocked || u.is_active === 0;
+                const statusBadge = isBlocked 
+                    ? '<span class="badge badge-danger">🚫 محظور / موقوف</span>'
+                    : '<span class="badge badge-success">نشط</span>';
+
+                const aliasHtml = u.alias_name 
+                    ? `<span class="alias-tag" title="${u.alias_notes || ''}">🏷️ ${u.alias_name}</span>`
+                    : '<span style="color:var(--text-muted);font-size:12px;">(بدون لقب)</span>';
+
+                return `
+                    <tr style="${isBlocked ? 'background:rgba(239, 68, 68, 0.08);' : ''}">
+                        <td><strong>${u.company_name}</strong><br><span class="db-tag">${u.tenant_db}</span></td>
+                        <td style="font-family:monospace;direction:ltr;">${u.username}</td>
+                        <td style="font-weight:700;">${u.full_name || '-'}</td>
+                        <td>${aliasHtml}</td>
+                        <td>${statusBadge}</td>
+                        <td style="font-size:12px;color:var(--text-muted);">${u.last_login_at ? new Date(u.last_login_at).toLocaleString('ar-EG') : 'لم يسجل دخول بعد'}</td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="btn btn-secondary btn-sm" onclick="openAliasModal('${u.tenant_db}', ${u.user_id}, '${escapeStr(u.username)}', '${escapeStr(u.full_name)}', '${escapeStr(u.alias_name)}', '${escapeStr(u.alias_notes)}')">
+                                    🏷️ تسمية
+                                </button>
+                                ${isBlocked 
+                                    ? `<button class="btn btn-success btn-sm" onclick="blockUser('${u.tenant_db}', ${u.user_id}, '${escapeStr(u.alias_name || u.full_name)}', false)">فك الحظر ✅</button>`
+                                    : `<button class="btn btn-danger btn-sm" onclick="blockUser('${u.tenant_db}', ${u.user_id}, '${escapeStr(u.alias_name || u.full_name)}', true)">حظر 🚫</button>`}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        document.getElementById('searchUsersInput').addEventListener('input', () => {
+            renderAllUsers(allUsersList);
+        });
+
+        // ─── Modal Functions ───
+        function openAliasModal(tenantDb, userId, username, fullName, existingAlias, existingNotes) {
+            document.getElementById('aliasTenantDb').value = tenantDb;
+            document.getElementById('aliasUserId').value = userId;
+            document.getElementById('aliasUsername').value = username;
+            document.getElementById('aliasFullName').value = fullName;
+            document.getElementById('aliasTargetDisplay').innerText = `${fullName || username} (${tenantDb})`;
+            document.getElementById('aliasNameInput').value = existingAlias || '';
+            document.getElementById('aliasNotesInput').value = existingNotes || '';
+            document.getElementById('aliasAlert').style.display = 'none';
+            document.getElementById('aliasModal').style.display = 'flex';
+        }
+
+        document.getElementById('aliasForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const tenant_db = document.getElementById('aliasTenantDb').value;
+            const user_id = document.getElementById('aliasUserId').value;
+            const username = document.getElementById('aliasUsername').value;
+            const full_name = document.getElementById('aliasFullName').value;
+            const alias_name = document.getElementById('aliasNameInput').value.trim();
+            const notes = document.getElementById('aliasNotesInput').value.trim();
+
+            try {
+                const res = await fetch('/api/superadmin/users/alias', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-super-admin-key': currentKey },
+                    body: JSON.stringify({ tenant_db, user_id, username, full_name, alias_name, notes })
+                });
+                const json = await res.json();
+                if (json.success) {
+                    alert(json.message);
+                    closeModal('aliasModal');
+                    loadLiveSessions();
+                    if (document.getElementById('tabViewUsers').style.display !== 'none') loadAllUsers();
+                } else {
+                    document.getElementById('aliasAlert').innerText = json.message;
+                    document.getElementById('aliasAlert').style.display = 'block';
+                }
+            } catch (err) {
+                document.getElementById('aliasAlert').innerText = 'خطأ: ' + err.message;
+                document.getElementById('aliasAlert').style.display = 'block';
+            }
+        });
+
+        async function kickUser(tenantDb, userId, personName) {
+            if (!confirm(`هل أنت متأكد من طرد الجلسة الحالية للشخص: "${personName}" فوراً؟`)) return;
+            try {
+                const res = await fetch('/api/superadmin/users/kick', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-super-admin-key': currentKey },
+                    body: JSON.stringify({ tenant_db: tenantDb, user_id: userId })
+                });
+                const json = await res.json();
+                alert(json.message);
+                loadLiveSessions();
+            } catch (e) { alert('خطأ: ' + e.message); }
+        }
+
+        async function blockUser(tenantDb, userId, personName, shouldBlock) {
+            const actionText = shouldBlock ? 'حظر ومنع' : 'فك حظر وتنشيط';
+            if (!confirm(`تأكيد: هل أنت متأكد من ${actionText} الشخص: "${personName}"؟${shouldBlock ? '\nلن يتمكن من تسجيل الدخول نهائياً.' : ''}`)) return;
+
+            try {
+                const res = await fetch('/api/superadmin/users/block', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-super-admin-key': currentKey },
+                    body: JSON.stringify({ tenant_db: tenantDb, user_id: userId, block: shouldBlock })
+                });
+                const json = await res.json();
+                alert(json.message);
+                loadLiveSessions();
+                if (document.getElementById('tabViewUsers').style.display !== 'none') loadAllUsers();
+            } catch (e) { alert('خطأ: ' + e.message); }
+        }
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function escapeStr(s) { return (s || '').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+
+        // Create Tenant Modal & Logic
         document.getElementById('openCreateModalBtn').addEventListener('click', () => {
             document.getElementById('createAlert').style.display = 'none';
             document.getElementById('createProgress').style.display = 'none';
             document.getElementById('createModalFooter').style.display = 'flex';
             document.getElementById('createTenantForm').reset();
-            document.getElementById('newDbName').dataset.touched = '';
             document.getElementById('createModal').style.display = 'flex';
         });
 
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-        }
+        document.getElementById('newCompanyName').addEventListener('input', (e) => {
+            const val = e.target.value.trim();
+            if (val) {
+                const clean = 'tp_' + Math.abs(val.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0)).toString(36) + '_' + Date.now().toString(36).slice(-3);
+                document.getElementById('newDbName').value = clean;
+                document.getElementById('newAdminUser').value = 'admin@' + clean + '.com';
+            }
+        });
 
-        // ─── Create Tenant Submit ───
         document.getElementById('createTenantForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-
             const company_name = document.getElementById('newCompanyName').value.trim();
             const db_name = document.getElementById('newDbName').value.trim();
             const plan_name = document.getElementById('newPlanName').value;
             const max_users = document.getElementById('newMaxUsers').value;
             const admin_username = document.getElementById('newAdminUser').value.trim();
             const admin_password = document.getElementById('newAdminPass').value.trim();
-            const contact_email = document.getElementById('newContactEmail').value.trim();
-            const contact_phone = document.getElementById('newContactPhone').value.trim();
 
-            const alertBox = document.getElementById('createAlert');
-            const progressBox = document.getElementById('createProgress');
-            const footerBox = document.getElementById('createModalFooter');
-
-            alertBox.style.display = 'none';
-            progressBox.style.display = 'block';
-            footerBox.style.display = 'none';
+            document.getElementById('createProgress').style.display = 'block';
+            document.getElementById('createModalFooter').style.display = 'none';
 
             try {
                 const res = await fetch('/api/superadmin/tenants', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-super-admin-key': currentKey
-                    },
-                    body: JSON.stringify({
-                        company_name,
-                        db_name,
-                        plan_name,
-                        max_users,
-                        admin_username,
-                        admin_password,
-                        contact_email,
-                        contact_phone
-                    })
+                    headers: { 'Content-Type': 'application/json', 'x-super-admin-key': currentKey },
+                    body: JSON.stringify({ company_name, db_name, plan_name, max_users, admin_username, admin_password })
                 });
-
                 const json = await res.json();
                 if (json.success) {
+                    alert('تم إنشاء الشركة وقاعدة بياناتها بنجاح!');
                     closeModal('createModal');
-                    loadDashboard();
-
-                    // Show Creds Modal
-                    const origin = window.location.origin;
-                    const loginUrl = origin + (json.data.login_url || `/index.html?tenant=${encodeURIComponent(db_name)}`);
-
-                    document.getElementById('credsDetails').innerHTML = `
-                        <div class="creds-row">
-                            <span style="color:var(--text-muted);">اسم الشركة:</span>
-                            <span style="color:#fff;font-weight:700;">${company_name}</span>
-                        </div>
-                        <div class="creds-row">
-                            <span style="color:var(--text-muted);">قاعدة البيانات (MSSQL):</span>
-                            <span class="creds-val">${json.data.db_name}</span>
-                        </div>
-                        <div class="creds-row">
-                            <span style="color:var(--text-muted);">رابط الدخول المباشر:</span>
-                            <span class="creds-val"><a href="${loginUrl}" target="_blank" style="color:#38bdf8;">${loginUrl}</a></span>
-                        </div>
-                        <div class="creds-row">
-                            <span style="color:var(--text-muted);">اسم مستخدم المدير:</span>
-                            <span class="creds-val">${json.data.admin_username}</span>
-                        </div>
-                        <div class="creds-row">
-                            <span style="color:var(--text-muted);">كلمة المرور:</span>
-                            <span class="creds-val">${json.data.admin_password}</span>
-                        </div>
-                    `;
-
-                    window._lastCreatedCredsText = `بيانات شركة ${company_name}:\nرابط الدخول: ${loginUrl}\nاسم المستخدم: ${json.data.admin_username}\nكلمة المرور: ${json.data.admin_password}`;
-
-                    document.getElementById('credsModal').style.display = 'flex';
+                    loadTenants();
                 } else {
-                    progressBox.style.display = 'none';
-                    footerBox.style.display = 'flex';
-                    alertBox.innerText = json.message || 'حدث خطأ أثناء إنشاء الشركة';
-                    alertBox.style.display = 'block';
+                    document.getElementById('createProgress').style.display = 'none';
+                    document.getElementById('createModalFooter').style.display = 'flex';
+                    document.getElementById('createAlert').innerText = json.message;
+                    document.getElementById('createAlert').style.display = 'block';
                 }
             } catch (err) {
-                progressBox.style.display = 'none';
-                footerBox.style.display = 'flex';
-                alertBox.innerText = 'خطأ في الاتصال: ' + err.message;
-                alertBox.style.display = 'block';
+                document.getElementById('createProgress').style.display = 'none';
+                document.getElementById('createModalFooter').style.display = 'flex';
+                alert('خطأ: ' + err.message);
             }
         });
-
-        document.getElementById('copyCredsBtn').addEventListener('click', () => {
-            if (window._lastCreatedCredsText) {
-                copyText(window._lastCreatedCredsText, 'تم نسخ بيانات الدخول بنجاح! يمكنك إرسالها للعميل.');
-            }
-        });
-
-        // ─── Actions: Suspend / Activate / Delete ───
-        async function suspendTenant(id) {
-            if (!confirm('هل أنت متأكد من إيقاف حساب هذه الشركة؟ لن يتمكن مستخدموها من تسجيل الدخول.')) return;
-            try {
-                const res = await fetch(`/api/superadmin/tenants/${id}/suspend`, {
-                    method: 'POST',
-                    headers: { 'x-super-admin-key': currentKey }
-                });
-                const json = await res.json();
-                if (json.success) {
-                    loadDashboard();
-                } else {
-                    alert(json.message);
-                }
-            } catch(e) { alert('خطأ: ' + e.message); }
-        }
-
-        async function activateTenant(id) {
-            try {
-                const res = await fetch(`/api/superadmin/tenants/${id}/activate`, {
-                    method: 'POST',
-                    headers: { 'x-super-admin-key': currentKey }
-                });
-                const json = await res.json();
-                if (json.success) {
-                    loadDashboard();
-                } else {
-                    alert(json.message);
-                }
-            } catch(e) { alert('خطأ: ' + e.message); }
-        }
-
-        async function deleteTenant(id, name) {
-            const dropDb = confirm(`هل تريد حذف قاعدة البيانات الفعلية أيضاً لشركة "${name}"؟\n\nاضغط [موافق / OK] لحذف الشركة وقاعدة بياناتها نهائياً.\nاضغط [إلغاء / Cancel] لحذف الشركة من القائمة فقط مع الإبقاء على قاعدة البيانات.`);
-            
-            if (!confirm(`تأكيد أخير: هل أنت متأكد من حذف شركة "${name}"؟`)) return;
-
-            try {
-                const res = await fetch(`/api/superadmin/tenants/${id}?drop_db=${dropDb}`, {
-                    method: 'DELETE',
-                    headers: { 'x-super-admin-key': currentKey }
-                });
-                const json = await res.json();
-                alert(json.message);
-                loadDashboard();
-            } catch(e) { alert('خطأ: ' + e.message); }
-        }
-
-        function openResetModal(id, name) {
-            document.getElementById('resetTenantId').value = id;
-            document.getElementById('resetUsername').value = 'admin@3smcompany.com';
-            document.getElementById('resetNewPass').value = '';
-            document.getElementById('resetAlert').style.display = 'none';
-            document.getElementById('resetPassModal').style.display = 'flex';
-        }
-
-        document.getElementById('resetPassForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const id = document.getElementById('resetTenantId').value;
-            const username = document.getElementById('resetUsername').value.trim();
-            const new_password = document.getElementById('resetNewPass').value.trim();
-
-            try {
-                const res = await fetch(`/api/superadmin/tenants/${id}/reset-password`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-super-admin-key': currentKey
-                    },
-                    body: JSON.stringify({ username, new_password })
-                });
-                const json = await res.json();
-                if (json.success) {
-                    alert('تم تغيير كلمة المرور بنجاح!');
-                    closeModal('resetPassModal');
-                } else {
-                    document.getElementById('resetAlert').innerText = json.message;
-                    document.getElementById('resetAlert').style.display = 'block';
-                }
-            } catch (err) {
-                document.getElementById('resetAlert').innerText = 'خطأ: ' + err.message;
-                document.getElementById('resetAlert').style.display = 'block';
-            }
-        });
-
-        function copyText(text, successMsg = 'تم النسخ للحافظة!') {
-            navigator.clipboard.writeText(text).then(() => {
-                alert(successMsg);
-            }).catch(() => {
-                prompt('انسخ الرابط:', text);
-            });
-        }
     </script>
 </body>
 </html>

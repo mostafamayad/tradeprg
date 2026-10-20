@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const sessionTracker = require('../services/sessionTracker');
 
 function authenticate(req, res, next) {
     const publicPaths = ['/auth/login', '/time'];
@@ -16,6 +17,20 @@ function authenticate(req, res, next) {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = decoded;
+
+        const tenantDb = req.tenant?.db_name || decoded.tenant_db || 'TradePro';
+
+        // Check if user is blocked or session revoked by Super Admin
+        if (sessionTracker.isUserBlocked(tenantDb, decoded.id, token)) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'تم إيقاف حسابك أو إنهاء جلستك من قِبل مدير النظام العام (Super Admin).' 
+            });
+        }
+
+        // Record live active session
+        sessionTracker.recordActivity(req);
+
         const lm = req.app.licenseManager;
         if (lm) lm._ensureCacheValid();
         req.license = lm ? {

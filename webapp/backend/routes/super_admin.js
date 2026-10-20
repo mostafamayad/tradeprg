@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const { getMasterPool, sql } = require('../database/master_db');
 const { getTenantPool, closeTenantPool } = require('../database/mssql_db');
+const sessionTracker = require('../services/sessionTracker');
 
 const getSuperAdminKey = () => process.env.SUPER_ADMIN_KEY || 'admin@3smsa2025';
 
@@ -317,6 +318,114 @@ router.delete('/tenants/:id', async (req, res) => {
             success: true, 
             message: `تم حذف الشركة "${company_name}" بنجاح${dropDb ? ' مع حذف قاعدة البيانات الخاصة بها' : ''}` 
         });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Live Active Sessions ─────────────────────────────────────
+router.get('/live-sessions', (req, res) => {
+    try {
+        const sessions = sessionTracker.getActiveSessions();
+        res.json({ success: true, data: sessions });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ─── All Users Across Tenants (with aliases & block status) ──
+router.get('/users', async (req, res) => {
+    try {
+        const masterPool = await getMasterPool();
+        const tenantsRes = await masterPool.request().query('SELECT id, company_name, db_name FROM tenants');
+        
+        const allUsers = [];
+
+        // Also fetch aliases from master DB
+        const aliasesRes = await masterPool.request().query('SELECT * FROM user_aliases');
+        const aliasMap = new Map();
+        for (const a of aliasesRes.recordset) {
+            aliasMap.set(`${a.tenant_db.toLowerCase()}:${a.user_id}`, a);
+        }
+
+        for (const tenant of tenantsRes.recordset) {
+            try {
+                const tenantPool = await getTenantPool(tenant.db_name);
+                const uRes = await tenantPool.request().query(`
+                    SELECT id, username, full_name, role, is_active, last_login_at, last_login_ip 
+                    FROM users
+                `);
+                for (const u of uRes.recordset) {
+                    const key = `${tenant.db_name.toLowerCase()}:${u.id}`;
+                    const aliasData = aliasMap.get(key);
+                    allUsers.push({
+                        user_id: u.id,
+                        username: u.username,
+                        full_name: u.full_name,
+                        role: u.role,
+                        is_active: u.is_active,
+                        tenant_id: tenant.id,
+                        company_name: tenant.company_name,
+                        tenant_db: tenant.db_name,
+                        last_login_at: u.last_login_at,
+                        last_login_ip: u.last_login_ip,
+                        alias_name: aliasData?.alias_name || '',
+                        alias_notes: aliasData?.notes || '',
+                        is_blocked: aliasData?.is_blocked ? true : (u.is_active === 0)
+                    });
+                }
+            } catch (tenantErr) {
+                console.warn(`[SuperAdmin] Warning loading users for ${tenant.db_name}:`, tenantErr.message);
+            }
+        }
+
+        res.json({ success: true, data: allUsers });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Set User Friendly Alias (تسمية المستخدم وتعيين لقب) ─────
+router.post('/users/alias', async (req, res) => {
+    const { tenant_db, user_id, username, full_name, alias_name, notes } = req.body;
+    if (!tenant_db || !user_id || !alias_name) {
+        return res.status(400).json({ success: false, message: 'اسم الشركة ورقم المستخدم والاسم المخصص (اللقب) مطلوبون' });
+    }
+
+    try {
+        const result = await sessionTracker.setAlias(tenant_db, parseInt(user_id), username, full_name, alias_name, notes);
+        res.json({ success: true, message: `تم تسمية المستخدم بنجاح باسم: (${alias_name})`, data: result });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Kick Active Session (طرد الجلسة فوراً) ───────────────────
+router.post('/users/kick', (req, res) => {
+    const { tenant_db, user_id } = req.body;
+    if (!tenant_db || !user_id) {
+        return res.status(400).json({ success: false, message: 'اسم الشركة ورقم المستخدم مطلوبان' });
+    }
+
+    try {
+        const result = sessionTracker.kickSession(tenant_db, parseInt(user_id));
+        res.json({ success: true, message: 'تم طرد الجلسة فوراً وخروج المستخدم' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ─── Block / Unblock User (حظر أو فك حظر المستخدم) ────────────
+router.post('/users/block', async (req, res) => {
+    const { tenant_db, user_id, block } = req.body;
+    if (!tenant_db || !user_id) {
+        return res.status(400).json({ success: false, message: 'اسم الشركة ورقم المستخدم مطلوبان' });
+    }
+
+    try {
+        const shouldBlock = block === true || block === 'true' || block === 1;
+        const result = await sessionTracker.blockUser(tenant_db, parseInt(user_id), shouldBlock);
+        res.json(result);
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
